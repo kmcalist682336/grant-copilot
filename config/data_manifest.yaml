@@ -1,80 +1,40 @@
-# Data-layer manifest for grant-copilot.
-#
-# The runtime needs five pre-built artifacts to operate.  This file
-# tells `scripts/setup/hydrate_data_artifacts.py` where to pull
-# each one from (a HuggingFace dataset repo you have read access
-# to) and what its SHA-256 should be after download.
-#
-# FIRST-TIME SETUP:
-#   1. Create a free HuggingFace account + read-only token
-#      (https://huggingface.co/settings/tokens).
-#   2. Accept the dataset repo's license if it has one.
-#   3. Export the token: `export HF_TOKEN=hf_...`
-#   4. Run: `python -m scripts.setup.hydrate_data_artifacts`
-#
-# BUILDING THE MANIFEST (artifact publisher only):
-#   After building or rebuilding the data layer, run
-#   `python -m scripts.setup.build_manifest` to recompute SHA-256s
-#   from local files and emit a fresh YAML to paste here.
-
-# HuggingFace dataset repo that hosts the artifacts.
-hf_repo: "kmcalist/grant-copilot-data-layer"
-# Pin to a specific revision (commit hash) for reproducibility.
-# Leave as 'main' during initial bring-up; pin to a hash for demos
-# so a downstream rebuild can't silently change answers.
-hf_revision: "main"
-# Dataset repo type — 'dataset' for HF datasets, 'model' for model
-# repos.  We use 'dataset' since these are data artifacts, not
-# model weights.
-hf_repo_type: "dataset"
-
-# Artifacts to hydrate.  The runtime expects each one at its
-# `dest` path relative to the repo root.
+hf_repo: kmcalist/grant-copilot-data-layer
+hf_revision: main
+hf_repo_type: dataset
 artifacts:
-  - name: "gazetteer"
-    hf_path: "gazetteer.db"
-    dest: "data/geo/gazetteer.db"
-    sha256: null                # set by scripts/setup/build_manifest.py
-    size_bytes_approx: 1200000000
-    description: >-
-      SpatiaLite gazetteer (administrative geographies, Atlanta
-      neighborhoods, OSM roads, pre-computed tract mappings).
-
-  - name: "embeddings"
-    hf_path: "embeddings.faiss"
-    dest: "data/metadata/embeddings.faiss"
-    sha256: null
-    size_bytes_approx: 2400000000
-    description: >-
-      FAISS HNSW index over ~2.4 M Census-metadata cards (table
-      questions, variable-label cards, negatives).  Drives the
-      semantic-router tier.
-
-  - name: "search_index"
-    hf_path: "search_index.db"
-    dest: "data/metadata/search_index.db"
-    sha256: null
-    size_bytes_approx: 400000000
-    description: >-
-      SQLite metadata index carrying every ACS table + variable
-      with coverage (years × geo levels).  Backs variable label
-      lookups and FTS5 fallback searches.
-
-  - name: "peer_features"
-    hf_path: "peer_features.sqlite"
-    dest: "data/metadata/peer_features.sqlite"
-    sha256: null
-    size_bytes_approx: 35000000
-    description: >-
-      108-feature peer-comparison catalog for ~13 K places,
-      counties, MSAs, and 248 curated Atlanta neighborhoods.
-
-  - name: "universe_embeddings"
-    hf_path: "universe_embeddings.npz"
-    dest: "data/metadata/universe_embeddings.npz"
-    sha256: null
-    size_bytes_approx: 20000000
-    description: >-
-      Pre-computed variable-label embeddings (6,756 vectors) used
-      by the UniversePicker to pick the right variable within a
-      routed table without a runtime embed call.
+- name: gazetteer
+  hf_path: gazetteer.db
+  dest: data/geo/gazetteer.db
+  sha256: 96a5b8f6137b6b02fb3abad9ded6c92526d7a9ae153054c17d6874bb3509333b
+  size_bytes_approx: 286113792
+  description: SpatiaLite gazetteer (administrative geographies, Atlanta neighborhoods,
+    OSM roads, pre-computed tract mappings).
+- name: embeddings
+  hf_path: embeddings.faiss
+  dest: data/metadata/embeddings.faiss
+  sha256: 614a66b0aa3e714f2338db90eca43f834683bd1e3c33e97f1064a229edf116fa
+  size_bytes_approx: 4377640751
+  description: FAISS HNSW index over ~2.4 M Census-metadata cards (table questions,
+    variable-label cards, negatives).  Drives the semantic-router tier.
+- name: search_index
+  hf_path: search_index.db
+  dest: data/metadata/search_index.db
+  sha256: 98fd0fb7e29ff3c71212b8a5db89a636752296f75f841597847c22c1d1d1b5a4
+  size_bytes_approx: 3380162560
+  description: "SQLite metadata index carrying every ACS table + variable with coverage\
+    \ (years \xD7 geo levels).  Backs variable label lookups and FTS5 fallback searches."
+- name: peer_features
+  hf_path: peer_features.sqlite
+  dest: data/metadata/peer_features.sqlite
+  sha256: 0197d6d2fa075115ff1b8e339aa172cd6c254d9e6bfd40a71d16994359834445
+  size_bytes_approx: 162406400
+  description: 108-feature peer-comparison catalog for ~13 K places, counties, MSAs,
+    and 248 curated Atlanta neighborhoods.
+- name: universe_embeddings
+  hf_path: universe_embeddings.npz
+  dest: data/metadata/universe_embeddings.npz
+  sha256: 04449a22ee57b9b9620614d8eb52b420a100555a7844c3159de2a4fe03689307
+  size_bytes_approx: 20882887
+  description: Pre-computed variable-label embeddings (6,756 vectors) used by the
+    UniversePicker to pick the right variable within a routed table without a runtime
+    embed call.

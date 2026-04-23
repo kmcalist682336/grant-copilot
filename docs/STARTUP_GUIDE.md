@@ -11,7 +11,7 @@ demo and skip this document.
 
 **Total time budget**
 - Active work: ~20 minutes (mostly clicking through signup forms).
-- Waiting: ~5–10 minutes for the data-layer download.
+- Waiting: ~10–15 minutes for the data-layer download (~8 GB).
 - **Total wall clock**: ~45 minutes.
 
 ---
@@ -74,9 +74,9 @@ You need:
   - If missing, install from <https://www.python.org/downloads/>
     or use your OS package manager.
 - **Git**, for cloning the repo.  `git --version` to check.
-- **~8 GB free disk space** (data artifacts + package caches).
+- **~12 GB free disk space** for the data artifacts + caches (the artifacts themselves are ~8 GB).
 - **A stable broadband connection** for the one-time data
-  download (~4 GB, usually 3–8 minutes).
+  download (~8 GB, usually 5–15 minutes).
 
 That's it.  No GPUs, no local models, no Docker.
 
@@ -278,7 +278,7 @@ back to step 5.5.
 
 HuggingFace is a free hosting service for AI datasets and
 models.  We use it to distribute the pre-built data artifacts
-(~4 GB) that grant-copilot needs at runtime.
+(~8 GB) that grant-copilot needs at runtime.
 
 1. Go to <https://huggingface.co/join> and create an account
    (free; email + password).
@@ -389,15 +389,15 @@ Hydrating 5 artifact(s) from kmcalist682336/grant-copilot-data-layer @ main
 Done.  5 file(s) downloaded, 0 already present.
 ```
 
-This downloads five files totaling ~4 GB:
+This downloads five files totaling ~8 GB:
 
 | File                       | Size      | What it is                         |
 |----------------------------|-----------|------------------------------------|
-| `gazetteer.db`             | ~1.2 GB   | SpatiaLite geographies             |
-| `embeddings.faiss`         | ~2.4 GB   | 2.4 M-card semantic search index   |
-| `search_index.db`          | ~400 MB   | Census metadata + variable labels  |
-| `peer_features.sqlite`     | ~35 MB    | Peer-city feature catalog          |
-| `universe_embeddings.npz`  | ~20 MB    | Pre-computed variable-label vecs   |
+| `gazetteer.db`             | ~286 MB   | SpatiaLite geographies             |
+| `embeddings.faiss`         | ~4.4 GB   | 2.4 M-card semantic search index   |
+| `search_index.db`          | ~3.4 GB   | Census metadata + variable labels  |
+| `peer_features.sqlite`     | ~162 MB   | Peer-city feature catalog          |
+| `universe_embeddings.npz`  | ~21 MB    | Pre-computed variable-label vecs   |
 
 The script is resumable — if your download is interrupted, just
 rerun and it picks up.  It's also idempotent: re-running with
@@ -423,11 +423,11 @@ Credentials:
   ✓ HF_TOKEN
 
 Data-layer artifacts:
-  ✓ gazetteer              (1200.0 MB, data/geo/gazetteer.db)
-  ✓ embeddings             (2400.0 MB, data/metadata/embeddings.faiss)
-  ✓ search_index           (400.0 MB, data/metadata/search_index.db)
-  ✓ peer_features          (35.0 MB, data/metadata/peer_features.sqlite)
-  ✓ universe_embeddings    (20.0 MB, data/metadata/universe_embeddings.npz)
+  ✓ gazetteer              (286.1 MB, data/geo/gazetteer.db)
+  ✓ embeddings             (4377.6 MB, data/metadata/embeddings.faiss)
+  ✓ search_index           (3380.2 MB, data/metadata/search_index.db)
+  ✓ peer_features          (162.4 MB, data/metadata/peer_features.sqlite)
+  ✓ universe_embeddings    (20.9 MB, data/metadata/universe_embeddings.npz)
 
 All checks passed.
 ```

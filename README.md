@@ -72,7 +72,8 @@ artifacts.
 4. **A HuggingFace account + read token** — free, needed only for
    the one-time download of the pre-built data artifacts.  Token
    setup at <https://huggingface.co/settings/tokens>.
-5. **~8 GB free disk space** for the data artifacts + caches.
+5. **~12 GB free disk space** for the data artifacts + caches
+   (the artifacts themselves are ~8 GB).
 
 ---
 
@@ -152,10 +153,10 @@ echo "HF_TOKEN=hf_your_token_here" >> .env
 
 ## Hydrate the data layer
 
-grant-copilot runs against five pre-built artifacts that would
-take roughly a day to build from scratch (a 2.4 M-card embedding
-job alone takes six to eight hours).  Instead, you download them
-once from HuggingFace:
+grant-copilot runs against five pre-built artifacts (~8 GB
+total) that would take roughly a day to build from scratch (a
+2.4 M-card embedding job alone takes six to eight hours).
+Instead, you download them once from HuggingFace:
 
 ```bash
 source .env      # load HF_TOKEN into the shell
@@ -181,8 +182,8 @@ Hydrating 5 artifact(s) from kmcalist682336/grant-copilot-data-layer @ main
 Done.  5 file(s) downloaded, 0 already present.
 ```
 
-Total download is ~4 GB.  On a decent home connection this
-takes 3–8 minutes.  The script is idempotent: re-running
+Total download is ~8 GB.  On a decent home connection this
+takes 5–15 minutes.  The script is idempotent: re-running
 verifies local SHA-256s against the manifest and skips any file
 that's already in place.  Pass `--force` to re-download.
 
@@ -214,11 +215,11 @@ Credentials:
   ✓ HF_TOKEN
 
 Data-layer artifacts:
-  ✓ gazetteer              (1200.0 MB, data/geo/gazetteer.db)
-  ✓ embeddings             (2400.0 MB, data/metadata/embeddings.faiss)
-  ✓ search_index           (400.0 MB, data/metadata/search_index.db)
-  ✓ peer_features          (35.0 MB, data/metadata/peer_features.sqlite)
-  ✓ universe_embeddings    (20.0 MB, data/metadata/universe_embeddings.npz)
+  ✓ gazetteer              (286.1 MB, data/geo/gazetteer.db)
+  ✓ embeddings             (4377.6 MB, data/metadata/embeddings.faiss)
+  ✓ search_index           (3380.2 MB, data/metadata/search_index.db)
+  ✓ peer_features          (162.4 MB, data/metadata/peer_features.sqlite)
+  ✓ universe_embeddings    (20.9 MB, data/metadata/universe_embeddings.npz)
 
 All checks passed.  Try: `python -m scripts.chatbot.pipeline_repl --execute`
 ```
