@@ -26,7 +26,7 @@ demo and skip this document.
 6. [Sign up for HuggingFace and get a token](#6-sign-up-for-huggingface-and-get-a-token)
 7. [Store your credentials in `.env`](#7-store-your-credentials-in-env)
 8. [Download the pre-built data layer](#8-download-the-pre-built-data-layer)
-9. [Verify everything with preflight](#9-verify-everything-with-preflight)
+9. [Verify everything (preflight + unit tests)](#9-verify-everything)
 10. [Launch the REPL and try example queries](#10-launch-the-repl-and-try-example-queries)
 11. [How the REPL works (commands, flags, tips)](#11-how-the-repl-works)
 12. [What to do when something fails](#12-troubleshooting)
@@ -156,17 +156,9 @@ pip install -r requirements.txt
 
 Then rerun `pip install -e .`.
 
-### Sanity check
-
-Run the unit tests — no network or data artifacts needed:
-
-```bash
-pytest -q
-```
-
-Expected: **429 tests pass in ~5 seconds**.  If you see failures
-here, something is wrong with your Python environment; stop and
-fix it before proceeding.
+> The unit-test sanity check (`pytest -q`) lives in § 9 —
+> a handful of tests read the SQLite / FAISS artifacts, so
+> they can only run after the data layer is downloaded in § 8.
 
 ---
 
@@ -444,7 +436,13 @@ everything already downloaded is a no-op.
 
 ---
 
-## 9. Verify everything with preflight
+## 9. Verify everything
+
+Two checks, both fast.  The first confirms credentials and
+artifact locations; the second exercises the full Python stack
+against the hydrated data layer.
+
+### 9.1. Preflight
 
 ```bash
 python -m scripts.setup.preflight
@@ -472,6 +470,22 @@ All checks passed.
 ```
 
 If anything fails, the message tells you which step to revisit.
+
+### 9.2. Unit tests
+
+```bash
+pytest -q
+```
+
+Expected: **429 tests pass in ~5 seconds**.  LLM responses are
+mocked (no Vertex calls, no network), but a handful of tests —
+semantic router, peer retriever, universe picker — read the
+SQLite / FAISS artifacts downloaded in § 8, which is why the
+sanity check lives here and not back in § 3.
+
+If the preflight above passed but `pytest` fails, the failure is
+almost certainly in the Python environment (version mismatch,
+missing system package).  Re-read §§ 2–3 before continuing.
 
 ---
 

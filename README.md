@@ -116,18 +116,11 @@ pip install -e .
 The `pip install -e .` registers the `grant-copilot` console
 script so you can launch the REPL with a single command.
 
-### Sanity check
-
-No network or data artifacts needed — this is pure-Python unit
-tests against mocked LLM fixtures:
-
-```bash
-pytest -q
-```
-
-Expected: **429 tests pass in ~5 seconds.**  If you see failures
-here, something is wrong with the Python environment; fix that
-before continuing.
+The unit-test sanity check comes **after** credentials setup and
+data-layer hydration — a few tests (semantic router, peer
+retriever, universe picker) load the downloaded SQLite / FAISS
+artifacts, so they can't run until step "Hydrate the data layer"
+below is complete.
 
 ---
 
@@ -291,7 +284,11 @@ The rebuild is fully scripted in `scripts/ingestion/`,
 
 ## Verify setup
 
-Before running queries, preflight everything:
+Two checks.  The first confirms credentials + artifact locations;
+the second exercises the whole Python stack against the freshly
+downloaded data layer.
+
+### 1. Preflight
 
 ```bash
 python -m scripts.setup.preflight
@@ -315,6 +312,17 @@ Data-layer artifacts:
 
 All checks passed.  Try: `python -m scripts.chatbot.pipeline_repl --execute`
 ```
+
+### 2. Unit tests
+
+```bash
+pytest -q
+```
+
+Expected: **429 tests pass in ~5 seconds**.  A handful of tests
+(semantic router, peer retriever, universe picker) load the
+hydrated SQLite / FAISS artifacts, so this step only works after
+the preceding "Hydrate the data layer" section.
 
 ---
 
@@ -404,9 +412,10 @@ tract set.
 pytest -q
 ```
 
-Expected: **429 tests pass, ~5 s**.  The test suite runs against
-mocked LLM responses + synthetic fixtures — no network or data-
-layer artifacts required.
+Expected: **429 tests pass, ~5 s**.  LLM responses are mocked
+(no Vertex calls, no network), but a few tests read the hydrated
+SQLite / FAISS data-layer artifacts — so run this only after
+`scripts.setup.hydrate_data_artifacts` has completed.
 
 ---
 
