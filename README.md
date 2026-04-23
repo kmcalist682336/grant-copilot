@@ -244,7 +244,7 @@ total) that would take roughly a day to build from scratch (a
 Instead, you download them once from HuggingFace:
 
 ```bash
-source .env      # load HF_TOKEN into the shell
+set -a; source .env; set +a   # load .env into the shell environment
 python -m scripts.setup.hydrate_data_artifacts
 ```
 
@@ -484,7 +484,7 @@ The hydration script needs a HuggingFace token.  Source your
 `.env`, then rerun:
 
 ```bash
-source .env
+set -a; source .env; set +a
 python -m scripts.setup.hydrate_data_artifacts
 ```
 
