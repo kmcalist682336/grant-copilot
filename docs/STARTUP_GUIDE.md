@@ -84,6 +84,45 @@ That's it.  No GPUs, no local models, no Docker.
 
 ## 3. Clone and install
 
+Install system-level dependencies first (SpatiaLite for the
+gazetteer, SWIG to let `faiss-cpu` build cleanly on macOS).
+Skipping this step is the most common fresh-install failure.
+
+### 3.1. System packages
+
+**macOS (Homebrew)**
+
+```bash
+brew install libspatialite swig
+```
+
+**Linux (Debian / Ubuntu)**
+
+```bash
+sudo apt-get update
+sudo apt-get install -y libsqlite3-mod-spatialite swig build-essential
+```
+
+**Linux (Fedora / RHEL)**
+
+```bash
+sudo dnf install -y libspatialite-devel swig
+```
+
+Why each one:
+
+- `libspatialite` / `libsqlite3-mod-spatialite` is a SQLite
+  extension our gazetteer loader calls via
+  `conn.load_extension('mod_spatialite')`.  Without it, every
+  geography lookup fails at startup with
+  `OperationalError: unable to load extension`.
+- `swig` is a build-time dependency for `faiss-cpu` on macOS
+  when pip falls through to a source build.  On most Linux
+  systems a wheel is available and `swig` isn't strictly needed,
+  but installing it up-front avoids the surprise.
+
+### 3.2. Clone + Python environment
+
 ```bash
 # pick any folder you like; we'll use ~/code here
 cd ~/code
@@ -103,6 +142,19 @@ pip install -e .
 `pip install -e .` registers a command called `grant-copilot` on
 your `PATH` that launches the REPL directly.  You'll use it in
 step 10.
+
+### 3.3. If `faiss-cpu` refuses to install (macOS)
+
+If `pip install -r requirements.txt` errors out on `faiss-cpu`
+(typical on a fresh macOS install where pip wants to build from
+source and can't), force the pre-built wheel:
+
+```bash
+pip install --only-binary=:all: faiss-cpu
+pip install -r requirements.txt
+```
+
+Then rerun `pip install -e .`.
 
 ### Sanity check
 
@@ -214,21 +266,46 @@ gcloud is Google's command-line tool.  grant-copilot doesn't
 call it at runtime, but you need it **once** to authenticate
 your laptop.
 
-Installation depends on your OS.  The simplest path is the
-official installer:
+**macOS (Homebrew)**
 
-- **macOS**:
-  ```bash
-  brew install --cask google-cloud-sdk
-  ```
-  or: <https://cloud.google.com/sdk/docs/install-sdk#mac>
-- **Linux (Debian/Ubuntu)**:
-  ```bash
-  sudo apt-get install google-cloud-cli
-  ```
-  or: <https://cloud.google.com/sdk/docs/install-sdk#linux>
-- **Windows**: <https://cloud.google.com/sdk/docs/install-sdk#windows>
-  (install via the `.exe` installer; open PowerShell to use it).
+```bash
+brew install --cask google-cloud-sdk
+```
+
+Alternative: <https://cloud.google.com/sdk/docs/install-sdk#mac>
+
+**Linux (Debian / Ubuntu)** — official Google apt repository:
+
+```bash
+sudo apt-get update
+sudo apt-get install -y apt-transport-https ca-certificates gnupg curl
+curl -fsSL https://packages.cloud.google.com/apt/doc/apt-key.gpg \
+  | sudo gpg --dearmor -o /usr/share/keyrings/cloud.google.gpg
+echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] \
+  https://packages.cloud.google.com/apt cloud-sdk main" \
+  | sudo tee /etc/apt/sources.list.d/google-cloud-sdk.list
+sudo apt-get update
+sudo apt-get install -y google-cloud-cli
+```
+
+**Linux (Fedora / RHEL)**
+
+```bash
+sudo tee /etc/yum.repos.d/google-cloud-sdk.repo <<EOF
+[google-cloud-cli]
+name=Google Cloud CLI
+baseurl=https://packages.cloud.google.com/yum/repos/cloud-sdk-el9-x86_64
+enabled=1
+gpgcheck=1
+repo_gpgcheck=0
+gpgkey=https://packages.cloud.google.com/yum/doc/rpm-package-key.gpg
+EOF
+sudo dnf install -y google-cloud-cli
+```
+
+**Windows**: download the installer from
+<https://cloud.google.com/sdk/docs/install-sdk#windows> and
+open PowerShell to use it after install.
 
 Verify the install:
 
@@ -295,45 +372,7 @@ models.  We use it to distribute the pre-built data artifacts
 
 ---
 
-## 7. Store your credentials (use the setup wizard)
-
-The fastest path is the interactive setup wizard, which walks
-you through entering all three credentials, offers to run the
-`gcloud auth application-default login` step for you, and can
-optionally kick off the data-layer hydration + preflight at the
-end:
-
-```bash
-grant-copilot-setup
-```
-
-Prompts look like this:
-
-```
-Step 1/3: Census API key
-Sign up at https://api.census.gov/data/key_signup.html (free, ~2 minutes).
-Paste your Census API key (leave blank to skip):
-
-Step 2/3: Google Cloud project ID
-Create or pick a project at https://console.cloud.google.com
-and enable the Vertex AI API (see docs/STARTUP_GUIDE.md §5).
-GCP project ID (e.g. grant-copilot-demo-458203):
-
-Step 3/3: HuggingFace token
-Create a read-only token at https://huggingface.co/settings/tokens (free).
-Paste your HuggingFace token (hf_…):
-```
-
-The wizard validates each input, masks secrets during entry,
-writes everything to `.env` (without clobbering other keys
-already there), and never prints a credential back to the
-screen after you've entered it.  Press **Enter** at any prompt
-to skip that step — you can re-run the wizard later.
-
-After the wizard finishes, your `.env` will have the three
-keys set.  Continue to step 8.
-
-### Doing it by hand instead (no wizard)
+## 7. Store your credentials in `.env`
 
 You now have three secrets:
 

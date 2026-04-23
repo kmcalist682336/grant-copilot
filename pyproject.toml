@@ -23,9 +23,6 @@ classifiers = [
 # One-shot CLI entry for the demo REPL.  After `pip install -e .` the
 # user can just run `grant-copilot`.
 grant-copilot = "scripts.chatbot.pipeline_repl:main"
-# Interactive setup wizard — walks the user through entering the
-# three credentials, gcloud auth, data hydration, and preflight.
-grant-copilot-setup = "scripts.setup.wizard:main"
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

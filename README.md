@@ -25,34 +25,6 @@ with `quarto render docs/system_design.qmd --to pdf`).
 
 ---
 
-## Quick demo
-
-Want to try it before reading?
-
-```bash
-# one-time
-git clone https://github.com/kmcalist682336/grant-copilot.git && cd grant-copilot
-python -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
-pip install -e .
-
-# guided setup — walks you through credentials, gcloud auth,
-# data hydration, and preflight in one interactive session
-grant-copilot-setup
-
-# launch the REPL
-set -a; source .env; set +a
-grant-copilot --execute
-```
-
-Type a question at the `>` prompt and get a grant-ready
-paragraph back with full citations.  Each answer also writes a
-full audit-trail folder under `derived_data/data_<timestamp>/`
-with per-geography CSVs and a `variables.txt` decoding every
-Census variable to a plain-English description.
-
----
-
 ## Prerequisites
 
 Three things every user needs.  grant-copilot is a
@@ -62,10 +34,11 @@ quota, **your** HuggingFace token downloads the prebuilt data
 artifacts.
 
 1. **Python 3.10+** (3.11 or 3.12 recommended).
-2. **gcloud CLI** installed and authenticated.  Install from
-   <https://cloud.google.com/sdk/docs/install>.  You need a GCP
-   project with the **Vertex AI API enabled** and billing on —
-   all Gemini 2.5 Flash calls bill to this project.
+2. **gcloud CLI** installed and authenticated (see §
+   [Credentials setup → Google Cloud](#2-google-cloud-vertex-ai)
+   for per-OS install instructions).  You need a GCP project
+   with the **Vertex AI API enabled** and billing on — all
+   Gemini 2.5 Flash calls bill to this project.
 3. **A Census API key** — free, takes 2 minutes, increases your
    rate limit from 500/day to essentially unlimited.  Sign up at
    <https://api.census.gov/data/key_signup.html>.
@@ -79,17 +52,82 @@ artifacts.
 
 ## Install
 
+Two system-level dependencies (SpatiaLite + SWIG) are needed
+**before** `pip install`.  If you skip this and install Python
+packages first, `faiss-cpu` and/or `mod_spatialite` imports will
+fail — those failures are the most common fresh-install papercuts.
+
+### System packages
+
+**macOS (Homebrew)**
+
+```bash
+brew install libspatialite swig
+```
+
+**Linux (Debian / Ubuntu)**
+
+```bash
+sudo apt-get update
+sudo apt-get install -y libsqlite3-mod-spatialite swig build-essential
+```
+
+**Linux (Fedora / RHEL)**
+
+```bash
+sudo dnf install -y libspatialite-devel swig
+```
+
+- `libspatialite` / `libsqlite3-mod-spatialite` is the runtime
+  SQLite extension our gazetteer loader uses.  Without it,
+  every geography lookup at startup fails with
+  `OperationalError: unable to load extension`.
+- `swig` is a build-time dependency for the `faiss-cpu` wheel on
+  systems where pip falls back to a source build.  Not strictly
+  required when pip finds a wheel, but installing it up-front
+  avoids the surprise.
+
+### Python environment
+
 ```bash
 git clone https://github.com/kmcalist682336/grant-copilot.git
 cd grant-copilot
-python -m venv .venv
-source .venv/bin/activate
+python3 -m venv .venv
+source .venv/bin/activate             # Windows: .venv\Scripts\activate
+pip install --upgrade pip
+```
+
+Then install the deps.  If the plain `pip install -r
+requirements.txt` works, great — you're done.  On a fresh macOS
+install, `faiss-cpu` can fall through to a source build and
+fail; if that happens, force the wheel:
+
+```bash
+pip install --only-binary=:all: faiss-cpu
 pip install -r requirements.txt
+```
+
+Finally register the CLI entry:
+
+```bash
 pip install -e .
 ```
 
 The `pip install -e .` registers the `grant-copilot` console
 script so you can launch the REPL with a single command.
+
+### Sanity check
+
+No network or data artifacts needed — this is pure-Python unit
+tests against mocked LLM fixtures:
+
+```bash
+pytest -q
+```
+
+Expected: **429 tests pass in ~5 seconds.**  If you see failures
+here, something is wrong with the Python environment; fix that
+before continuing.
 
 ---
 
@@ -115,17 +153,71 @@ LLM-driven stages of the pipeline (extraction, plan review,
 followup suggestion, synthesis).  You need your own GCP project
 with the Vertex AI API enabled.
 
+#### a. Install the gcloud CLI
+
+**macOS (Homebrew)**
+
 ```bash
-# install the gcloud CLI, then:
+brew install --cask google-cloud-sdk
+```
+
+**Linux (Debian / Ubuntu)** — official Google apt repository:
+
+```bash
+sudo apt-get update
+sudo apt-get install -y apt-transport-https ca-certificates gnupg curl
+curl -fsSL https://packages.cloud.google.com/apt/doc/apt-key.gpg \
+  | sudo gpg --dearmor -o /usr/share/keyrings/cloud.google.gpg
+echo "deb [signed-by=/usr/share/keyrings/cloud.google.gpg] \
+  https://packages.cloud.google.com/apt cloud-sdk main" \
+  | sudo tee /etc/apt/sources.list.d/google-cloud-sdk.list
+sudo apt-get update
+sudo apt-get install -y google-cloud-cli
+```
+
+**Linux (Fedora / RHEL)**
+
+```bash
+sudo tee /etc/yum.repos.d/google-cloud-sdk.repo <<EOF
+[google-cloud-cli]
+name=Google Cloud CLI
+baseurl=https://packages.cloud.google.com/yum/repos/cloud-sdk-el9-x86_64
+enabled=1
+gpgcheck=1
+repo_gpgcheck=0
+gpgkey=https://packages.cloud.google.com/yum/doc/rpm-package-key.gpg
+EOF
+sudo dnf install -y google-cloud-cli
+```
+
+Verify: `gcloud --version` should print several version lines.
+
+#### b. Create a project + enable Vertex AI
+
+Do this in the browser (fastest) at
+<https://console.cloud.google.com/> — see
+[`docs/STARTUP_GUIDE.md`](docs/STARTUP_GUIDE.md) § 5 for the
+beginner walkthrough — or from the CLI:
+
+```bash
 gcloud auth login
+gcloud projects create YOUR_PROJECT_ID
 gcloud config set project YOUR_PROJECT_ID
+# Billing must be linked to the project (GUI-only) before this
+# succeeds:
 gcloud services enable aiplatform.googleapis.com
+```
+
+#### c. Authenticate the runtime
+
+```bash
 gcloud auth application-default login
 ```
 
-The last line creates Application-Default Credentials at
+This creates Application-Default Credentials at
 `~/.config/gcloud/application_default_credentials.json`, which is
-what the runtime uses.  Record your project in `.env`:
+what the runtime actually reads.  Finally, record your project
+in `.env`:
 
 ```bash
 echo "GCP_PROJECT_ID=your_project_id" >> .env
