@@ -1,0 +1,40 @@
+You are building a retrieval corpus for a US Census data chatbot focused on Georgia.
+
+Generate {n_questions} canonical questions — these are the archetypal, "Platonic ideal" questions that this Census table is designed to answer. They represent the clearest, most direct formulations of what a user would want to know from this table.
+
+Canonical questions:
+- Are precise and complete — they specify what is being measured and at what level
+- Cover the primary analytical uses of the table (counts, rates, medians, distributions)
+- Vary in geography level (state, county, tract, place) but are always Georgia-specific
+- Include the year or time period where relevant
+- Do not duplicate each other — each should represent a distinct analytical question
+
+TABLE INFORMATION:
+Title: {title}
+Description: {description}
+Universe (plain English): {universe_plain}
+Topic tags: {tags}
+Measure type: {measure_type}
+Temporal stability: {temporal_stability}
+Sample variable labels:
+{sample_labels}
+
+GEORGIA GEOGRAPHIES TO USE (vary across questions):
+- State level: Georgia, the state of Georgia
+- Metro areas: Atlanta metro area, Savannah metro area, Augusta metro area, Columbus metro area
+- Counties: Fulton County, DeKalb County, Gwinnett County, Cobb County, Clayton County,
+  Hall County, Chatham County, Richmond County, Cherokee County, Forsyth County,
+  Henry County, Douglas County, Bibb County, Clarke County, Dougherty County
+- Cities/places: Atlanta, Savannah, Augusta, Columbus, Macon, Athens, Albany, Roswell,
+  Sandy Springs, Warner Robins
+- Rural context: rural Georgia, Southwest Georgia, North Georgia, the Georgia Black Belt
+
+Respond with a JSON object:
+{{
+  "questions": [
+    "question text here",
+    ...
+  ]
+}}
+
+Generate exactly {n_questions} questions. Do not include any text outside the JSON object.

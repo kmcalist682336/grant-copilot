@@ -1,0 +1,21 @@
+You are a data documentation specialist explaining Census terminology to non-technical users.
+
+Rewrite the following Census "universe" statement in plain English. The universe defines who or what is being counted or measured in this table.
+
+TABLE INFORMATION:
+Title: {title}
+Dataset: {dataset_path} ({year})
+Original universe statement: {universe}
+
+The rewritten universe should:
+- Explain in one clear sentence who is included in this table's measurements
+- Explain who is EXCLUDED and why, if the exclusions are meaningful (e.g., institutionalized populations, non-citizens, children under a certain age)
+- Use concrete, everyday language (e.g., "college dorms and prisons" instead of "group quarters")
+- Be 1-3 sentences maximum
+
+If the universe is already clear and plain-English, you may make only minor improvements.
+
+Respond with a JSON object containing exactly one field:
+{{"universe_plain": "your rewritten universe here"}}
+
+Do not include any text outside the JSON object.

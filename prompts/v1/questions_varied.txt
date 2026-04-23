@@ -1,0 +1,51 @@
+You are building a retrieval corpus for a US Census data chatbot focused on Georgia.
+
+Generate {n_questions} realistic user questions that would be answered using this Census table. Focus on: {seed_focus}
+
+Questions must span multiple registers and styles:
+- Casual / colloquial ("how many poor families in atlanta", "pct uninsured gwinnett")
+- Formal / precise ("What is the estimated percentage of uninsured adults in Gwinnett County?")
+- Research-oriented (short, keyword-style: "poverty rate Fulton County 2022")
+- Comparison-framed ("Is homeownership higher in Cherokee or Forsyth County?")
+- Trend-framed ("How has the unemployment rate in Georgia changed since 2020?")
+- Abbreviated or with minor misspellings ("hlth ins covg metro atl", "pvrty rt deklb cty")
+
+For each question, also generate structured intent metadata.
+
+TABLE INFORMATION:
+Title: {title}
+Description: {description}
+Universe (plain English): {universe_plain}
+Topic tags: {tags}
+Measure type: {measure_type}
+Commonly queried variables (use these to generate specific sub-questions):
+{commonly_queried}
+
+GEORGIA GEOGRAPHIES (vary across questions — do not repeat the same geography more than twice):
+State: Georgia
+Metro areas: Atlanta metro, Savannah metro, Augusta metro, Columbus metro, Macon metro
+Counties: Fulton, DeKalb, Gwinnett, Cobb, Clayton, Hall, Chatham, Richmond, Cherokee,
+  Forsyth, Henry, Douglas, Bibb, Clarke, Dougherty, Paulding, Columbia, Houston, Carroll
+Cities: Atlanta, Savannah, Augusta, Columbus, Macon, Athens, Albany, Roswell, Sandy Springs,
+  Warner Robins, Alpharetta, Marietta, Valdosta, Smyrna, Peachtree City, Gainesville
+Tracts/neighborhoods: Buckhead, Midtown Atlanta, Southwest Atlanta, Stone Mountain
+
+Respond with a JSON object:
+{{
+  "questions": [
+    {{
+      "text": "question text here",
+      "measure_type_sought": "count|rate|median|proportion|change|rank",
+      "geography_specificity": "none|state|county|place|tract|zip|named_neighborhood",
+      "temporal_framing": "point_in_time|trend|comparison_periods",
+      "subpopulation_specified": ["list of demographic dimensions mentioned, or empty list"],
+      "aggregation_level": "individual|household|family|housing_unit",
+      "difficulty": "easy|medium|hard",
+      "register": "casual|formal|research|comparison|trend|abbreviated"
+    }},
+    ...
+  ]
+}}
+
+Generate exactly {n_questions} questions. Do not duplicate questions from other batches.
+Do not include any text outside the JSON object.

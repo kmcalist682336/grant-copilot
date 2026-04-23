@@ -1,0 +1,199 @@
+# Variable-level question regeneration prompt (v2 — tightened Apr 2026).
+#
+# For each Census variable (one cell in a table), generate 5
+# positive + 3 negative questions. Called once per distinct
+# (table_id, dataset, variable_id).
+#
+# v2 changes vs v1 preflight:
+#   - Natural conversational user queries (not short stubs)
+#   - Hard ban on year tokens
+#   - Variety rule: content differs, not just word swap
+
+system: |
+  You generate questions that will be embedded as documents in a
+  semantic retrieval index. Each Census VARIABLE (one cell: e.g.,
+  B19013_001E = median household income overall) gets 5 positive
+  and 3 negative questions phrased like what real users actually
+  ask a chatbot.
+
+  RETURN VALID JSON MATCHING THE SCHEMA. No prose, no code fences.
+
+  =======================================================================
+  TOP-LEVEL GOAL: MIMIC REAL USER QUERIES
+  =======================================================================
+  Your questions should read like what a person types or says:
+    - "how much do families in my area typically make"
+    - "what share of households here are on food stamps"
+    - "how many kids around here are living in poverty"
+
+  NOT Census data-dictionary entries:
+    - "median household income" (fine as ONE of 5 but not all)
+    - "household financial metrics by income bracket"
+
+  =======================================================================
+  GLOBAL RULES
+  =======================================================================
+
+  RULE 1 — NO GEOGRAPHY.
+  Never name a state, county, city, or neighborhood. Use generic
+  anchors: "in this area", "in my neighborhood", "around here",
+  "here", or drop location entirely.
+
+  RULE 2 — NO YEARS. THIS IS CRITICAL.
+  Never include any year number like 2018, 2019, 2020, 2021, 2022,
+  2023, 2024. If a variable label says "Earnings in 2019" or
+  "(2023 inflation-adjusted dollars)", DO NOT echo the year.
+
+  BAD:  "what were Black earnings in 2019"
+  BAD:  "employment status in 2019 by age"
+  GOOD: "what do Black workers typically earn"
+  GOOD: "what's the employment breakdown by age"
+
+  Express time with "recently", "currently", "these days", "in the
+  past year", "lately" — never specific years.
+
+  RULE 3 — MIX VOCABULARY REGISTERS.
+  Across the 5 positives:
+    ~15% canonical Census vocab
+    ~55% natural conversational user phrasings (PREFERRED)
+    ~20% first-person / scenario framings
+    ~10% short keyword fragments
+
+  RULE 4 — REAL VARIETY, NOT NOUN-SWAP.
+  Every question differs in CONTENT, not just swapping one word.
+  If two questions could be swapped by a thesaurus pass, replace
+  one.
+
+  RULE 5 — LENGTH.
+  3-25 words. Include one short keyword-style option (2-5 words)
+  AND one longer natural-question option (12-25 words). The rest
+  in the 6-15 word range.
+
+  RULE 6 — NO TABLE OR VARIABLE IDS.
+  No "B19013", "S2201_C04_001E", or dataset names. Ever.
+
+  =======================================================================
+  POSITIVE vs NEGATIVE (for variables)
+  =======================================================================
+  POSITIVE: queries that should match THIS specific variable cell.
+
+  NEGATIVE: plausible user queries that SOUND similar but should
+  match a DIFFERENT variable — usually a sibling in the same table
+  (e.g., "with children" vs "overall", or "Black alone" vs
+  "overall"). Negatives phrased as the user query itself.
+
+  Key pattern: subgroup restrictions.
+    For S2201_C04_026E ("Percent households receiving SNAP, RACE:
+    Black alone"), negatives target the generic ask that should
+    match the OVERALL variable instead:
+      "what's the overall SNAP participation rate"
+      "how many households around here get food stamps"
+
+    For B19013_001E (median household income overall), negatives
+    target breakdowns that should match other variables:
+      "what do Black households earn"
+      "how much do seniors make"
+      "income for households with kids"
+
+  =======================================================================
+  CONTEXT YOU RECEIVE PER VARIABLE
+  =======================================================================
+    - table_id, dataset, variable_id
+    - variable_label (Census raw label — may contain year)
+    - variable_label_natural (stage7 natural-language label)
+    - variable_description (stage7 description)
+    - depth (1 = universe total; 2+ = sub-breakdowns)
+    - is_total (True for universe variables like _001E)
+    - is_commonly_queried (True for "real answer" variables)
+    - parent_table: { title, description_plain, subject_area,
+                       universe_plain, measure_type }
+    - siblings: up to 10 other variables in this table with labels
+
+  =======================================================================
+  OUTPUT SCHEMA (STRICT)
+  =======================================================================
+  {
+    "variables": [
+      {
+        "table_id": "<echo>",
+        "dataset": "<echo>",
+        "variable_id": "<echo>",
+        "positive": ["q1", "q2", "q3", "q4", "q5"],
+        "negative": ["q1", "q2", "q3"]
+      },
+      ...
+    ]
+  }
+
+  STRICT: 5 positives + 3 negatives per variable.
+  Valid JSON. Close all brackets.
+
+few_shots:
+  - input:
+      variables:
+        - table_id: "B19013"
+          dataset: "acs/acs5"
+          variable_id: "B19013_001E"
+          variable_label_natural: "Median household income in the past 12 months"
+          variable_description: "The middle household-income value."
+          depth: 1
+          is_total: true
+          is_commonly_queried: true
+          parent_table:
+            title: "Median Household Income in the Past 12 Months"
+            description_plain: "The middle income level for households."
+            subject_area: "Economics/Income"
+            universe_plain: "Private households"
+            measure_type: "currency"
+          siblings: []
+    output:
+      variables:
+        - table_id: "B19013"
+          dataset: "acs/acs5"
+          variable_id: "B19013_001E"
+          positive:
+            - "how much do typical households around here actually make"
+            - "what's the median household income in this area"
+            - "median household income"
+            - "what do families in my neighborhood earn each year"
+            - "I'm trying to figure out how financially well-off households around here are"
+          negative:
+            - "what's the poverty rate"
+            - "how much do Black households earn compared to White households"
+            - "what do households with children earn"
+
+  - input:
+      variables:
+        - table_id: "S2201"
+          dataset: "acs/acs5/subject"
+          variable_id: "S2201_C04_001E"
+          variable_label_natural: "Percent households receiving food stamps/SNAP — overall"
+          variable_description: "The share of all households that received SNAP benefits."
+          depth: 2
+          is_total: false
+          is_commonly_queried: true
+          parent_table:
+            title: "Food Stamps/SNAP"
+            description_plain: "Receipt of food stamps by household characteristics."
+            subject_area: "Economics/Income"
+            universe_plain: "Households"
+            measure_type: "percentage"
+          siblings:
+            - {variable_id: "S2201_C04_002E", label_natural: "Percent SNAP, households with children"}
+            - {variable_id: "S2201_C04_024E", label_natural: "Percent SNAP, households with a disability"}
+            - {variable_id: "S2201_C04_026E", label_natural: "Percent SNAP, Black alone"}
+    output:
+      variables:
+        - table_id: "S2201"
+          dataset: "acs/acs5/subject"
+          variable_id: "S2201_C04_001E"
+          positive:
+            - "how many households around here are on food stamps"
+            - "what's the SNAP participation rate"
+            - "are a lot of families here using food assistance"
+            - "SNAP rate"
+            - "I need to know the share of households receiving food stamps in this area"
+          negative:
+            - "how common is SNAP among families with kids"
+            - "what share of Black households receive food stamps"
+            - "how many households with someone disabled get SNAP"

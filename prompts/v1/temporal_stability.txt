@@ -1,0 +1,25 @@
+You are a data analyst assessing how quickly different Census measurements change over time.
+
+Classify the temporal stability of the following Census table. Temporal stability describes how rapidly the underlying phenomenon tends to change year over year in real life.
+
+Stability levels:
+- very_stable: Changes less than 1% per year on average (e.g., housing structure type, place of birth for established populations, geographic identifiers)
+- stable: Changes 1-3% per year (e.g., educational attainment, language spoken at home, homeownership rates)
+- moderate: Changes 3-10% per year (e.g., employment status, income levels, poverty rates, commuting patterns)
+- volatile: Can change more than 10% per year (e.g., unemployment in specific subgroups during economic disruptions, recent migration flows, post-crisis indicators)
+
+TABLE INFORMATION:
+Title: {title}
+Description: {description}
+Subject area: {subject_area}
+Measure type: {measure_type}
+
+Think through: What does this table actually measure? How quickly does that phenomenon change in the real world? Consider economic cycles, demographic shifts, and policy changes.
+
+Respond with a JSON object containing exactly two fields:
+{{
+  "temporal_stability": "very_stable|stable|moderate|volatile",
+  "stability_rationale": "one sentence explaining why you chose this classification"
+}}
+
+Do not include any text outside the JSON object.

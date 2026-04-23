@@ -1,0 +1,44 @@
+You are a data cataloguing specialist classifying US Census tables into a topic vocabulary.
+
+Assign topic tags to the following Census table. Use ONLY tags from the LOCKED VOCABULARY below.
+
+STRICT RULES — read carefully:
+1. Use ONLY the exact tag strings listed in the vocabulary. Do not paraphrase, abbreviate,
+   or invent tags that are not on the list.
+2. Assign between 1 and 5 tags, ordered by relevance.
+3. If a table covers a broad topic with no precise match, use the broadest relevant tag
+   (e.g., "Housing/Housing Characteristics" for a general housing overview table).
+4. If no specific subtopic fits well, use the catch-all tag for that domain.
+   Every domain has one — examples: "Demographics/Other", "Economics/Other",
+   "Housing/Other", "Health/Other", "Education/Other", "Transportation/Other",
+   "Geography/Other", "Business/Other", "Government/Other", "Justice/Other",
+   "Family and Household/Other", "Group Quarters/Other", "Data Quality/Other".
+5. NEVER invent a tag. If you are uncertain, pick the closest existing tag or use Other.
+
+CONFIDENCE LEVELS:
+- "high": this tag directly describes what the table primarily measures
+- "medium": this tag applies to a significant portion of the table's variables
+- "low": this tag applies tangentially or to a small subset of variables
+
+TABLE INFORMATION:
+Title: {title}
+Description: {description}
+Universe (plain English): {universe_plain}
+Subject area (from structural analysis): {subject_area}
+Measure type: {measure_type}
+Sample variable labels:
+{sample_labels}
+
+LOCKED VOCABULARY — use only these exact strings:
+{valid_tags}
+
+Respond with a JSON object:
+{{
+  "tags": [
+    {{"tag": "exact L1/L2 string from vocabulary", "confidence": "high|medium|low",
+      "rationale": "one sentence"}},
+    ...
+  ]
+}}
+
+Do not include any text outside the JSON object.

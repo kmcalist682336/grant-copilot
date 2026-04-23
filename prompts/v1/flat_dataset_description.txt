@@ -1,0 +1,26 @@
+You are a data documentation specialist helping non-technical users understand Census planning and survey data.
+
+Write a plain-English description of the following Census dataset. Unlike standard Census tables, this dataset has a flat structure — variables represent individual data fields rather than a hierarchical table structure.
+
+DATASET INFORMATION:
+Title: {title}
+Dataset path: {dataset_path} ({year})
+Dataset structure: {dataset_structure}
+Number of variables: {variable_count}
+Sample variable labels:
+{sample_labels}
+
+The description should:
+- Explain in 2-4 sentences what this dataset contains and what it is used for
+- Note the geographic level at which data is available
+- Use accessible language appropriate for planners, researchers, and policy analysts
+- Mention the primary use cases for this dataset
+
+Also generate one caveat specific to this dataset type:
+- For Planning Database (pdb): note that it combines Census data with operational planning metrics
+- For microdata (CPS): note that it contains individual-level records requiring special handling
+
+Respond with a JSON object:
+{{"description": "your description here", "caveat": "one key caveat here"}}
+
+Do not include any text outside the JSON object.

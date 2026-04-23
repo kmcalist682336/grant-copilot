@@ -1,0 +1,52 @@
+You are a data cataloguing specialist classifying US Census tables into a topic vocabulary.
+
+Assign topic tags to the following Census table. Tags follow the format "L1/L2"
+(e.g., "Economics/Poverty", "Demographics/Age and Sex").
+
+STEP 1 — Use the existing vocabulary where it fits:
+Review the EXISTING TAGS list below. If one or more tags accurately describe this table,
+use them. Assign between 1 and 5 existing tags ordered by relevance.
+
+STEP 2 — Propose new tags only when strictly necessary:
+If the table covers a topic that no existing tag captures well, propose a new tag.
+A new tag is justified when:
+  - The subject matter is clearly outside the scope of all existing tags
+  - Using the closest existing tag would be misleading or inaccurate
+  - The topic is likely to appear in many other tables (not a one-off)
+
+A new tag is NOT justified when an existing tag is close enough, even if imperfect.
+
+New tags must follow the same "L1/L2" format. The L1 must be one of the existing
+L1 domains listed below, or a clearly justified new domain name.
+
+TABLE INFORMATION:
+Title: {title}
+Description: {description}
+Universe (plain English): {universe_plain}
+Subject area (from structural analysis): {subject_area}
+Measure type: {measure_type}
+Sample variable labels:
+{sample_labels}
+
+EXISTING L1 DOMAINS:
+{valid_l1}
+
+EXISTING TAGS (prefer these):
+{valid_tags}
+
+Respond with a JSON object:
+{{
+  "tags": [
+    {{"tag": "existing L1/L2 tag", "confidence": "high|medium|low",
+      "rationale": "one sentence"}},
+    ...
+  ],
+  "proposed_tags": [
+    {{"tag": "proposed L1/L2 tag", "proposed_l1": "L1 domain",
+      "proposed_l2": "L2 subtopic", "rationale": "why no existing tag fits"}},
+    ...
+  ]
+}}
+
+If no new tags are needed, return an empty list for proposed_tags.
+Do not include any text outside the JSON object.

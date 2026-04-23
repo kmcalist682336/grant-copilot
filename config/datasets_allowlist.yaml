@@ -1,0 +1,271 @@
+# Datasets to process in the pipeline.
+#
+# Structure fields per entry:
+#   path              Census dataset path (e.g., "acs/acs5/profile")
+#   tier              1 = core/high-value, 2 = comprehensive, 3 = specialty
+#   dataset_structure grouped | flat | microdata (default: grouped)
+#   years_override    List of years if this dataset doesn't follow global years
+#   notes             Human-readable description
+#
+# dataset_structure values:
+#   grouped    Standard Census structure — variables belong to named tables
+#              via the 'group' field. ACS, Decennial, PEP all use this.
+#   flat       No table grouping — all variables are dataset-level.
+#              The entire dataset is effectively one large table.
+#              Planning Database (pdb) uses this structure.
+#   microdata  Person/household-level records with survey weights and row
+#              identifiers. Variables exist at dataset level, not table level.
+#              CPS (Current Population Survey) uses this structure.
+#
+# mode: allowlist  → only process datasets in the list below
+# mode: all        → process everything except skip_datasets
+#                    (dataset_structure inferred from path when not in list)
+#
+# When using mode:all, explicit entries below still apply for datasets that
+# need non-default dataset_structure or years_override.
+
+mode: allowlist  # Switch to 'all' for comprehensive ingestion
+
+# Default year list; each dataset entry may override via years_override
+years:
+  - 2020
+
+datasets:
+
+  # ── Tier 1: Core ACS (grouped) ──────────────────────────────────────────
+  - path: acs/acs5
+    tier: 1
+    dataset_structure: grouped
+    notes: ACS 5-Year Detailed Tables
+
+  - path: acs/acs5/profile
+    tier: 1
+    dataset_structure: grouped
+    notes: ACS 5-Year Data Profiles
+
+  - path: acs/acs5/subject
+    tier: 1
+    dataset_structure: grouped
+    notes: ACS 5-Year Subject Tables
+
+  - path: acs/acs5/cprofile
+    tier: 1
+    dataset_structure: grouped
+    notes: ACS 5-Year Comparison Profiles
+
+  - path: acs/acs1
+    tier: 1
+    dataset_structure: grouped
+    notes: ACS 1-Year Detailed Tables (geographies >=65K population only)
+
+  - path: acs/acs1/profile
+    tier: 1
+    dataset_structure: grouped
+
+  - path: acs/acs1/subject
+    tier: 1
+    dataset_structure: grouped
+
+  - path: acs/acs1/cprofile
+    tier: 1
+    dataset_structure: grouped
+
+  - path: acs/acsse
+    tier: 2
+    dataset_structure: grouped
+    notes: ACS Supplemental Estimates (1-year, smaller geographies)
+
+  # ── Tier 1: Decennial (grouped) ─────────────────────────────────────────
+  - path: dec/pl
+    tier: 1
+    dataset_structure: grouped
+    years_override: [2020]
+    notes: Decennial 2020 P.L. 94-171 Redistricting Data
+
+  - path: dec/dhc
+    tier: 1
+    dataset_structure: grouped
+    years_override: [2020]
+    notes: Decennial 2020 Demographic and Housing Characteristics
+
+  - path: dec/ddhca
+    tier: 2
+    dataset_structure: grouped
+    years_override: [2020]
+    notes: Decennial 2020 Detailed DHC-A
+
+  # ── Tier 2: Population Estimates (grouped) ───────────────────────────────
+  - path: pep/charagegroups
+    tier: 2
+    dataset_structure: grouped
+    notes: Population Estimates by characteristics (has required predicates)
+
+  - path: pep/population
+    tier: 2
+    dataset_structure: grouped
+    notes: Population Estimates totals
+
+  # ── Tier 2: Geography reference (grouped/flat) ───────────────────────────
+  - path: geoinfo
+    tier: 2
+    dataset_structure: flat
+    notes: Geography reference — FIPS codes, ANSI codes, area names.
+           All variables are geography identifiers; no table grouping.
+
+  # ── Tier 2: Planning Database (flat) ─────────────────────────────────────
+  # pdb datasets have no table/group structure — every variable is a
+  # dataset-level data variable (census counts, percentages, planning scores).
+  # Stages 2-7 handle these differently from grouped datasets.
+  - path: pdb/tract
+    tier: 2
+    dataset_structure: flat
+    notes: Planning Database at census tract level. Flat structure — all
+           variables are data variables with no table grouping.
+
+  - path: pdb/blockgroup
+    tier: 2
+    dataset_structure: flat
+    notes: Planning Database at block group level.
+
+  - path: pdb/statecounty
+    tier: 2
+    dataset_structure: flat
+    years_override: [2020]
+    notes: Planning Database at state/county level.
+
+  # ── Tier 2: CPS microdata (microdata) ────────────────────────────────────
+  # CPS datasets are person/household microdata records. Variables include
+  # survey weights (PW*WGT, HW*WGT), household identifiers (HRHHID, QSTNUM),
+  # and demographic/economic variables — none of which belong to named tables.
+  # Stage 8 ingestion for microdata is deferred to v2.
+  - path: cps/basic/jan
+    tier: 2
+    dataset_structure: microdata
+    notes: Current Population Survey basic monthly (January)
+
+  - path: cps/basic/feb
+    tier: 2
+    dataset_structure: microdata
+
+  - path: cps/basic/mar
+    tier: 2
+    dataset_structure: microdata
+
+  - path: cps/basic/apr
+    tier: 2
+    dataset_structure: microdata
+
+  - path: cps/basic/may
+    tier: 2
+    dataset_structure: microdata
+
+  - path: cps/basic/jun
+    tier: 2
+    dataset_structure: microdata
+
+  - path: cps/basic/jul
+    tier: 2
+    dataset_structure: microdata
+
+  - path: cps/basic/aug
+    tier: 2
+    dataset_structure: microdata
+
+  - path: cps/basic/sep
+    tier: 2
+    dataset_structure: microdata
+
+  - path: cps/basic/oct
+    tier: 2
+    dataset_structure: microdata
+
+  - path: cps/basic/nov
+    tier: 2
+    dataset_structure: microdata
+
+  - path: cps/basic/dec
+    tier: 2
+    dataset_structure: microdata
+
+  - path: cps/asec/mar
+    tier: 2
+    dataset_structure: microdata
+    notes: CPS Annual Social and Economic Supplement
+
+  - path: cps/foodsec/dec
+    tier: 2
+    dataset_structure: microdata
+    notes: CPS Food Security Supplement
+
+  - path: cps/school/oct
+    tier: 2
+    dataset_structure: microdata
+    notes: CPS School Enrollment Supplement
+
+  - path: cps/vets/aug
+    tier: 2
+    dataset_structure: microdata
+    notes: CPS Veterans Supplement
+
+  - path: cps/voting/nov
+    tier: 2
+    dataset_structure: microdata
+    notes: CPS Voting and Registration Supplement
+
+  - path: cps/internet/nov
+    tier: 2
+    dataset_structure: microdata
+    notes: CPS Computer and Internet Use Supplement
+
+  - path: cps/disability/jul
+    tier: 2
+    dataset_structure: microdata
+
+  - path: cps/fertility/jun
+    tier: 2
+    dataset_structure: microdata
+
+  - path: cps/tobacco/jan
+    tier: 2
+    dataset_structure: microdata
+
+  - path: cps/tobacco/may
+    tier: 2
+    dataset_structure: microdata
+
+  - path: cps/tobacco/sep
+    tier: 2
+    dataset_structure: microdata
+
+  - path: cps/volunteer/sep
+    tier: 2
+    dataset_structure: microdata
+
+  - path: cps/dwjt/jan
+    tier: 2
+    dataset_structure: microdata
+    notes: CPS Displaced Workers / Job Tenure Supplement
+
+  - path: cps/unbank/jun
+    tier: 2
+    dataset_structure: microdata
+    notes: CPS Unbanked/Underbanked Supplement
+
+  - path: cps/pubarts/jul
+    tier: 2
+    dataset_structure: microdata
+    notes: CPS Public Participation in the Arts
+
+  - path: cps/arts/feb
+    tier: 2
+    dataset_structure: microdata
+
+
+# ── Global skip list ────────────────────────────────────────────────────────
+# Prefix-based matching: "timeseries" matches any path starting with "timeseries/".
+# These are skipped even in mode:all.
+skip_datasets:
+  - timeseries    # Different API pattern — deferred to v2
+  - intltrade     # Non-geographic — deferred to v2
+  - international # Non-geographic — deferred to v2
+  - experimental  # Experimental datasets — deferred to v2

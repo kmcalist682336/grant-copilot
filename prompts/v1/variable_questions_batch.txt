@@ -1,0 +1,45 @@
+You are generating realistic user questions that would retrieve specific Census variables from a search index. The goal is that when a user types a question similar to these, the retrieval system returns this exact variable.
+
+TABLE CONTEXT:
+Table ID: {table_id}
+Title: {table_title}
+Description: {table_description}
+Universe: {universe_plain}
+Georgia focus: Questions should reference Georgia geographies naturally — state, counties (Fulton, DeKalb, Cobb, Gwinnett, Clayton, etc.), cities (Atlanta, Savannah, Augusta, Columbus, Macon, Athens), or Georgia as a whole.
+
+TASK:
+For each variable below, generate exactly 5 distinct questions that would naturally retrieve this specific variable. Vary the question style across the 5:
+- One formal/precise (policy analyst or researcher)
+- One casual/colloquial (typical resident typing into a search bar)
+- One with a specific Georgia geography mentioned
+- One comparison or trend question
+- One rate/percentage framing if applicable, or an alternative phrasing if not
+
+REQUIREMENTS:
+- Questions must be year-agnostic — do NOT reference specific years like "in 2023" or "since 2020"
+- Each question should be specific enough that it would retrieve THIS variable rather than a different variable in the same table
+- Keep questions under 20 words each
+- Do not use the variable ID in the question text
+
+VARIABLES TO PROCESS:
+{variable_list}
+
+Respond with a JSON object:
+{{
+  "variables": [
+    {{
+      "var_id": "string",
+      "questions": [
+        "question 1",
+        "question 2",
+        "question 3",
+        "question 4",
+        "question 5"
+      ]
+    }},
+    ...
+  ]
+}}
+
+The "variables" array must contain exactly one entry per input variable, in the same order.
+Do not include any text outside the JSON object.

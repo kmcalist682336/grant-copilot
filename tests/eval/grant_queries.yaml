@@ -1,0 +1,641 @@
+# Grant-application eval queries for K.6.
+#
+# Drafted by Opus 4.7 to represent realistic queries from nonprofit grant
+# officers across common funding categories. Each entry will be scored
+# against the semantic-router pipeline output for:
+#
+#   - recall@10 of expected_tables (automated)
+#   - precision@5 of variables       (automated)
+#   - presence of expected_answer_themes in synthesizer prose (manual)
+#   - grant-narrative quality (manual Likert 1-5)
+#
+# The grant-quality bar is the key differentiator vs. data.census.gov:
+# the answer must be useful as draft prose, not just a fact lookup.
+#
+# Maintainer-curated. Add entries as new grant categories surface during
+# real usage.
+#
+# Format:
+#   - id: short-snake-case-id
+#     category: housing | food | workforce | youth | seniors | ...
+#     query: the verbatim user query
+#     expected_topics: [tag from stage5 l1_domain or sub-domain]
+#     expected_tables_in_top_10: [Census table_ids the router should surface]
+#     expected_answer_themes: [concrete points the prose should hit]
+#     grant_quality_required: free-text — what "good" looks like
+#     notes: optional context
+
+queries:
+
+  # ──────────────────────────────────────────────────────────────────
+  # FOOD ACCESS / FOOD INSECURITY
+  # ──────────────────────────────────────────────────────────────────
+
+  - id: food_pantry_southside
+    category: food
+    query: "I'm writing a food pantry grant for southwest Atlanta. Help me make the case."
+    expected_topics: [Economics, Demographics, Housing]
+    expected_tables_in_top_10: [B22003, B17001, B25044, B19013, B17020]
+    expected_answer_themes:
+      - SNAP participation rate
+      - households without a vehicle
+      - poverty rate (overall and child)
+      - comparator vs. metro Atlanta
+    grant_quality_required: >
+      Must explicitly note that ACS doesn't measure grocery distance and
+      that USDA Food Access Research Atlas is the authoritative source
+      for food-desert designation. Should pull comparator data for the
+      Atlanta MSA.
+
+  - id: food_insecurity_metro_atl
+    category: food
+    query: "What does food insecurity look like in metro Atlanta?"
+    expected_topics: [Economics]
+    expected_tables_in_top_10: [B22003, B17001, B17020, B19013]
+    expected_answer_themes:
+      - SNAP rate by county
+      - child poverty
+      - low-income working families
+    grant_quality_required: >
+      Frame as a metro-area scan with per-county breakdown.
+
+  - id: snap_eligibility_clayton
+    category: food
+    query: "How many people in Clayton County might be eligible for SNAP?"
+    expected_topics: [Economics]
+    expected_tables_in_top_10: [B22003, C17002, B17001]
+    expected_answer_themes:
+      - current SNAP enrollment
+      - population below 200% poverty (eligibility proxy)
+      - gap between enrolled and eligible
+    grant_quality_required: >
+      Should distinguish between enrolled (B22003) and eligible (income
+      ratio ≤ 130-200%, depending on category) and offer both numbers.
+
+  # ──────────────────────────────────────────────────────────────────
+  # HOUSING INSTABILITY / DISPLACEMENT
+  # ──────────────────────────────────────────────────────────────────
+
+  - id: rent_burden_npu_v
+    category: housing
+    query: "Make the case that NPU-V is facing housing instability."
+    expected_topics: [Housing, Economics]
+    expected_tables_in_top_10: [B25070, B25064, B25077, B25003]
+    expected_answer_themes:
+      - rent burden ≥30%
+      - severe rent burden ≥50%
+      - median rent vs. county
+      - homeownership rate
+      - rent-to-income trend
+    grant_quality_required: >
+      Comparative framing (NPU-V vs. Atlanta city vs. Fulton County).
+      Mention severe rent burden specifically since that's the
+      eligibility threshold for many HUD programs.
+
+  - id: displacement_risk_southwest_atlanta
+    category: housing
+    query: "What does displacement risk look like in southwest Atlanta?"
+    expected_topics: [Housing, Economics, Demographics]
+    expected_tables_in_top_10: [B25077, B25064, B19013, B02001, B15003, B25003]
+    expected_answer_themes:
+      - median home value trend
+      - median rent trend
+      - racial composition trend
+      - educational attainment trend
+      - homeownership rate
+    grant_quality_required: >
+      Surface the standard gentrification proxy bundle. Should call out
+      that displacement is a multi-axis composite and CDC-ATSDR / Urban
+      Institute publish authoritative indices.
+
+  - id: severe_rent_burden_dekalb
+    category: housing
+    query: "How many DeKalb households are severely rent burdened?"
+    expected_topics: [Housing]
+    expected_tables_in_top_10: [B25070]
+    expected_answer_themes:
+      - count of renters paying ≥50% of income
+      - rate
+      - comparator vs. Atlanta MSA
+    grant_quality_required: >
+      Must provide both the absolute count and the rate so the grant
+      can tailor language to "X households" or "Y%".
+
+  - id: homeownership_gap_by_race
+    category: housing
+    query: "What's the homeownership gap between Black and white households in Fulton County?"
+    expected_topics: [Housing, Demographics]
+    expected_tables_in_top_10: [B25003, B25003B, B25003A, B25003H]
+    expected_answer_themes:
+      - white homeownership rate
+      - Black homeownership rate
+      - explicit gap arithmetic (percentage point difference)
+    grant_quality_required: >
+      Disparity-style framing with explicit gap. Critical for
+      racial-equity-focused grants.
+
+  - id: senior_housing_cost_burden
+    category: housing
+    query: "Are seniors in Atlanta facing housing cost burden?"
+    expected_topics: [Housing, Demographics]
+    expected_tables_in_top_10: [B25072, B25093, B25070, B25091]
+    expected_answer_themes:
+      - cost-burdened senior renters
+      - cost-burdened senior owners
+      - seniors on fixed income
+    grant_quality_required: >
+      Frame for senior-services grants. Differentiate owners vs. renters.
+
+  # ──────────────────────────────────────────────────────────────────
+  # WORKFORCE / YOUTH JOB TRAINING
+  # ──────────────────────────────────────────────────────────────────
+
+  - id: youth_disconnection_clayton
+    category: workforce
+    query: "How many disconnected youth are in Clayton County for a job training program?"
+    expected_topics: [Economics]
+    expected_tables_in_top_10: [B14005, B23001, B23006]
+    expected_answer_themes:
+      - 16-24 not in school not employed (NEET proxy)
+      - youth labor force participation
+      - educational attainment of young adults
+    grant_quality_required: >
+      "Disconnected youth" is grant jargon meaning 16-24 NEET. Surface
+      that even though the user said "disconnected youth," the
+      operational definition uses school enrollment + employment status.
+
+  - id: workforce_training_eligible_southside
+    category: workforce
+    query: "Who would be eligible for workforce training in southwest Atlanta?"
+    expected_topics: [Economics]
+    expected_tables_in_top_10: [B23025, B15003, B19013, B17001]
+    expected_answer_themes:
+      - unemployed and underemployed adults
+      - low educational attainment (no HS / no college)
+      - low-income working population
+    grant_quality_required: >
+      Mention WIOA priority-of-service criteria (low income, basic skills
+      deficient, low literacy) as the standard eligibility framing.
+
+  - id: industry_decline_metro
+    category: workforce
+    query: "What sectors are losing jobs in metro Atlanta?"
+    expected_topics: [Economics]
+    expected_tables_in_top_10: [C24050, C24030, B24050]
+    expected_answer_themes:
+      - employment by industry
+      - 5-year change in industry counts
+      - sectors with biggest declines
+    grant_quality_required: >
+      Trend framing — needs at least two vintages to compute change.
+
+  - id: working_poor_metro
+    category: workforce
+    query: "How many working people in Atlanta are still in poverty?"
+    expected_topics: [Economics]
+    expected_tables_in_top_10: [B17005, C17002, B23025]
+    expected_answer_themes:
+      - employed adults below poverty
+      - full-time year-round workers in poverty
+      - working-poor rate
+    grant_quality_required: >
+      Distinguish between "in labor force" and "employed full-time" —
+      both are valid working-poor framings.
+
+  # ──────────────────────────────────────────────────────────────────
+  # IMMIGRANT / LANGUAGE SERVICES
+  # ──────────────────────────────────────────────────────────────────
+
+  - id: immigrant_services_dekalb
+    category: immigrant
+    query: "I'm seeking funding for immigrant services in DeKalb County. Show me the data."
+    expected_topics: [Demographics]
+    expected_tables_in_top_10: [B05002, B05005, B16001, B16005, B05003]
+    expected_answer_themes:
+      - foreign-born population count and share
+      - year of entry distribution
+      - language spoken at home
+      - English-speaking ability
+      - citizenship status
+    grant_quality_required: >
+      Standard immigrant-services framing. Should mention "limited
+      English proficient" (LEP) populations specifically since many
+      federal programs require LEP outreach.
+
+  - id: lep_population_chamblee
+    category: immigrant
+    query: "What's the limited English proficient population in Chamblee?"
+    expected_topics: [Demographics]
+    expected_tables_in_top_10: [B16005, B16004, B16001]
+    expected_answer_themes:
+      - speak English less than "very well"
+      - languages spoken
+      - LEP rate
+    grant_quality_required: >
+      LEP is the federal definition; surface it explicitly.
+
+  - id: hispanic_origin_atlanta
+    category: immigrant
+    query: "What does Atlanta's Hispanic population look like?"
+    expected_topics: [Demographics]
+    expected_tables_in_top_10: [B03001, B03002, B05002]
+    expected_answer_themes:
+      - total Hispanic/Latino
+      - country-of-origin breakdown
+      - foreign-born vs. US-born
+    grant_quality_required: >
+      Country-of-origin matters for culturally-specific programs —
+      Mexican vs. Puerto Rican vs. Cuban vs. other Hispanic.
+
+  # ──────────────────────────────────────────────────────────────────
+  # CHILD WELFARE / FAMILY SERVICES
+  # ──────────────────────────────────────────────────────────────────
+
+  - id: child_poverty_southside
+    category: child
+    query: "Make a case for funding a children's program in southwest Atlanta."
+    expected_topics: [Demographics, Economics]
+    expected_tables_in_top_10: [B17020, B17001, B23008, B09005, B11005]
+    expected_answer_themes:
+      - child poverty rate
+      - children in single-parent households
+      - children with both parents working
+      - households with children
+    grant_quality_required: >
+      Foundation for any child-welfare grant. Surface child poverty
+      specifically rather than overall poverty.
+
+  - id: single_parent_households_dekalb
+    category: child
+    query: "How many single-parent households are in DeKalb?"
+    expected_topics: [Demographics]
+    expected_tables_in_top_10: [B11003, B09005, B11004]
+    expected_answer_themes:
+      - female-householder no spouse
+      - male-householder no spouse
+      - children under 18 in single-parent homes
+    grant_quality_required: >
+      Disambiguate single-parent (no spouse present) from
+      single-mother. Both are valid framings.
+
+  - id: kinship_care_metro
+    category: child
+    query: "Are there grandparents raising grandchildren we could serve?"
+    expected_topics: [Demographics]
+    expected_tables_in_top_10: [B10054, B10063, B10060]
+    expected_answer_themes:
+      - grandparents living with grandchildren
+      - grandparents responsible for grandchildren
+      - grandparents in poverty
+    grant_quality_required: >
+      Kinship care is a specific grant category. Distinguish from
+      general grandparent-living-with-grandchildren.
+
+  # ──────────────────────────────────────────────────────────────────
+  # SENIOR SERVICES
+  # ──────────────────────────────────────────────────────────────────
+
+  - id: senior_isolation_buckhead
+    category: senior
+    query: "What's the case for senior services in Buckhead?"
+    expected_topics: [Demographics, Housing]
+    expected_tables_in_top_10: [B09020, B09021, B25007, B17001, B27001]
+    expected_answer_themes:
+      - 65+ population
+      - 65+ living alone
+      - 65+ in poverty
+      - senior homeownership / aging in place
+    grant_quality_required: >
+      Senior isolation needs the "living alone" + "no vehicle"
+      combination as the classic isolation proxy.
+
+  - id: aging_in_place_dekalb
+    category: senior
+    query: "Are there elderly residents in DeKalb who might need home modifications?"
+    expected_topics: [Housing, Demographics]
+    expected_tables_in_top_10: [B25007, B18101, B25040]
+    expected_answer_themes:
+      - 65+ owner-occupied housing
+      - disability rate among seniors
+      - housing age (older homes more likely to need modifications)
+    grant_quality_required: >
+      Aging-in-place framing — owner-occupied seniors with mobility
+      difficulty in older housing stock.
+
+  # ──────────────────────────────────────────────────────────────────
+  # MENTAL HEALTH / BEHAVIORAL HEALTH
+  # ──────────────────────────────────────────────────────────────────
+
+  - id: mental_health_proxies_atl
+    category: mental_health
+    query: "What ACS data supports a mental health services grant for the Atlanta MSA?"
+    expected_topics: [Economics, Demographics, Housing]
+    expected_tables_in_top_10: [B17001, B27001, B23025, B25070, B09010]
+    expected_answer_themes:
+      - poverty rate (stress/access proxy)
+      - uninsured rate (access barrier)
+      - unemployment (stress proxy)
+      - housing burden (stress proxy)
+      - social isolation (living alone)
+    grant_quality_required: >
+      Must caveat that ACS doesn't directly measure mental health
+      outcomes — these are well-documented social determinants /
+      proxies. Cite SAMHSA or HRSA shortage-area designations as
+      authoritative.
+
+  - id: uninsured_low_income_dekalb
+    category: mental_health
+    query: "How many uninsured low-income adults are in DeKalb who can't access mental health care?"
+    expected_topics: [Health insurance, Economics]
+    expected_tables_in_top_10: [B27015, B27010, B27017]
+    expected_answer_themes:
+      - uninsured 19-64 below 200% poverty
+      - uninsured rate by income
+    grant_quality_required: >
+      Cross-tab insurance status by income is the classic access-gap
+      framing.
+
+  # ──────────────────────────────────────────────────────────────────
+  # TRANSIT / TRANSPORTATION ACCESS
+  # ──────────────────────────────────────────────────────────────────
+
+  - id: transit_access_metro
+    category: transit
+    query: "Make the case that workers in metro Atlanta need better transit."
+    expected_topics: [Transportation, Economics]
+    expected_tables_in_top_10: [B08301, B08303, B08134, B25044]
+    expected_answer_themes:
+      - public transit commute share
+      - long commutes (60+ min)
+      - low-income commuters
+      - households without a vehicle
+    grant_quality_required: >
+      Tie commute burden to economic mobility.
+
+  - id: zero_vehicle_households_npu_t
+    category: transit
+    query: "How many households in NPU-T have no vehicle?"
+    expected_topics: [Housing, Transportation]
+    expected_tables_in_top_10: [B25044, B08203]
+    expected_answer_themes:
+      - households without vehicle
+      - rate
+      - comparator vs. city of Atlanta
+    grant_quality_required: >
+      Vehicle availability is the classic transit-dependent population
+      indicator.
+
+  # ──────────────────────────────────────────────────────────────────
+  # DIGITAL DIVIDE
+  # ──────────────────────────────────────────────────────────────────
+
+  - id: broadband_gap_clayton
+    category: digital
+    query: "Where's the digital divide in Clayton County?"
+    expected_topics: [Computer/Internet]
+    expected_tables_in_top_10: [B28002, B28003, B28004, B28006]
+    expected_answer_themes:
+      - households without internet
+      - households without computer
+      - broadband access by income
+      - broadband access by age
+    grant_quality_required: >
+      Digital divide framing should cross-tab access by income and age.
+
+  - id: smartphone_only_users_metro
+    category: digital
+    query: "Are there many smartphone-only internet users in Atlanta?"
+    expected_topics: [Computer/Internet]
+    expected_tables_in_top_10: [B28001, B28002]
+    expected_answer_themes:
+      - smartphone-only households
+      - implications for service delivery (mobile-first)
+    grant_quality_required: >
+      Smartphone-only is a specific digital-divide pattern that affects
+      service delivery design.
+
+  # ──────────────────────────────────────────────────────────────────
+  # HEALTH / DISABILITY
+  # ──────────────────────────────────────────────────────────────────
+
+  - id: uninsured_atlanta
+    category: health
+    query: "What's the uninsured rate in Atlanta?"
+    expected_topics: [Health insurance]
+    expected_tables_in_top_10: [B27001, B27010, B27015]
+    expected_answer_themes:
+      - overall uninsured rate
+      - uninsured by age bracket
+      - comparator vs. state vs. national
+    grant_quality_required: >
+      Standard health-access framing.
+
+  - id: disability_services_dekalb
+    category: health
+    query: "How many people with disabilities are in DeKalb who could benefit from independent living services?"
+    expected_topics: [Disability]
+    expected_tables_in_top_10: [B18101, B18105, B18106, B18107]
+    expected_answer_themes:
+      - total disability rate
+      - ambulatory difficulty
+      - self-care difficulty
+      - independent living difficulty
+    grant_quality_required: >
+      Independent living is a specific disability-services category;
+      surface the relevant ACS disability-type breakdowns.
+
+  - id: medicaid_eligible_uninsured
+    category: health
+    query: "How many low-income uninsured adults in Atlanta might be Medicaid-eligible?"
+    expected_topics: [Health insurance, Economics]
+    expected_tables_in_top_10: [B27015, B27017, C17002]
+    expected_answer_themes:
+      - uninsured below 138% FPL
+      - working-age uninsured
+    grant_quality_required: >
+      Caveat: Georgia hasn't expanded Medicaid; the eligibility band
+      depends on family composition. Surface that.
+
+  # ──────────────────────────────────────────────────────────────────
+  # DEMOGRAPHIC SNAPSHOTS (intro paragraphs for any grant)
+  # ──────────────────────────────────────────────────────────────────
+
+  - id: demographic_snapshot_npu_y
+    category: demographic
+    query: "Give me a demographic snapshot of NPU-Y for a grant intro."
+    expected_topics: [Demographics, Economics, Housing]
+    expected_tables_in_top_10: [B01003, B01001, B02001, B03002, B19013, B25003, B15003]
+    expected_answer_themes:
+      - total population
+      - age composition
+      - racial/ethnic composition
+      - median household income
+      - homeownership rate
+      - educational attainment
+    grant_quality_required: >
+      Standard 1-paragraph "intro" data block. Should be concise and
+      include comparators.
+
+  - id: who_lives_in_old_fourth_ward
+    category: demographic
+    query: "Who lives in Old Fourth Ward?"
+    expected_topics: [Demographics, Economics]
+    expected_tables_in_top_10: [B01003, B01001, B02001, B03002, B19013]
+    expected_answer_themes:
+      - population
+      - age
+      - race
+      - income
+    grant_quality_required: >
+      Casual phrasing should still produce the standard demographic
+      bundle.
+
+  # ──────────────────────────────────────────────────────────────────
+  # COMPARATIVE / DISPARITY
+  # ──────────────────────────────────────────────────────────────────
+
+  - id: poverty_disparity_by_race_atlanta
+    category: disparity
+    query: "What's the poverty rate by race in Atlanta?"
+    expected_topics: [Economics, Demographics]
+    expected_tables_in_top_10: [B17001, B17001A, B17001B, B17001I]
+    expected_answer_themes:
+      - white poverty rate
+      - Black poverty rate
+      - Hispanic poverty rate
+      - explicit disparity numbers
+    grant_quality_required: >
+      Auto-disparity surfacing — should pull race-specific tables
+      alongside the base poverty rate.
+
+  - id: income_gap_by_race_metro
+    category: disparity
+    query: "What's the income gap by race in metro Atlanta?"
+    expected_topics: [Economics, Demographics]
+    expected_tables_in_top_10: [B19013, B19013A, B19013B, B19013D, B19013I]
+    expected_answer_themes:
+      - median income overall
+      - by race
+      - explicit gap arithmetic
+    grant_quality_required: >
+      Critical for racial-equity grants. Must compute gaps explicitly.
+
+  - id: educational_attainment_by_race
+    category: disparity
+    query: "How does educational attainment vary by race in Fulton County?"
+    expected_topics: [Education, Demographics]
+    expected_tables_in_top_10: [B15002A, B15002B, B15002I, B15003]
+    expected_answer_themes:
+      - bachelor's+ by race
+      - HS-or-higher by race
+      - gaps
+    grant_quality_required: >
+      Surface both bachelor's+ and HS+ rates by race for full picture.
+
+  # ──────────────────────────────────────────────────────────────────
+  # TEMPORAL / TREND QUERIES
+  # ──────────────────────────────────────────────────────────────────
+
+  - id: rent_trend_buckhead_5y
+    category: trend
+    query: "How has rent changed in Buckhead over the last 5 years?"
+    expected_topics: [Housing]
+    expected_tables_in_top_10: [B25064, B25058]
+    expected_answer_themes:
+      - median rent in 2019/2020
+      - median rent in 2024
+      - percent change
+      - inflation-adjusted vs nominal
+    grant_quality_required: >
+      Trend query. Should pull 5 years of data and surface both
+      nominal and real change.
+
+  - id: poverty_change_dekalb
+    category: trend
+    query: "How has poverty changed in DeKalb from 2020 to 2023?"
+    expected_topics: [Economics]
+    expected_tables_in_top_10: [B17001]
+    expected_answer_themes:
+      - 2020 rate
+      - 2023 rate
+      - change
+    grant_quality_required: >
+      Two-vintage comparison.
+
+  # ──────────────────────────────────────────────────────────────────
+  # STANDARD COMPOSITE INDICATORS
+  # ──────────────────────────────────────────────────────────────────
+
+  - id: svi_npu_v
+    category: composite_indicator
+    query: "What's the social vulnerability for NPU-V?"
+    expected_topics: [Economics, Demographics, Housing]
+    expected_tables_in_top_10: [B17001, B23025, B15003, B16005, B25044, B11003]
+    expected_answer_themes:
+      - SVI four-theme structure (socioeconomic, household composition, race/ethnicity/language, housing/transportation)
+      - approximation caveat
+      - link to CDC authoritative source
+    grant_quality_required: >
+      Recognize SVI as a known composite indicator and reproduce its
+      sub-themes. Must cite CDC/ATSDR as authoritative.
+
+  - id: distressed_community_atl
+    category: composite_indicator
+    query: "Is southwest Atlanta a distressed community?"
+    expected_topics: [Economics]
+    expected_tables_in_top_10: [B23025, B15003, B17001, B25002]
+    expected_answer_themes:
+      - DCI components (poverty, no HS, unemployment, vacancy, etc.)
+      - approximation caveat
+      - reference to EIG distressed-community methodology
+    grant_quality_required: >
+      Recognize DCI as a known composite. Cite Economic Innovation Group
+      as authoritative.
+
+  # ──────────────────────────────────────────────────────────────────
+  # EDGE CASES / DIFFICULT
+  # ──────────────────────────────────────────────────────────────────
+
+  - id: unmet_need_phrasing
+    category: difficult
+    query: "Where in Atlanta is there the most unmet need for affordable housing?"
+    expected_topics: [Housing, Economics]
+    expected_tables_in_top_10: [B25070, B19013, B25003]
+    expected_answer_themes:
+      - rent burden by area
+      - severe rent burden
+      - low-income renters
+      - acknowledgment that "unmet need" requires comparing demand to supply
+    grant_quality_required: >
+      Should clarify that ACS measures demand-side conditions but not
+      supply (housing units affordable to income brackets). HUD CHAS
+      tables would be the authoritative supply-side complement.
+
+  - id: gentrification_old_fourth_ward
+    category: difficult
+    query: "Is Old Fourth Ward gentrifying?"
+    expected_topics: [Housing, Economics, Demographics]
+    expected_tables_in_top_10: [B25077, B19013, B02001, B15003, B25064]
+    expected_answer_themes:
+      - home value trend
+      - rent trend
+      - racial composition change
+      - educational attainment change
+      - household income change
+    grant_quality_required: >
+      Composite concept — should pull the standard 5-axis gentrification
+      proxy bundle and explicitly frame that no single Census variable
+      "is" gentrification.
+
+  - id: vague_food_query
+    category: difficult
+    query: "Who is hungry in Atlanta?"
+    expected_topics: [Economics]
+    expected_tables_in_top_10: [B22003, B17001, B17020, B25044]
+    expected_answer_themes:
+      - SNAP participation
+      - poverty
+      - food access proxies
+    grant_quality_required: >
+      Casual phrasing should still hit the food-access proxy bundle.
+      "Hungry" → food insecurity → SNAP + poverty + vehicle access.

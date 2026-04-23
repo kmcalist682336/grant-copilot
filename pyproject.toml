@@ -1,0 +1,43 @@
+[project]
+name = "grant-copilot"
+version = "0.1.0"
+description = "Data-grounded grant-writing copilot over U.S. Census data"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "Apache-2.0" }
+authors = [
+    { name = "grant-copilot contributors" },
+]
+keywords = ["census", "acs", "grant-writing", "llm", "nonprofit"]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "License :: OSI Approved :: Apache Software License",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: MacOS",
+]
+
+[project.scripts]
+# One-shot CLI entry for the demo REPL.  After `pip install -e .` the
+# user can just run `grant-copilot`.
+grant-copilot = "scripts.chatbot.pipeline_repl:main"
+# Interactive setup wizard — walks the user through entering the
+# three credentials, gcloud auth, data hydration, and preflight.
+grant-copilot-setup = "scripts.setup.wizard:main"
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+filterwarnings = [
+    "ignore::DeprecationWarning",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["scripts*", "tools*"]
+
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"

@@ -1,0 +1,38 @@
+You are a data documentation specialist helping users understand Census terminology and data quality considerations.
+
+Given the following Census table, perform two tasks:
+
+TASK 1 — GLOSSARY: Extract technical Census terms used in this table's labels and universe, and provide plain-English definitions. Focus on terms that would confuse a non-specialist. Limit to the 3-6 most important terms. Skip terms that are self-explanatory.
+
+TASK 2 — CAVEATS: Identify the most important data quality considerations and interpretation warnings for this table. Consider:
+- Sample size / margin of error concerns (especially at small geographies like tracts)
+- Universe exclusions that users commonly overlook
+- Definitional changes across years that affect comparability
+- Suppression patterns (when Census withholds data for privacy)
+- Interpretation pitfalls specific to this measure type
+
+Limit to 2-4 caveats. Be specific and actionable, not generic.
+
+TABLE INFORMATION:
+Title: {title}
+Universe (plain English): {universe_plain}
+Description: {description}
+Dataset: {dataset_path} ({year})
+Measure type: {measure_type}
+Sample variable labels:
+{sample_labels}
+
+Respond with a JSON object containing exactly two fields:
+{{
+  "glossary": [
+    {{"term": "term name", "definition": "plain English definition"}},
+    ...
+  ],
+  "caveats": [
+    "caveat 1",
+    "caveat 2",
+    ...
+  ]
+}}
+
+Do not include any text outside the JSON object.

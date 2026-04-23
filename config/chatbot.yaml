@@ -1,0 +1,110 @@
+# Runtime config for the chatbot. Env var overrides win.
+
+vertex_ai:
+  project_id: null              # reads $GCP_PROJECT_ID
+  location: us-east1            # primary region
+  # Embedding-job fallback regions — used by tools/build_embedding_index
+  # when the primary region exhausts its per-minute / per-day quota. Each
+  # region has an independent quota bucket, so rotating across this list
+  # lets one run finish even when any single region hits 429.
+  fallback_locations:
+    - us-east1
+    - us-west1
+    - us-central1
+    - us-east4
+    - us-west4
+  model: gemini-2.5-flash
+  temperature: 0.1
+  # Hard wall-clock ceiling per LLM call. 10s was too tight —
+  # synthesizer prose generation with full peer/frame/anomaly
+  # context legitimately runs 15-25s, and we were occasionally
+  # hanging indefinitely because the google-genai SDK doesn't
+  # enforce a timeout on its own. 60s gives prose room while
+  # still catching true hangs (frame matcher / critic calls that
+  # normally return in 1-3s should never approach this).
+  timeout_seconds: 60
+  # Explicit context caching off by default. Gemini 2.5 Flash already
+  # applies implicit prefix caching (75% input-token discount) at no
+  # storage cost, so explicit caches are a net loss for light usage
+  # and add a visible storage line item on demo-user GCP bills. Flip
+  # to true only for sustained batch workloads where a single prompt
+  # is reused >~5× per hour.
+  enable_cache: false
+  cache_ttl_seconds: 3600
+
+session:
+  ttl_seconds: 600
+
+# Clarifier — an LLM pass after the plan stage that asks the
+# user to disambiguate a low-confidence plan.  DEFAULT OFF for
+# this release: the clarifier occasionally proposes patched
+# geography names that don't resolve (e.g. "Buckhead area"
+# instead of "Buckhead"), which produces zero-call plans.  The
+# plan reviewer still runs and logs confidence; the pipeline
+# just proceeds with its best plan rather than asking for
+# disambiguation.  Re-enable for interactive UIs that wire an
+# ``ask_user`` callback into ``answer_query()``.
+clarification:
+  enabled: false
+  max_cycles_per_scope: 1
+
+# Scope gate — one LLM call (or zero, via deterministic shortcut)
+# at the top of the pipeline that rejects queries about topics the
+# Census doesn't cover. Returns a polite "I don't have data on
+# that" message instead of fabricating an answer from a nearest-
+# neighbor Census table. Set ``enabled: false`` to skip.
+scope_gate:
+  enabled: true
+  temperature: 0.0
+  hard_timeout_s: 20.0
+
+# Derived-data dump — after every query writes CSVs of the data that
+# fed the answer under ``base_dir/data_<YYYYMMDD_HHMMSS>/``, one CSV
+# per geo_level plus a ``variables.txt`` sidecar that decodes every
+# Census variable_id into plain English. Lets downstream users audit
+# exactly which Census variables and geographies produced the prose.
+derived_data:
+  enabled: true
+  base_dir: derived_data
+
+confidence_thresholds:
+  pass_silent: 0.80
+  pass_with_note: 0.60
+  choose_clarification: 0.40
+
+defaults:
+  near_buffer_miles: 0.5
+  state_bias_fips: "13"
+
+# Concept tagging
+concept:
+  max_sub_concepts: 5           # cap per composite decomposition
+  max_recursion_depth: 2        # sub-concepts of sub-concepts
+  decomposition_cache_ttl_days: 90
+
+# Census API
+census_api:
+  base_url: "https://api.census.gov/data"
+  api_key_env_var: "CENSUS_API_KEY"
+  connect_timeout_seconds: 5
+  read_timeout_seconds: 10
+  max_retries: 1
+  cache_ttl_acs5_days: 30       # ACS5 vintages don't change once published
+  cache_ttl_acs1_days: 7
+  cache_ttl_other_days: 1
+
+# Time-series defaults
+temporal:
+  earliest_year: 2020           # post-COVID floor
+  default_acs5_year: 2023       # most recent ACS5 vintage
+  default_acs1_year: 2023
+
+# Files
+paths:
+  gazetteer_db: data/geo/gazetteer.db
+  metadata_db: data/metadata/search_index.db
+  api_cache_db: data/runtime/api_cache.db
+  decomposition_cache_db: data/runtime/decomposition_cache.db
+  concept_map: config/concept_map.yaml
+  extraction_prompt: prompts/v1/geo_extraction.yaml
+  synthesizer_prompt: prompts/v1/synthesizer.yaml

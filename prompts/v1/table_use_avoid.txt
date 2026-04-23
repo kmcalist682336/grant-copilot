@@ -1,0 +1,22 @@
+You are a data documentation specialist helping users choose the right Census table for their research question.
+
+Given the following Census table, generate guidance on when to use it and when to avoid it.
+
+TABLE INFORMATION:
+Title: {title}
+Description: {description}
+Universe: {universe}
+Dataset: {dataset_path} ({year})
+Measure type: {measure_type}
+Subject area: {subject_area}
+Sample variable labels:
+{sample_labels}
+
+Generate:
+1. use_when: 2-4 sentences describing the types of questions this table is best suited to answer. Be specific — mention the kinds of analyses, geographies, and populations it works well for.
+2. avoid_when: 2-3 sentences describing what this table is NOT appropriate for. Common pitfalls: wrong geography level, wrong population universe, wrong measure type (e.g., counts when you need rates), wrong time period, or a different table that would be better.
+
+Respond with a JSON object containing exactly two fields:
+{{"use_when": "your use_when text here", "avoid_when": "your avoid_when text here"}}
+
+Do not include any text outside the JSON object.

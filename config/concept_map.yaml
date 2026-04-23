@@ -1,0 +1,2403 @@
+# Tier 1 curated concept → Census table map.
+#
+# This is the fast path between Tier 0 (query expansion) and Tier 2
+# (FTS metadata search). Each entry encodes one ACS concept that users
+# ask about often enough to skip both LLM and FTS scoring.
+#
+# Schema (see scripts/chatbot/concept_map.py):
+#   - canonical:    verbatim name shown to users in citations
+#   - aliases:      alternate phrasings the lookup matches against
+#   - table_id:     Census detailed-table ID (e.g., B19013) — base
+#   - dataset:      defaults to acs/acs5 — broadest geographic coverage
+#   - variables:    one of:
+#                     value:           single estimate variable
+#                     numerator + denominator (numerator may be a list)
+#                     components:      breakdown variables
+#   - by_geo_level: optional sparse overrides per geo level (tract,
+#                   county, msa, state). Each override may change any of
+#                   table_id / dataset / variables; unset fields inherit.
+#                   Common pattern: switch dataset to acs/acs1 at MSA +
+#                   state where currency matters and the sample is large
+#                   enough to be reliable.
+#   - units:        dollars | percent | count | years | minutes | index | ratio
+#   - notes:        short usage hint
+#
+# Every entry is verified at load time against the coverage table — its
+# effective (table, dataset) at every required geo_level must have at
+# least one year with successful coverage. See:
+#   tools/import_v1_coverage.py     — pulls v1 stage8 results
+#   tools/probe_msa_coverage.py     — fills MSA gaps via live probes
+#
+# Curated by Opus 4.7; spot-reviewed by maintainer.
+
+concepts:
+
+  # ════════════════════════════════════════════════════════════════════
+  # INCOME & EARNINGS
+  # ════════════════════════════════════════════════════════════════════
+
+  - canonical: "median household income"
+    aliases:
+      - "household income"
+      - "median income"
+      - "household earnings"
+      - "typical household income"
+    table_id: "B19013"
+    dataset: "acs/acs5"
+    variables:
+      value: "B19013_001E"
+    by_geo_level:
+      msa:    { dataset: "acs/acs1" }
+      state:  { dataset: "acs/acs1" }
+    universe: "Households"
+    units: "dollars"
+    notes: "Inflation-adjusted to the survey vintage."
+
+  - canonical: "per capita income"
+    aliases:
+      - "income per capita"
+      - "per-person income"
+    table_id: "B19301"
+    dataset: "acs/acs5"
+    variables:
+      value: "B19301_001E"
+    by_geo_level:
+      msa:    { dataset: "acs/acs1" }
+      state:  { dataset: "acs/acs1" }
+    universe: "Total population"
+    units: "dollars"
+
+  - canonical: "median family income"
+    aliases:
+      - "family income"
+      - "typical family income"
+    table_id: "B19119"
+    dataset: "acs/acs5"
+    variables:
+      value: "B19119_001E"
+    by_geo_level:
+      msa:    { dataset: "acs/acs1" }
+      state:  { dataset: "acs/acs1" }
+    universe: "Families"
+    units: "dollars"
+
+  - canonical: "median nonfamily household income"
+    aliases:
+      - "median nonfamily income"
+      - "single person household income"
+    table_id: "B19202"
+    dataset: "acs/acs5"
+    variables:
+      value: "B19202_001E"
+    by_geo_level:
+      msa:    { dataset: "acs/acs1" }
+      state:  { dataset: "acs/acs1" }
+    universe: "Nonfamily households"
+    units: "dollars"
+
+  - canonical: "income inequality"
+    aliases:
+      - "gini index"
+      - "gini coefficient"
+      - "income gini"
+    table_id: "B19083"
+    dataset: "acs/acs5"
+    variables:
+      value: "B19083_001E"
+    by_geo_level:
+      msa:    { dataset: "acs/acs1" }
+      state:  { dataset: "acs/acs1" }
+    universe: "Households"
+    units: "index"
+    notes: "Gini index of income inequality (0 = perfect equality, 1 = perfect inequality)."
+
+  - canonical: "aggregate household income"
+    aliases:
+      - "total household income"
+      - "aggregate income"
+    table_id: "B19025"
+    dataset: "acs/acs5"
+    variables:
+      value: "B19025_001E"
+    by_geo_level:
+      msa:    { dataset: "acs/acs1" }
+      state:  { dataset: "acs/acs1" }
+    universe: "Households"
+    units: "dollars"
+
+  - canonical: "household income distribution"
+    aliases:
+      - "income brackets"
+      - "income distribution"
+      - "household income by bracket"
+    table_id: "B19001"
+    dataset: "acs/acs5"
+    variables:
+      value: "B19001_001E"
+    universe: "Households"
+    units: "count"
+    notes: "Total households; 16 income bracket cells in B19001_002E…_017E."
+
+  - canonical: "family income distribution"
+    aliases:
+      - "family income brackets"
+      - "family income by bracket"
+    table_id: "B19101"
+    dataset: "acs/acs5"
+    variables:
+      value: "B19101_001E"
+    universe: "Families"
+    units: "count"
+
+  - canonical: "households with wage or salary income"
+    aliases:
+      - "wage and salary households"
+      - "households with earnings"
+    table_id: "B19052"
+    dataset: "acs/acs5"
+    variables:
+      numerator: "B19052_002E"
+      denominator: "B19052_001E"
+    universe: "Households"
+    units: "percent"
+
+  - canonical: "households with self-employment income"
+    aliases:
+      - "self employed households"
+      - "households with self-employment earnings"
+    table_id: "B19053"
+    dataset: "acs/acs5"
+    variables:
+      numerator: "B19053_002E"
+      denominator: "B19053_001E"
+    universe: "Households"
+    units: "percent"
+
+  - canonical: "households with interest dividend or rental income"
+    aliases:
+      - "investment income households"
+      - "households with capital income"
+    table_id: "B19054"
+    dataset: "acs/acs5"
+    variables:
+      numerator: "B19054_002E"
+      denominator: "B19054_001E"
+    universe: "Households"
+    units: "percent"
+
+  - canonical: "households receiving social security"
+    aliases:
+      - "social security recipients"
+      - "households with social security income"
+    table_id: "B19055"
+    dataset: "acs/acs5"
+    variables:
+      numerator: "B19055_002E"
+      denominator: "B19055_001E"
+    universe: "Households"
+    units: "percent"
+
+  - canonical: "households receiving supplemental security income"
+    aliases:
+      - "ssi recipients"
+      - "supplemental security income"
+    table_id: "B19056"
+    dataset: "acs/acs5"
+    variables:
+      numerator: "B19056_002E"
+      denominator: "B19056_001E"
+    universe: "Households"
+    units: "percent"
+
+  - canonical: "households receiving public assistance"
+    aliases:
+      - "public assistance recipients"
+      - "cash assistance households"
+      - "tanf recipients"
+    table_id: "B19057"
+    dataset: "acs/acs5"
+    variables:
+      numerator: "B19057_002E"
+      denominator: "B19057_001E"
+    universe: "Households"
+    units: "percent"
+
+  - canonical: "households with retirement income"
+    aliases:
+      - "retirement income households"
+      - "pensions and retirement"
+    table_id: "B19059"
+    dataset: "acs/acs5"
+    variables:
+      numerator: "B19059_002E"
+      denominator: "B19059_001E"
+    universe: "Households"
+    units: "percent"
+
+  - canonical: "median earnings"
+    aliases:
+      - "worker earnings"
+      - "median worker earnings"
+      - "individual earnings"
+    table_id: "B20002"
+    dataset: "acs/acs5"
+    variables:
+      value: "B20002_001E"
+    by_geo_level:
+      msa:    { dataset: "acs/acs1" }
+      state:  { dataset: "acs/acs1" }
+    universe: "Population 16 years and over with earnings"
+    units: "dollars"
+
+  - canonical: "median earnings by educational attainment"
+    aliases:
+      - "earnings by education"
+      - "earnings by degree"
+    table_id: "B20004"
+    dataset: "acs/acs5"
+    variables:
+      value: "B20004_001E"
+    universe: "Population 25 years and over with earnings"
+    units: "dollars"
+
+  - canonical: "income to poverty ratio"
+    aliases:
+      - "ratio of income to poverty"
+      - "poverty ratio"
+      - "income relative to poverty"
+    table_id: "C17002"
+    dataset: "acs/acs5"
+    variables:
+      value: "C17002_001E"
+    universe: "Population for whom poverty status is determined"
+    units: "count"
+    notes: "Total; ratio bracket cells in C17002_002E…_008E (under .50 to 2.00+)."
+
+  - canonical: "median household income white"
+    aliases:
+      - "white household income"
+      - "median income white alone"
+    table_id: "B19013A"
+    dataset: "acs/acs5"
+    variables:
+      value: "B19013A_001E"
+    by_geo_level:
+      msa:    { dataset: "acs/acs1" }
+      state:  { dataset: "acs/acs1" }
+    universe: "Households with a white alone householder"
+    units: "dollars"
+
+  - canonical: "median household income black"
+    aliases:
+      - "black household income"
+      - "median income black or african american"
+    table_id: "B19013B"
+    dataset: "acs/acs5"
+    variables:
+      value: "B19013B_001E"
+    by_geo_level:
+      msa:    { dataset: "acs/acs1" }
+      state:  { dataset: "acs/acs1" }
+    universe: "Households with a Black alone householder"
+    units: "dollars"
+
+  - canonical: "median household income asian"
+    aliases:
+      - "asian household income"
+      - "median income asian alone"
+    table_id: "B19013D"
+    dataset: "acs/acs5"
+    variables:
+      value: "B19013D_001E"
+    by_geo_level:
+      msa:    { dataset: "acs/acs1" }
+      state:  { dataset: "acs/acs1" }
+    universe: "Households with an Asian alone householder"
+    units: "dollars"
+
+  - canonical: "median household income hispanic"
+    aliases:
+      - "hispanic household income"
+      - "latino household income"
+    table_id: "B19013I"
+    dataset: "acs/acs5"
+    variables:
+      value: "B19013I_001E"
+    by_geo_level:
+      msa:    { dataset: "acs/acs1" }
+      state:  { dataset: "acs/acs1" }
+    universe: "Households with a Hispanic or Latino householder"
+    units: "dollars"
+
+  # ════════════════════════════════════════════════════════════════════
+  # POVERTY
+  # ════════════════════════════════════════════════════════════════════
+
+  - canonical: "poverty rate"
+    aliases:
+      - "poverty"
+      - "in poverty"
+      - "below poverty line"
+      - "below the poverty level"
+      - "poverty percentage"
+      - "poverty share"
+      - "seniors in poverty"
+      - "elderly in poverty"
+      - "working poverty"
+      - "deep poverty"
+      - "working poor"
+    table_id: "B17001"
+    dataset: "acs/acs5"
+    variables:
+      numerator: "B17001_002E"
+      denominator: "B17001_001E"
+    by_geo_level:
+      msa:    { dataset: "acs/acs1" }
+      state:  { dataset: "acs/acs1" }
+    universe: "Population for whom poverty status is determined"
+    units: "percent"
+
+  - canonical: "child poverty rate"
+    aliases:
+      - "children in poverty"
+      - "youth poverty"
+    table_id: "B17020"
+    dataset: "acs/acs5"
+    variables:
+      numerator: ["B17020_003E", "B17020_004E", "B17020_005E"]
+      denominator: "B17020_001E"
+    universe: "Population for whom poverty status is determined, under 18"
+    units: "percent"
+    notes: "Numerator sums under-6 + 6-11 + 12-17 below-poverty cells."
+
+  - canonical: "family poverty rate"
+    aliases:
+      - "families in poverty"
+      - "poverty rate among families"
+    table_id: "B17010"
+    dataset: "acs/acs5"
+    variables:
+      numerator: "B17010_002E"
+      denominator: "B17010_001E"
+    universe: "Families"
+    units: "percent"
+
+  - canonical: "household poverty rate"
+    aliases:
+      - "households in poverty"
+      - "poor households"
+    table_id: "B17017"
+    dataset: "acs/acs5"
+    variables:
+      numerator: "B17017_002E"
+      denominator: "B17017_001E"
+    universe: "Households"
+    units: "percent"
+
+  - canonical: "poverty rate white"
+    aliases:
+      - "white poverty rate"
+      - "white in poverty"
+    table_id: "B17001A"
+    dataset: "acs/acs5"
+    variables:
+      numerator: "B17001A_002E"
+      denominator: "B17001A_001E"
+    universe: "White alone population for whom poverty status is determined"
+    units: "percent"
+
+  - canonical: "poverty rate black"
+    aliases:
+      - "black poverty rate"
+      - "african american poverty rate"
+    table_id: "B17001B"
+    dataset: "acs/acs5"
+    variables:
+      numerator: "B17001B_002E"
+      denominator: "B17001B_001E"
+    universe: "Black alone population for whom poverty status is determined"
+    units: "percent"
+
+  - canonical: "poverty rate hispanic"
+    aliases:
+      - "hispanic poverty rate"
+      - "latino poverty rate"
+    table_id: "B17001I"
+    dataset: "acs/acs5"
+    variables:
+      numerator: "B17001I_002E"
+      denominator: "B17001I_001E"
+    universe: "Hispanic or Latino population for whom poverty status is determined"
+    units: "percent"
+
+  # ════════════════════════════════════════════════════════════════════
+  # POPULATION & AGE
+  # ════════════════════════════════════════════════════════════════════
+
+  - canonical: "total population"
+    aliases:
+      - "population"
+      - "people"
+      - "residents"
+      - "headcount"
+    table_id: "B01003"
+    dataset: "acs/acs5"
+    variables:
+      value: "B01003_001E"
+    by_geo_level:
+      msa:    { dataset: "acs/acs1" }
+      state:  { dataset: "acs/acs1" }
+    universe: "Total population"
+    units: "count"
+
+  - canonical: "median age"
+    aliases:
+      - "average age"
+      - "typical age"
+    table_id: "B01002"
+    dataset: "acs/acs5"
+    variables:
+      value: "B01002_001E"
+    by_geo_level:
+      msa:    { dataset: "acs/acs1" }
+      state:  { dataset: "acs/acs1" }
+    universe: "Total population"
+    units: "years"
+
+  - canonical: "population by age and sex"
+    aliases:
+      - "age sex breakdown"
+      - "age distribution"
+      - "demographic pyramid"
+      - "share 65 and over"
+      - "senior share"
+      - "elderly share"
+      - "senior population"
+      - "elderly population"
+      - "65 and over"
+      - "older adults"
+      - "age composition"
+    table_id: "B01001"
+    dataset: "acs/acs5"
+    variables:
+      components: ["B01001_002E", "B01001_026E"]
+    universe: "Total population"
+    units: "count"
+    notes: "Components are male/female totals; finer breakdowns are siblings."
+
+  - canonical: "children under 18"
+    aliases:
+      - "youth population"
+      - "minors"
+      - "kids"
+      - "share under 18"
+      - "children share"
+      - "youth share"
+      - "kids share"
+      - "population under 18"
+      - "child population"
+    table_id: "B09001"
+    dataset: "acs/acs5"
+    variables:
+      value: "B09001_001E"
+    by_geo_level:
+      msa:    { dataset: "acs/acs1" }
+      state:  { dataset: "acs/acs1" }
+    universe: "Population under 18"
+    units: "count"
+
+  - canonical: "population by sex"
+    aliases:
+      - "male and female population"
+      - "sex breakdown"
+    table_id: "B01001"
+    dataset: "acs/acs5"
+    variables:
+      components: ["B01001_002E", "B01001_026E"]
+    universe: "Total population"
+    units: "count"
+    notes: "Male total = _002E; female total = _026E."
+
+  - canonical: "population by age white"
+    aliases:
+      - "white population by age"
+      - "white age breakdown"
+    table_id: "B01001A"
+    dataset: "acs/acs5"
+    variables:
+      value: "B01001A_001E"
+    universe: "White alone population"
+    units: "count"
+
+  - canonical: "population by age black"
+    aliases:
+      - "black population by age"
+      - "black age breakdown"
+    table_id: "B01001B"
+    dataset: "acs/acs5"
+    variables:
+      value: "B01001B_001E"
+    universe: "Black alone population"
+    units: "count"
+
+  - canonical: "population by age hispanic"
+    aliases:
+      - "hispanic population by age"
+      - "latino age breakdown"
+    table_id: "B01001I"
+    dataset: "acs/acs5"
+    variables:
+      value: "B01001I_001E"
+    universe: "Hispanic or Latino population"
+    units: "count"
+
+  - canonical: "household composition"
+    aliases:
+      - "household types"
+      - "household structure"
+      - "family vs nonfamily households"
+    table_id: "B11001"
+    dataset: "acs/acs5"
+    variables:
+      value: "B11001_001E"
+    universe: "Households"
+    units: "count"
+    notes: "Total households; breakdown by family/nonfamily in sibling vars."
+
+  # ════════════════════════════════════════════════════════════════════
+  # RACE & ETHNICITY
+  # ════════════════════════════════════════════════════════════════════
+
+  - canonical: "racial composition"
+    aliases:
+      - "race breakdown"
+      - "racial makeup"
+      - "race"
+    table_id: "B02001"
+    dataset: "acs/acs5"
+    variables:
+      components: ["B02001_002E", "B02001_003E", "B02001_004E",
+                   "B02001_005E", "B02001_006E", "B02001_007E", "B02001_008E"]
+    universe: "Total population"
+    units: "count"
+    notes: "Components: White, Black, AIAN, Asian, NHPI, Other, Two-or-more."
+
+  - canonical: "white alone population"
+    aliases:
+      - "white population"
+      - "non-hispanic white"
+    table_id: "B02001"
+    dataset: "acs/acs5"
+    variables:
+      numerator: "B02001_002E"
+      denominator: "B02001_001E"
+    universe: "Total population"
+    units: "percent"
+
+  - canonical: "black population"
+    aliases:
+      - "black alone population"
+      - "african american population"
+    table_id: "B02001"
+    dataset: "acs/acs5"
+    variables:
+      numerator: "B02001_003E"
+      denominator: "B02001_001E"
+    universe: "Total population"
+    units: "percent"
+
+  - canonical: "asian population"
+    aliases:
+      - "asian alone"
+      - "asian americans"
+    table_id: "B02001"
+    dataset: "acs/acs5"
+    variables:
+      numerator: "B02001_005E"
+      denominator: "B02001_001E"
+    universe: "Total population"
+    units: "percent"
+
+  - canonical: "american indian or alaska native population"
+    aliases:
+      - "native american population"
+      - "aian population"
+    table_id: "B02001"
+    dataset: "acs/acs5"
+    variables:
+      numerator: "B02001_004E"
+      denominator: "B02001_001E"
+    universe: "Total population"
+    units: "percent"
+
+  - canonical: "two or more races"
+    aliases:
+      - "multiracial"
+      - "mixed race"
+    table_id: "B02001"
+    dataset: "acs/acs5"
+    variables:
+      numerator: "B02001_008E"
+      denominator: "B02001_001E"
+    universe: "Total population"
+    units: "percent"
+
+  - canonical: "hispanic or latino population"
+    aliases:
+      - "hispanic"
+      - "latino"
+      - "hispanic or latino origin"
+      - "share of hispanic or latino population"
+      - "hispanic share"
+      - "latino share"
+      - "hispanic percentage"
+      - "latino percentage"
+      - "hispanic population share"
+    table_id: "B03002"
+    dataset: "acs/acs5"
+    variables:
+      numerator: "B03002_012E"
+      denominator: "B03002_001E"
+    by_geo_level:
+      msa:    { dataset: "acs/acs1" }
+      state:  { dataset: "acs/acs1" }
+    universe: "Total population"
+    units: "percent"
+    notes: "Hispanic/Latino of any race."
+
+  - canonical: "non-hispanic white population"
+    aliases:
+      - "nh white"
+      - "non hispanic white"
+      - "white not hispanic"
+    table_id: "B03002"
+    dataset: "acs/acs5"
+    variables:
+      numerator: "B03002_003E"
+      denominator: "B03002_001E"
+    universe: "Total population"
+    units: "percent"
+
+  - canonical: "non-hispanic black population"
+    aliases:
+      - "nh black"
+      - "non hispanic black"
+    table_id: "B03002"
+    dataset: "acs/acs5"
+    variables:
+      numerator: "B03002_004E"
+      denominator: "B03002_001E"
+    universe: "Total population"
+    units: "percent"
+
+  - canonical: "hispanic origin detail"
+    aliases:
+      - "hispanic by origin"
+      - "mexican puerto rican cuban breakdown"
+    table_id: "B03001"
+    dataset: "acs/acs5"
+    variables:
+      value: "B03001_001E"
+    universe: "Total population"
+    units: "count"
+    notes: "Total; subgroups (Mexican _004E, Puerto Rican _005E, Cuban _006E, Salvadoran _016E etc.) are siblings."
+
+  # ════════════════════════════════════════════════════════════════════
+  # ORIGIN, BIRTHPLACE & MOBILITY
+  # ════════════════════════════════════════════════════════════════════
+
+  - canonical: "foreign-born population"
+    aliases:
+      - "foreign born"
+      - "immigrant population"
+      - "born outside the us"
+      - "foreign-born share"
+      - "foreign-born percentage"
+      - "immigrant share"
+      - "immigrants"
+      - "foreign born share"
+    table_id: "B05002"
+    dataset: "acs/acs5"
+    variables:
+      numerator: "B05002_013E"
+      denominator: "B05002_001E"
+    by_geo_level:
+      msa:    { dataset: "acs/acs1" }
+      state:  { dataset: "acs/acs1" }
+    universe: "Total population"
+    units: "percent"
+
+  - canonical: "naturalized citizens"
+    aliases:
+      - "naturalized us citizens"
+      - "naturalized population"
+    table_id: "B05003"
+    dataset: "acs/acs5"
+    variables:
+      value: "B05003_001E"
+    universe: "Total population"
+    units: "count"
+    notes: "Total; naturalized cells in B05003_009E (male) and _020E (female)."
+
+  - canonical: "noncitizen population"
+    aliases:
+      - "non citizens"
+      - "people who are not us citizens"
+    table_id: "B05003"
+    dataset: "acs/acs5"
+    variables:
+      value: "B05003_001E"
+    universe: "Total population"
+    units: "count"
+    notes: "Total; noncitizen cells in B05003_011E (male) and _022E (female)."
+
+  - canonical: "year of entry to us"
+    aliases:
+      - "year arrived in us"
+      - "immigration year"
+      - "year of entry"
+    table_id: "B05005"
+    dataset: "acs/acs5"
+    variables:
+      value: "B05005_001E"
+    universe: "Foreign-born population"
+    units: "count"
+
+  - canonical: "foreign-born by region of birth"
+    aliases:
+      - "place of birth foreign"
+      - "immigrant origin region"
+      - "foreign born by birthplace"
+    table_id: "B05006"
+    dataset: "acs/acs5"
+    variables:
+      value: "B05006_001E"
+    universe: "Foreign-born population"
+    units: "count"
+
+  - canonical: "geographic mobility"
+    aliases:
+      - "movers"
+      - "people who moved"
+      - "residential mobility"
+    table_id: "B07001"
+    dataset: "acs/acs5"
+    variables:
+      value: "B07001_001E"
+    universe: "Population 1 year and over"
+    units: "count"
+
+  - canonical: "geographic mobility by sex"
+    aliases:
+      - "movers by sex"
+      - "mobility by gender"
+    table_id: "B07003"
+    dataset: "acs/acs5"
+    variables:
+      value: "B07003_001E"
+    universe: "Population 1 year and over"
+    units: "count"
+
+  - canonical: "median age by place of birth"
+    aliases:
+      - "age of foreign born"
+      - "age by nativity"
+    table_id: "B06002"
+    dataset: "acs/acs5"
+    variables:
+      value: "B06002_001E"
+    universe: "Total population"
+    units: "years"
+
+  - canonical: "veterans"
+    aliases:
+      - "veteran population"
+      - "military veterans"
+    table_id: "B21001"
+    dataset: "acs/acs5"
+    variables:
+      numerator: "B21001_002E"
+      denominator: "B21001_001E"
+    by_geo_level:
+      msa:    { dataset: "acs/acs1" }
+      state:  { dataset: "acs/acs1" }
+    universe: "Civilian population 18 years and over"
+    units: "percent"
+
+  # ════════════════════════════════════════════════════════════════════
+  # HOUSING
+  # ════════════════════════════════════════════════════════════════════
+
+  - canonical: "total housing units"
+    aliases:
+      - "housing units"
+      - "housing stock"
+      - "homes"
+    table_id: "B25001"
+    dataset: "acs/acs5"
+    variables:
+      value: "B25001_001E"
+    by_geo_level:
+      msa:    { dataset: "acs/acs1" }
+      state:  { dataset: "acs/acs1" }
+    universe: "Housing units"
+    units: "count"
+
+  - canonical: "vacancy rate"
+    aliases:
+      - "vacant housing"
+      - "vacant units"
+      - "housing vacancy"
+    table_id: "B25002"
+    dataset: "acs/acs5"
+    variables:
+      numerator: "B25002_003E"
+      denominator: "B25002_001E"
+    by_geo_level:
+      msa:    { dataset: "acs/acs1" }
+      state:  { dataset: "acs/acs1" }
+    universe: "Housing units"
+    units: "percent"
+
+  - canonical: "vacancy status"
+    aliases:
+      - "vacancy types"
+      - "vacant units by type"
+      - "for sale vs for rent"
+    table_id: "B25004"
+    dataset: "acs/acs5"
+    variables:
+      value: "B25004_001E"
+    universe: "Vacant housing units"
+    units: "count"
+
+  - canonical: "homeownership rate"
+    aliases:
+      - "owner occupancy"
+      - "owner occupied"
+      - "homeowners"
+    table_id: "B25003"
+    dataset: "acs/acs5"
+    variables:
+      numerator: "B25003_002E"
+      denominator: "B25003_001E"
+    by_geo_level:
+      msa:    { dataset: "acs/acs1" }
+      state:  { dataset: "acs/acs1" }
+    universe: "Occupied housing units"
+    units: "percent"
+
+  - canonical: "renter-occupied housing"
+    aliases:
+      - "rented homes"
+      - "renter occupied"
+    table_id: "B25003"
+    dataset: "acs/acs5"
+    variables:
+      numerator: "B25003_003E"
+      denominator: "B25003_001E"
+    by_geo_level:
+      msa:    { dataset: "acs/acs1" }
+      state:  { dataset: "acs/acs1" }
+    universe: "Occupied housing units"
+    units: "percent"
+
+  - canonical: "tenure by age of householder"
+    aliases:
+      - "homeownership by age"
+      - "owners by age"
+    table_id: "B25007"
+    dataset: "acs/acs5"
+    variables:
+      value: "B25007_001E"
+    universe: "Occupied housing units"
+    units: "count"
+
+  - canonical: "average household size"
+    aliases:
+      - "average people per household"
+      - "avg household size"
+    table_id: "B25010"
+    dataset: "acs/acs5"
+    variables:
+      value: "B25010_001E"
+    universe: "Occupied housing units"
+    units: "count"
+    notes: "Average household size in occupied units."
+
+  - canonical: "year structure built"
+    aliases:
+      - "housing age"
+      - "age of homes"
+      - "structure age"
+    table_id: "B25034"
+    dataset: "acs/acs5"
+    variables:
+      value: "B25034_001E"
+    universe: "Housing units"
+    units: "count"
+
+  - canonical: "units in structure"
+    aliases:
+      - "housing structure type"
+      - "single family vs multifamily"
+      - "units per building"
+    table_id: "B25024"
+    dataset: "acs/acs5"
+    variables:
+      value: "B25024_001E"
+    universe: "Housing units"
+    units: "count"
+
+  - canonical: "housing units by tenure"
+    aliases:
+      - "units by ownership"
+      - "owner vs renter units"
+    table_id: "B25032"
+    dataset: "acs/acs5"
+    variables:
+      value: "B25032_001E"
+    universe: "Occupied housing units"
+    units: "count"
+
+  - canonical: "heating fuel type"
+    aliases:
+      - "house heating fuel"
+      - "primary heating source"
+    table_id: "B25040"
+    dataset: "acs/acs5"
+    variables:
+      value: "B25040_001E"
+    universe: "Occupied housing units"
+    units: "count"
+
+  - canonical: "bedrooms per unit"
+    aliases:
+      - "bedrooms"
+      - "number of bedrooms"
+    table_id: "B25041"
+    dataset: "acs/acs5"
+    variables:
+      value: "B25041_001E"
+    universe: "Housing units"
+    units: "count"
+
+  - canonical: "households without a vehicle"
+    aliases:
+      - "no vehicle households"
+      - "vehicle availability"
+      - "carless households"
+      - "zero vehicle households"
+      - "share without a vehicle"
+      - "no vehicle access"
+      - "without a car"
+      - "without a vehicle"
+      - "no car households"
+    table_id: "B25044"
+    dataset: "acs/acs5"
+    variables:
+      numerator: ["B25044_003E", "B25044_010E"]
+      denominator: "B25044_001E"
+    by_geo_level:
+      msa:    { dataset: "acs/acs1" }
+      state:  { dataset: "acs/acs1" }
+    universe: "Occupied housing units"
+    units: "percent"
+    notes: "Sums owner + renter no-vehicle households."
+
+  - canonical: "lacking complete plumbing"
+    aliases:
+      - "no plumbing"
+      - "plumbing facilities"
+    table_id: "B25048"
+    dataset: "acs/acs5"
+    variables:
+      value: "B25048_001E"
+    universe: "Occupied housing units"
+    units: "count"
+    notes: "Total; lacking-plumbing cells are siblings."
+
+  - canonical: "lacking complete kitchen"
+    aliases:
+      - "no kitchen"
+      - "kitchen facilities"
+    table_id: "B25052"
+    dataset: "acs/acs5"
+    variables:
+      value: "B25052_001E"
+    universe: "Occupied housing units"
+    units: "count"
+
+  - canonical: "median gross rent"
+    aliases:
+      - "rent"
+      - "median rent"
+      - "typical rent"
+    table_id: "B25064"
+    dataset: "acs/acs5"
+    variables:
+      value: "B25064_001E"
+    by_geo_level:
+      msa:    { dataset: "acs/acs1" }
+      state:  { dataset: "acs/acs1" }
+    universe: "Renter-occupied housing units paying cash rent"
+    units: "dollars"
+
+  - canonical: "median contract rent"
+    aliases:
+      - "contract rent"
+      - "median base rent"
+    table_id: "B25058"
+    dataset: "acs/acs5"
+    variables:
+      value: "B25058_001E"
+    by_geo_level:
+      msa:    { dataset: "acs/acs1" }
+      state:  { dataset: "acs/acs1" }
+    universe: "Renter-occupied housing units with cash rent"
+    units: "dollars"
+    notes: "Excludes utilities; gross rent is preferred for affordability calcs."
+
+  - canonical: "rent burden"
+    aliases:
+      - "rent cost burden"
+      - "rent as percent of income"
+      - "rent burdened households"
+    table_id: "B25070"
+    dataset: "acs/acs5"
+    variables:
+      numerator: ["B25070_007E", "B25070_008E", "B25070_009E", "B25070_010E"]
+      denominator: "B25070_001E"
+    by_geo_level:
+      msa:    { dataset: "acs/acs1" }
+      state:  { dataset: "acs/acs1" }
+    universe: "Renter-occupied housing units"
+    units: "percent"
+    notes: "Share of renters paying ≥30% of household income on rent."
+
+  - canonical: "severe rent burden"
+    aliases:
+      - "extreme rent burden"
+      - "rent over 50 percent"
+    table_id: "B25070"
+    dataset: "acs/acs5"
+    variables:
+      numerator: "B25070_010E"
+      denominator: "B25070_001E"
+    by_geo_level:
+      msa:    { dataset: "acs/acs1" }
+      state:  { dataset: "acs/acs1" }
+    universe: "Renter-occupied housing units"
+    units: "percent"
+    notes: "Renters paying ≥50% of income on rent."
+
+  - canonical: "median gross rent as percent of income"
+    aliases:
+      - "median rent burden percent"
+      - "gross rent share of income"
+    table_id: "B25071"
+    dataset: "acs/acs5"
+    variables:
+      value: "B25071_001E"
+    by_geo_level:
+      msa:    { dataset: "acs/acs1" }
+      state:  { dataset: "acs/acs1" }
+    universe: "Renter-occupied housing units"
+    units: "percent"
+
+  - canonical: "median home value"
+    aliases:
+      - "home value"
+      - "house value"
+      - "property value"
+      - "typical home value"
+    table_id: "B25077"
+    dataset: "acs/acs5"
+    variables:
+      value: "B25077_001E"
+    by_geo_level:
+      msa:    { dataset: "acs/acs1" }
+      state:  { dataset: "acs/acs1" }
+    universe: "Owner-occupied housing units"
+    units: "dollars"
+
+  - canonical: "value of owner-occupied housing"
+    aliases:
+      - "house value distribution"
+      - "home value brackets"
+    table_id: "B25075"
+    dataset: "acs/acs5"
+    variables:
+      value: "B25075_001E"
+    universe: "Owner-occupied housing units"
+    units: "count"
+
+  - canonical: "mortgage status"
+    aliases:
+      - "with mortgage"
+      - "owners with and without mortgage"
+    table_id: "B25081"
+    dataset: "acs/acs5"
+    variables:
+      value: "B25081_001E"
+    universe: "Owner-occupied housing units"
+    units: "count"
+
+  - canonical: "mortgage cost burden"
+    aliases:
+      - "mortgage burden"
+      - "housing cost burden owners"
+      - "mortgaged owners cost burden"
+    table_id: "B25091"
+    dataset: "acs/acs5"
+    variables:
+      numerator: ["B25091_008E", "B25091_009E", "B25091_010E", "B25091_011E"]
+      denominator: "B25091_001E"
+    by_geo_level:
+      msa:    { dataset: "acs/acs1" }
+      state:  { dataset: "acs/acs1" }
+    universe: "Owner-occupied housing units with a mortgage"
+    units: "percent"
+    notes: "Share of mortgaged owners paying ≥30% of income on housing costs."
+
+  - canonical: "median selected monthly owner costs"
+    aliases:
+      - "owner monthly housing costs"
+      - "monthly homeowner costs"
+      - "smoc"
+    table_id: "B25088"
+    dataset: "acs/acs5"
+    variables:
+      value: "B25088_001E"
+    by_geo_level:
+      msa:    { dataset: "acs/acs1" }
+      state:  { dataset: "acs/acs1" }
+    universe: "Owner-occupied housing units"
+    units: "dollars"
+    notes: "Median includes mortgaged + non-mortgaged owners; sibling vars split."
+
+  - canonical: "median monthly housing costs"
+    aliases:
+      - "median housing costs"
+      - "monthly housing cost"
+    table_id: "B25105"
+    dataset: "acs/acs5"
+    variables:
+      value: "B25105_001E"
+    by_geo_level:
+      msa:    { dataset: "acs/acs1" }
+      state:  { dataset: "acs/acs1" }
+    universe: "Occupied housing units"
+    units: "dollars"
+
+  - canonical: "median value mortgaged"
+    aliases:
+      - "median home value with mortgage"
+      - "mortgaged property value"
+    table_id: "B25097"
+    dataset: "acs/acs5"
+    variables:
+      value: "B25097_001E"
+    by_geo_level:
+      msa:    { dataset: "acs/acs1" }
+      state:  { dataset: "acs/acs1" }
+    universe: "Owner-occupied housing units with a mortgage"
+    units: "dollars"
+
+  - canonical: "real estate taxes"
+    aliases:
+      - "property tax"
+      - "real estate property tax"
+    table_id: "B25103"
+    dataset: "acs/acs5"
+    variables:
+      value: "B25103_001E"
+    universe: "Owner-occupied housing units"
+    units: "count"
+    notes: "Total; property-tax bucket cells are siblings."
+
+  # ════════════════════════════════════════════════════════════════════
+  # EDUCATION
+  # ════════════════════════════════════════════════════════════════════
+
+  - canonical: "school enrollment"
+    aliases:
+      - "students enrolled"
+      - "enrollment"
+    table_id: "B14001"
+    dataset: "acs/acs5"
+    variables:
+      value: "B14001_001E"
+    universe: "Population 3 years and over"
+    units: "count"
+
+  - canonical: "school enrollment by sex"
+    aliases:
+      - "enrollment by gender"
+      - "enrolled by sex"
+    table_id: "B14002"
+    dataset: "acs/acs5"
+    variables:
+      value: "B14002_001E"
+    universe: "Population 3 years and over"
+    units: "count"
+
+  - canonical: "public school enrollment"
+    aliases:
+      - "public school students"
+      - "in public school"
+    table_id: "B14003"
+    dataset: "acs/acs5"
+    variables:
+      value: "B14003_001E"
+    universe: "Population 3 years and over enrolled in school"
+    units: "count"
+
+  - canonical: "private school enrollment"
+    aliases:
+      - "private school students"
+      - "in private school"
+    table_id: "B14002"
+    dataset: "acs/acs5"
+    variables:
+      value: "B14002_001E"
+    universe: "Population 3 years and over"
+    units: "count"
+    notes: "Total enrollment; private-school cells are siblings."
+
+  - canonical: "educational attainment"
+    aliases:
+      - "education levels"
+      - "highest degree"
+      - "education completed"
+    table_id: "B15003"
+    dataset: "acs/acs5"
+    variables:
+      value: "B15003_001E"
+    universe: "Population 25 years and over"
+    units: "count"
+
+  - canonical: "educational attainment by sex"
+    aliases:
+      - "education by sex"
+      - "education by gender"
+    table_id: "B15002"
+    dataset: "acs/acs5"
+    variables:
+      value: "B15002_001E"
+    universe: "Population 25 years and over"
+    units: "count"
+
+  - canonical: "less than high school"
+    aliases:
+      - "no high school diploma"
+      - "did not finish high school"
+      - "high school dropouts"
+    table_id: "B15003"
+    dataset: "acs/acs5"
+    variables:
+      numerator: ["B15003_002E", "B15003_003E", "B15003_004E",
+                  "B15003_005E", "B15003_006E", "B15003_007E",
+                  "B15003_008E", "B15003_009E", "B15003_010E",
+                  "B15003_011E", "B15003_012E", "B15003_013E",
+                  "B15003_014E", "B15003_015E", "B15003_016E"]
+      denominator: "B15003_001E"
+    universe: "Population 25 years and over"
+    units: "percent"
+    notes: "Sums no-schooling through 12th grade no diploma."
+
+  - canonical: "high school graduate or higher"
+    aliases:
+      - "high school grad or more"
+      - "hs diploma"
+      - "completed high school"
+    table_id: "B15003"
+    dataset: "acs/acs5"
+    variables:
+      numerator: ["B15003_017E", "B15003_018E", "B15003_019E",
+                  "B15003_020E", "B15003_021E", "B15003_022E",
+                  "B15003_023E", "B15003_024E", "B15003_025E"]
+      denominator: "B15003_001E"
+    by_geo_level:
+      msa:    { dataset: "acs/acs1" }
+      state:  { dataset: "acs/acs1" }
+    universe: "Population 25 years and over"
+    units: "percent"
+
+  - canonical: "some college no degree"
+    aliases:
+      - "some college"
+      - "attended college without degree"
+    table_id: "B15003"
+    dataset: "acs/acs5"
+    variables:
+      numerator: ["B15003_019E", "B15003_020E"]
+      denominator: "B15003_001E"
+    universe: "Population 25 years and over"
+    units: "percent"
+
+  - canonical: "associate's degree"
+    aliases:
+      - "associates degree"
+      - "two year degree"
+    table_id: "B15003"
+    dataset: "acs/acs5"
+    variables:
+      numerator: "B15003_021E"
+      denominator: "B15003_001E"
+    universe: "Population 25 years and over"
+    units: "percent"
+
+  - canonical: "bachelor's degree or higher"
+    aliases:
+      - "college degree"
+      - "college graduates"
+      - "higher education attainment"
+      - "bachelors or higher"
+    table_id: "B15003"
+    dataset: "acs/acs5"
+    variables:
+      numerator: ["B15003_022E", "B15003_023E",
+                  "B15003_024E", "B15003_025E"]
+      denominator: "B15003_001E"
+    by_geo_level:
+      msa:    { dataset: "acs/acs1" }
+      state:  { dataset: "acs/acs1" }
+    universe: "Population 25 years and over"
+    units: "percent"
+    notes: "Sums bachelor's + master's + professional + doctorate."
+
+  - canonical: "graduate or professional degree"
+    aliases:
+      - "advanced degree"
+      - "masters or higher"
+      - "graduate degree"
+    table_id: "B15003"
+    dataset: "acs/acs5"
+    variables:
+      numerator: ["B15003_023E", "B15003_024E", "B15003_025E"]
+      denominator: "B15003_001E"
+    universe: "Population 25 years and over"
+    units: "percent"
+
+  # ════════════════════════════════════════════════════════════════════
+  # EMPLOYMENT
+  # ════════════════════════════════════════════════════════════════════
+
+  - canonical: "unemployment rate"
+    aliases:
+      - "unemployed"
+      - "joblessness"
+    table_id: "B23025"
+    dataset: "acs/acs5"
+    variables:
+      numerator: "B23025_005E"
+      denominator: "B23025_003E"
+    by_geo_level:
+      msa:    { dataset: "acs/acs1" }
+      state:  { dataset: "acs/acs1" }
+    universe: "Civilian labor force, population 16 years and over"
+    units: "percent"
+
+  - canonical: "labor force participation"
+    aliases:
+      - "labor force"
+      - "workforce participation"
+      - "lfpr"
+    table_id: "B23025"
+    dataset: "acs/acs5"
+    variables:
+      numerator: "B23025_002E"
+      denominator: "B23025_001E"
+    by_geo_level:
+      msa:    { dataset: "acs/acs1" }
+      state:  { dataset: "acs/acs1" }
+    universe: "Population 16 years and over"
+    units: "percent"
+
+  - canonical: "employment by sex by age"
+    aliases:
+      - "employment status by age"
+      - "labor force by age"
+    table_id: "B23001"
+    dataset: "acs/acs5"
+    variables:
+      value: "B23001_001E"
+    universe: "Population 16 years and over"
+    units: "count"
+
+  - canonical: "employment status by educational attainment"
+    aliases:
+      - "employment by education"
+      - "unemployment by education"
+    table_id: "B23006"
+    dataset: "acs/acs5"
+    variables:
+      value: "B23006_001E"
+    universe: "Population 25 to 64 years"
+    units: "count"
+
+  - canonical: "employment by industry"
+    aliases:
+      - "industry breakdown"
+      - "industry employment"
+      - "workers by industry"
+    table_id: "C24050"
+    dataset: "acs/acs5"
+    variables:
+      value: "C24050_001E"
+    universe: "Civilian employed population 16 years and over"
+    units: "count"
+
+  - canonical: "employment by occupation"
+    aliases:
+      - "occupation breakdown"
+      - "workers by occupation"
+    table_id: "C24010"
+    dataset: "acs/acs5"
+    variables:
+      value: "C24010_001E"
+    universe: "Civilian employed population 16 years and over"
+    units: "count"
+
+  - canonical: "industry detail"
+    aliases:
+      - "detailed industry"
+      - "industry sectors"
+    table_id: "C24030"
+    dataset: "acs/acs5"
+    variables:
+      value: "C24030_001E"
+    universe: "Civilian employed population 16 years and over"
+    units: "count"
+
+  - canonical: "median earnings by occupation"
+    aliases:
+      - "earnings by occupation"
+      - "occupation earnings"
+    table_id: "B24011"
+    dataset: "acs/acs5"
+    variables:
+      value: "B24011_001E"
+    universe: "Civilian employed population 16 years and over with earnings"
+    units: "dollars"
+
+  - canonical: "median earnings by occupation full-time"
+    aliases:
+      - "full time earnings by occupation"
+      - "fulltime occupation earnings"
+    table_id: "B24012"
+    dataset: "acs/acs5"
+    variables:
+      value: "B24012_001E"
+    universe: "Civilian employed full-time year-round workers 16+"
+    units: "dollars"
+
+  - canonical: "occupation by sex"
+    aliases:
+      - "occupation gender breakdown"
+      - "men and women by occupation"
+    table_id: "B24021"
+    dataset: "acs/acs5"
+    variables:
+      value: "B24021_001E"
+    universe: "Civilian employed population 16 years and over"
+    units: "count"
+
+  - canonical: "earnings by occupation male"
+    aliases:
+      - "male earnings by occupation"
+    table_id: "B24031"
+    dataset: "acs/acs5"
+    variables:
+      value: "B24031_001E"
+    universe: "Civilian employed male population 16+ with earnings"
+    units: "dollars"
+
+  - canonical: "earnings by occupation female"
+    aliases:
+      - "female earnings by occupation"
+      - "women's earnings by occupation"
+    table_id: "B24032"
+    dataset: "acs/acs5"
+    variables:
+      value: "B24032_001E"
+    universe: "Civilian employed female population 16+ with earnings"
+    units: "dollars"
+
+  - canonical: "class of worker by sex"
+    aliases:
+      - "private vs public workers"
+      - "self employed vs salaried"
+      - "class of worker"
+    table_id: "B24080"
+    dataset: "acs/acs5"
+    variables:
+      value: "B24080_001E"
+    universe: "Civilian employed population 16 years and over"
+    units: "count"
+    notes: "Total; private/govt/self-employed cells in siblings."
+
+  - canonical: "self-employment income"
+    aliases:
+      - "self employed"
+      - "self-employed income"
+      - "entrepreneurial income"
+    table_id: "B19053"
+    dataset: "acs/acs5"
+    variables:
+      value: "B19053_001E"
+    universe: "Households"
+    units: "count"
+    notes: "Total households; with-self-employment-income breakdowns are siblings."
+
+  - canonical: "weeks worked last year"
+    aliases:
+      - "weeks worked"
+      - "full year vs part year workers"
+    table_id: "B23022"
+    dataset: "acs/acs5"
+    variables:
+      value: "B23022_001E"
+    universe: "Population 16 years and over"
+    units: "count"
+
+  - canonical: "usual hours worked"
+    aliases:
+      - "hours worked weekly"
+      - "full time vs part time"
+    table_id: "B23024"
+    dataset: "acs/acs5"
+    variables:
+      value: "B23024_001E"
+    universe: "Population 16 years and over with earnings in past 12 months"
+    units: "count"
+
+  - canonical: "low-income workers"
+    aliases:
+      - "earnings under poverty"
+      - "low wage workers"
+      - "below-poverty earners"
+    table_id: "B08134"
+    dataset: "acs/acs5"
+    variables:
+      value: "B08134_001E"
+    universe: "Workers 16 years and over"
+    units: "count"
+    notes: "Total workers; commute-mode + earnings cross-tabs in siblings."
+
+  # ════════════════════════════════════════════════════════════════════
+  # INSURANCE & HEALTH
+  # ════════════════════════════════════════════════════════════════════
+
+  - canonical: "health insurance coverage"
+    aliases:
+      - "health insurance"
+      - "insured population"
+    table_id: "B27001"
+    dataset: "acs/acs5"
+    variables:
+      value: "B27001_001E"
+    universe: "Civilian noninstitutionalized population"
+    units: "count"
+
+  - canonical: "uninsured rate"
+    aliases:
+      - "without health insurance"
+      - "no health insurance"
+      - "uninsured"
+      - "lacking insurance"
+      - "uninsured percentage"
+      - "uninsured share"
+      - "child uninsured rate"
+      - "coverage gap"
+    table_id: "B27010"
+    dataset: "acs/acs5"
+    variables:
+      numerator: ["B27010_017E", "B27010_033E",
+                  "B27010_050E", "B27010_066E"]
+      denominator: "B27010_001E"
+    by_geo_level:
+      msa:    { dataset: "acs/acs1" }
+      state:  { dataset: "acs/acs1" }
+    universe: "Civilian noninstitutionalized population"
+    units: "percent"
+    notes: "Sums no-coverage cells across the four age brackets."
+
+  - canonical: "private health insurance"
+    aliases:
+      - "private insurance"
+      - "employer insurance"
+    table_id: "B27002"
+    dataset: "acs/acs5"
+    variables:
+      value: "B27002_001E"
+    universe: "Civilian noninstitutionalized population"
+    units: "count"
+
+  - canonical: "public health insurance"
+    aliases:
+      - "public insurance"
+      - "government insurance"
+      - "medicaid or medicare"
+    table_id: "B27003"
+    dataset: "acs/acs5"
+    variables:
+      value: "B27003_001E"
+    universe: "Civilian noninstitutionalized population"
+    units: "count"
+
+  - canonical: "insurance coverage by employment status"
+    aliases:
+      - "insurance and employment"
+      - "insurance by work status"
+    table_id: "B27011"
+    dataset: "acs/acs5"
+    variables:
+      value: "B27011_001E"
+    universe: "Civilian noninstitutionalized population 19 to 64"
+    units: "count"
+
+  - canonical: "insurance coverage by income"
+    aliases:
+      - "insurance by poverty status"
+      - "insurance by income level"
+    table_id: "B27015"
+    dataset: "acs/acs5"
+    variables:
+      value: "B27015_001E"
+    universe: "Civilian noninstitutionalized population 19 to 64"
+    units: "count"
+
+  - canonical: "disability status"
+    aliases:
+      - "people with disabilities"
+      - "disability"
+      - "disabled population"
+      - "disability rate"
+      - "disability share"
+      - "disability prevalence"
+      - "share with disabilities"
+      - "share with a disability"
+    table_id: "B18101"
+    dataset: "acs/acs5"
+    variables:
+      value: "B18101_001E"
+    universe: "Civilian noninstitutionalized population"
+    units: "count"
+
+  - canonical: "hearing difficulty"
+    aliases:
+      - "deaf or hard of hearing"
+      - "hearing impairment"
+    table_id: "B18102"
+    dataset: "acs/acs5"
+    variables:
+      value: "B18102_001E"
+    universe: "Civilian noninstitutionalized population"
+    units: "count"
+
+  - canonical: "vision difficulty"
+    aliases:
+      - "blind or low vision"
+      - "visual impairment"
+    table_id: "B18103"
+    dataset: "acs/acs5"
+    variables:
+      value: "B18103_001E"
+    universe: "Civilian noninstitutionalized population"
+    units: "count"
+
+  - canonical: "cognitive difficulty"
+    aliases:
+      - "cognitive disability"
+      - "memory or thinking difficulty"
+    table_id: "B18104"
+    dataset: "acs/acs5"
+    variables:
+      value: "B18104_001E"
+    universe: "Civilian noninstitutionalized population 5 years and over"
+    units: "count"
+
+  - canonical: "ambulatory difficulty"
+    aliases:
+      - "mobility difficulty"
+      - "physical disability"
+    table_id: "B18105"
+    dataset: "acs/acs5"
+    variables:
+      value: "B18105_001E"
+    universe: "Civilian noninstitutionalized population 5 years and over"
+    units: "count"
+
+  - canonical: "self-care difficulty"
+    aliases:
+      - "self care disability"
+      - "personal care difficulty"
+    table_id: "B18106"
+    dataset: "acs/acs5"
+    variables:
+      value: "B18106_001E"
+    universe: "Civilian noninstitutionalized population 5 years and over"
+    units: "count"
+
+  - canonical: "independent living difficulty"
+    aliases:
+      - "independent living disability"
+      - "errands and appointments difficulty"
+    table_id: "B18107"
+    dataset: "acs/acs5"
+    variables:
+      value: "B18107_001E"
+    universe: "Civilian noninstitutionalized population 18 years and over"
+    units: "count"
+
+  # ════════════════════════════════════════════════════════════════════
+  # TRANSPORTATION
+  # ════════════════════════════════════════════════════════════════════
+
+  - canonical: "commute time distribution"
+    aliases:
+      - "commute time"
+      - "travel time to work"
+      - "commute duration"
+    table_id: "B08303"
+    dataset: "acs/acs5"
+    variables:
+      value: "B08303_001E"
+    universe: "Workers 16 years and over who did not work from home"
+    units: "count"
+    notes: "Total commuters; bucketed minute ranges in sibling _002E…_013E."
+
+  - canonical: "long commute"
+    aliases:
+      - "commute over 60 minutes"
+      - "long distance commute"
+    table_id: "B08303"
+    dataset: "acs/acs5"
+    variables:
+      numerator: ["B08303_012E", "B08303_013E"]
+      denominator: "B08303_001E"
+    universe: "Workers 16 years and over who did not work from home"
+    units: "percent"
+    notes: "Workers commuting 60+ minutes."
+
+  - canonical: "mean commute time"
+    aliases:
+      - "average commute time"
+      - "mean travel time to work"
+    table_id: "B08013"
+    dataset: "acs/acs5"
+    variables:
+      value: "B08013_001E"
+    by_geo_level:
+      msa:    { dataset: "acs/acs1" }
+      state:  { dataset: "acs/acs1" }
+    universe: "Workers 16 years and over who did not work from home"
+    units: "minutes"
+    notes: "Aggregate travel time; planner divides by B08303_001E for mean."
+
+  - canonical: "public transit usage"
+    aliases:
+      - "transit commuters"
+      - "public transportation to work"
+      - "ride transit"
+    table_id: "B08301"
+    dataset: "acs/acs5"
+    variables:
+      numerator: "B08301_010E"
+      denominator: "B08301_001E"
+    by_geo_level:
+      msa:    { dataset: "acs/acs1" }
+      state:  { dataset: "acs/acs1" }
+    universe: "Workers 16 years and over"
+    units: "percent"
+    notes: "Public transportation excluding taxicab."
+
+  - canonical: "drove alone to work"
+    aliases:
+      - "solo drivers"
+      - "single occupant vehicles"
+      - "drove alone"
+    table_id: "B08301"
+    dataset: "acs/acs5"
+    variables:
+      numerator: "B08301_003E"
+      denominator: "B08301_001E"
+    by_geo_level:
+      msa:    { dataset: "acs/acs1" }
+      state:  { dataset: "acs/acs1" }
+    universe: "Workers 16 years and over"
+    units: "percent"
+
+  - canonical: "carpool to work"
+    aliases:
+      - "carpooled"
+      - "shared rides to work"
+    table_id: "B08301"
+    dataset: "acs/acs5"
+    variables:
+      numerator: "B08301_004E"
+      denominator: "B08301_001E"
+    by_geo_level:
+      msa:    { dataset: "acs/acs1" }
+      state:  { dataset: "acs/acs1" }
+    universe: "Workers 16 years and over"
+    units: "percent"
+
+  - canonical: "walked to work"
+    aliases:
+      - "pedestrian commuters"
+      - "walking to work"
+    table_id: "B08301"
+    dataset: "acs/acs5"
+    variables:
+      numerator: "B08301_019E"
+      denominator: "B08301_001E"
+    universe: "Workers 16 years and over"
+    units: "percent"
+
+  - canonical: "worked from home"
+    aliases:
+      - "remote workers"
+      - "work from home"
+      - "telecommuters"
+      - "share working from home"
+      - "remote work rate"
+      - "wfh share"
+      - "working from home"
+      - "wfh rate"
+    table_id: "B08301"
+    dataset: "acs/acs5"
+    variables:
+      numerator: "B08301_021E"
+      denominator: "B08301_001E"
+    by_geo_level:
+      msa:    { dataset: "acs/acs1" }
+      state:  { dataset: "acs/acs1" }
+    universe: "Workers 16 years and over"
+    units: "percent"
+
+  - canonical: "bicycle to work"
+    aliases:
+      - "biked to work"
+      - "cycling commuters"
+    table_id: "B08301"
+    dataset: "acs/acs5"
+    variables:
+      numerator: "B08301_018E"
+      denominator: "B08301_001E"
+    universe: "Workers 16 years and over"
+    units: "percent"
+
+  - canonical: "means of transportation to work"
+    aliases:
+      - "commute mode"
+      - "how people commute"
+      - "transportation to work"
+    table_id: "B08006"
+    dataset: "acs/acs5"
+    variables:
+      value: "B08006_001E"
+    universe: "Workers 16 years and over"
+    units: "count"
+
+  - canonical: "vehicles available"
+    aliases:
+      - "vehicles per household"
+      - "household vehicles"
+    table_id: "B08203"
+    dataset: "acs/acs5"
+    variables:
+      value: "B08203_001E"
+    universe: "Households"
+    units: "count"
+
+  # ════════════════════════════════════════════════════════════════════
+  # FAMILIES & HOUSEHOLDS
+  # ════════════════════════════════════════════════════════════════════
+
+  - canonical: "households with children"
+    aliases:
+      - "families with kids"
+      - "households with own children"
+    table_id: "B11005"
+    dataset: "acs/acs5"
+    variables:
+      numerator: "B11005_002E"
+      denominator: "B11005_001E"
+    by_geo_level:
+      msa:    { dataset: "acs/acs1" }
+      state:  { dataset: "acs/acs1" }
+    universe: "Households"
+    units: "percent"
+
+  - canonical: "household size"
+    aliases:
+      - "people per household"
+      - "household size distribution"
+    table_id: "B11016"
+    dataset: "acs/acs5"
+    variables:
+      value: "B11016_001E"
+    universe: "Households"
+    units: "count"
+    notes: "Total households; size breakdowns are sibling vars."
+
+  - canonical: "family households"
+    aliases:
+      - "family vs nonfamily"
+      - "families"
+    table_id: "B11003"
+    dataset: "acs/acs5"
+    variables:
+      value: "B11003_001E"
+    universe: "Family households"
+    units: "count"
+
+  - canonical: "single-parent households"
+    aliases:
+      - "single parents"
+      - "one parent households"
+      - "lone parent families"
+    table_id: "B11003"
+    dataset: "acs/acs5"
+    variables:
+      numerator: ["B11003_010E", "B11003_016E"]
+      denominator: "B11003_001E"
+    universe: "Family households"
+    units: "percent"
+    notes: "Sums male householder no spouse + female householder no spouse with own children present."
+
+  - canonical: "married couple households"
+    aliases:
+      - "married couples"
+      - "married households"
+    table_id: "B11003"
+    dataset: "acs/acs5"
+    variables:
+      numerator: "B11003_002E"
+      denominator: "B11003_001E"
+    universe: "Family households"
+    units: "percent"
+
+  - canonical: "household type"
+    aliases:
+      - "household types detailed"
+      - "household structure detail"
+    table_id: "B11007"
+    dataset: "acs/acs5"
+    variables:
+      value: "B11007_001E"
+    universe: "Households"
+    units: "count"
+
+  - canonical: "households by household type"
+    aliases:
+      - "household composition detailed"
+    table_id: "B11012"
+    dataset: "acs/acs5"
+    variables:
+      value: "B11012_001E"
+    universe: "Households"
+    units: "count"
+
+  - canonical: "tenure by household size"
+    aliases:
+      - "owner vs renter by household size"
+    table_id: "B25009"
+    dataset: "acs/acs5"
+    variables:
+      value: "B25009_001E"
+    universe: "Occupied housing units"
+    units: "count"
+
+  - canonical: "seniors living alone"
+    aliases:
+      - "elderly living alone"
+      - "65+ living alone"
+      - "older adults alone"
+    table_id: "B09010"
+    dataset: "acs/acs5"
+    variables:
+      value: "B09010_001E"
+    universe: "Population 65 years and over in households"
+    units: "count"
+
+  - canonical: "children by family type"
+    aliases:
+      - "kids living arrangements"
+      - "children by household type"
+    table_id: "B09002"
+    dataset: "acs/acs5"
+    variables:
+      value: "B09002_001E"
+    universe: "Own children under 18"
+    units: "count"
+
+  - canonical: "children by family marital status"
+    aliases:
+      - "children with married parents"
+      - "children with unmarried parents"
+    table_id: "B09005"
+    dataset: "acs/acs5"
+    variables:
+      value: "B09005_001E"
+    universe: "Children under 18 in households"
+    units: "count"
+
+  - canonical: "grandparents living with grandchildren"
+    aliases:
+      - "grandparents with grandkids"
+      - "grandparent caregivers"
+    table_id: "B10054"
+    dataset: "acs/acs5"
+    variables:
+      value: "B10054_001E"
+    universe: "Population 30 years and over"
+    units: "count"
+
+  - canonical: "grandparents responsible for grandchildren"
+    aliases:
+      - "grandparents raising grandchildren"
+      - "kinship care grandparents"
+    table_id: "B10063"
+    dataset: "acs/acs5"
+    variables:
+      value: "B10063_001E"
+    universe: "Grandparents living with own grandchildren under 18"
+    units: "count"
+
+  - canonical: "marital status"
+    aliases:
+      - "married divorced widowed never married"
+      - "marital breakdown"
+    table_id: "B12001"
+    dataset: "acs/acs5"
+    variables:
+      value: "B12001_001E"
+    universe: "Population 15 years and over"
+    units: "count"
+
+  - canonical: "marital status by sex by age"
+    aliases:
+      - "marital status by demographics"
+      - "marriage by age and sex"
+    table_id: "B12002"
+    dataset: "acs/acs5"
+    variables:
+      value: "B12002_001E"
+    universe: "Population 15 years and over"
+    units: "count"
+
+  - canonical: "women who had a birth"
+    aliases:
+      - "recent births"
+      - "fertility indicator"
+      - "women with birth past year"
+    table_id: "B13002"
+    dataset: "acs/acs5"
+    variables:
+      value: "B13002_001E"
+    universe: "Women 15 to 50 years"
+    units: "count"
+    notes: "Total; with-birth-past-12-months cells in siblings."
+
+  - canonical: "fertility by age"
+    aliases:
+      - "births by mother age"
+      - "fertility by mother age"
+    table_id: "B13016"
+    dataset: "acs/acs5"
+    variables:
+      value: "B13016_001E"
+    universe: "Women 15 to 50 years"
+    units: "count"
+
+  # ════════════════════════════════════════════════════════════════════
+  # LANGUAGE & DIGITAL ACCESS
+  # ════════════════════════════════════════════════════════════════════
+
+  - canonical: "language spoken at home"
+    aliases:
+      - "languages at home"
+      - "non-english at home"
+    table_id: "B16001"
+    dataset: "acs/acs5"
+    variables:
+      value: "B16001_001E"
+    universe: "Population 5 years and over"
+    units: "count"
+
+  - canonical: "language by ability to speak english"
+    aliases:
+      - "english ability by language"
+    table_id: "B16002"
+    dataset: "acs/acs5"
+    variables:
+      value: "B16002_001E"
+    universe: "Population 5 years and over in households"
+    units: "count"
+
+  - canonical: "english-speaking ability"
+    aliases:
+      - "english proficiency"
+      - "limited english"
+      - "limited english-speaking households"
+      - "limited english-speaking"
+      - "linguistic isolation"
+      - "lep households"
+      - "lep share"
+      - "limited english proficiency"
+    table_id: "B16004"
+    dataset: "acs/acs5"
+    variables:
+      value: "B16004_001E"
+    universe: "Population 5 years and over"
+    units: "count"
+
+  - canonical: "language by nativity"
+    aliases:
+      - "language by us-born vs foreign-born"
+      - "language by nativity status"
+    table_id: "B16005"
+    dataset: "acs/acs5"
+    variables:
+      value: "B16005_001E"
+    universe: "Population 5 years and over"
+    units: "count"
+
+  - canonical: "language spoken at home by age"
+    aliases:
+      - "language by age"
+      - "age and language at home"
+    table_id: "B16007"
+    dataset: "acs/acs5"
+    variables:
+      value: "B16007_001E"
+    universe: "Population 5 years and over"
+    units: "count"
+
+  - canonical: "educational attainment by language"
+    aliases:
+      - "education by language at home"
+    table_id: "B16010"
+    dataset: "acs/acs5"
+    variables:
+      value: "B16010_001E"
+    universe: "Population 25 years and over"
+    units: "count"
+
+  - canonical: "internet access"
+    aliases:
+      - "broadband access"
+      - "households with internet"
+      - "internet subscription"
+      - "broadband subscription rate"
+      - "broadband rate"
+      - "internet subscription rate"
+      - "broadband percentage"
+      - "broadband share"
+    table_id: "B28002"
+    dataset: "acs/acs5"
+    variables:
+      numerator: "B28002_002E"
+      denominator: "B28002_001E"
+    by_geo_level:
+      msa:    { dataset: "acs/acs1" }
+      state:  { dataset: "acs/acs1" }
+    universe: "Households"
+    units: "percent"
+
+  - canonical: "computer ownership"
+    aliases:
+      - "households with computer"
+      - "computer access"
+      - "computer ownership rate"
+      - "computer access rate"
+      - "computer percentage"
+    table_id: "B28003"
+    dataset: "acs/acs5"
+    variables:
+      numerator: "B28003_002E"
+      denominator: "B28003_001E"
+    by_geo_level:
+      msa:    { dataset: "acs/acs1" }
+      state:  { dataset: "acs/acs1" }
+    universe: "Households"
+    units: "percent"
+
+  - canonical: "computer types in household"
+    aliases:
+      - "smartphone laptop tablet ownership"
+      - "device ownership"
+    table_id: "B28001"
+    dataset: "acs/acs5"
+    variables:
+      value: "B28001_001E"
+    universe: "Households"
+    units: "count"
+
+  - canonical: "internet access by income"
+    aliases:
+      - "broadband by income"
+      - "digital divide"
+    table_id: "B28004"
+    dataset: "acs/acs5"
+    variables:
+      value: "B28004_001E"
+    universe: "Households"
+    units: "count"
+
+  - canonical: "internet access by age"
+    aliases:
+      - "internet by age"
+      - "broadband by age of householder"
+    table_id: "B28006"
+    dataset: "acs/acs5"
+    variables:
+      value: "B28006_001E"
+    universe: "Population 18 years and over in households"
+    units: "count"
+
+  - canonical: "computer ownership by employment status"
+    aliases:
+      - "internet by employment"
+      - "computers by labor force"
+    table_id: "B28007"
+    dataset: "acs/acs5"
+    variables:
+      value: "B28007_001E"
+    universe: "Civilian noninstitutionalized population 16+ in labor force"
+    units: "count"
+
+  # ════════════════════════════════════════════════════════════════════
+  # FOOD ASSISTANCE & MISC
+  # ════════════════════════════════════════════════════════════════════
+
+  - canonical: "snap participation"
+    aliases:
+      - "food stamps"
+      - "snap recipients"
+      - "supplemental nutrition assistance"
+      - "snap participation rate"
+      - "snap rate"
+      - "snap households"
+      - "food stamp rate"
+      - "food stamp participation"
+      - "snap percentage"
+      - "ebt participation"
+    table_id: "B22003"
+    dataset: "acs/acs5"
+    variables:
+      numerator: "B22003_002E"
+      denominator: "B22003_001E"
+    by_geo_level:
+      msa:    { dataset: "acs/acs1" }
+      state:  { dataset: "acs/acs1" }
+    universe: "Households"
+    units: "percent"
+
+  - canonical: "snap participation by household type"
+    aliases:
+      - "snap by household structure"
+      - "food stamps by family type"
+    table_id: "B22001"
+    dataset: "acs/acs5"
+    variables:
+      value: "B22001_001E"
+    universe: "Households"
+    units: "count"
+
+  - canonical: "snap by poverty status"
+    aliases:
+      - "food stamps by poverty"
+      - "snap by income"
+    table_id: "B22002"
+    dataset: "acs/acs5"
+    variables:
+      value: "B22002_001E"
+    universe: "Households"
+    units: "count"
+
+  - canonical: "snap participation by age of householder"
+    aliases:
+      - "snap by age"
+    table_id: "B22007"
+    dataset: "acs/acs5"
+    variables:
+      value: "B22007_001E"
+    universe: "Households"
+    units: "count"
+
+  - canonical: "snap by household size and children"
+    aliases:
+      - "snap by family size"
+    table_id: "B22010"
+    dataset: "acs/acs5"
+    variables:
+      value: "B22010_001E"
+    universe: "Households"
+    units: "count"
+
+  - canonical: "median earnings by industry"
+    aliases:
+      - "earnings by industry"
+      - "industry earnings"
+    table_id: "B24011"
+    dataset: "acs/acs5"
+    variables:
+      value: "B24011_001E"
+    universe: "Civilian employed population 16 years and over with earnings"
+    units: "dollars"
+
+  # ════════════════════════════════════════════════════════════════════
+  # GROUP QUARTERS & CITIZEN VOTING AGE
+  # ════════════════════════════════════════════════════════════════════
+
+  - canonical: "group quarters population"
+    aliases:
+      - "people in group quarters"
+      - "institutional and noninstitutional group quarters"
+    table_id: "B26001"
+    dataset: "acs/acs5"
+    variables:
+      value: "B26001_001E"
+    universe: "Population in group quarters"
+    units: "count"
+
+  - canonical: "voting age population"
+    aliases:
+      - "people 18 and over"
+      - "voting age citizens"
+    table_id: "B29001"
+    dataset: "acs/acs5"
+    variables:
+      value: "B29001_001E"
+    by_geo_level:
+      msa:    { dataset: "acs/acs1" }
+      state:  { dataset: "acs/acs1" }
+    universe: "Population 18 years and over"
+    units: "count"
+
+  - canonical: "citizen voting age population"
+    aliases:
+      - "citizens of voting age"
+      - "cvap"
+    table_id: "B29002"
+    dataset: "acs/acs5"
+    variables:
+      value: "B29002_001E"
+    universe: "Citizens 18 years and over"
+    units: "count"
+
+  - canonical: "citizen voting age by sex by age"
+    aliases:
+      - "voters by demographics"
+      - "voting age by sex by age"
+    table_id: "B29003"
+    dataset: "acs/acs5"
+    variables:
+      value: "B29003_001E"
+    universe: "Citizens 18 years and over"
+    units: "count"

@@ -1,0 +1,2178 @@
+# Gold-standard query set for the Census chatbot intent resolver.
+#
+# 100 entries. Mix designed for Atlanta-heavy POC usage:
+#   SCOPE        → city_atlanta (50)  metro_atlanta (25)  broader (25)
+#   DIFFICULTY   → easy (30)  medium (40)  hard (30)
+#
+# FIELDS
+# ------
+# query           — literal user input
+# category        — reference-type bucket (see README-style reference below)
+# scope           — city_atlanta | metro_atlanta | broader
+# difficulty      — easy | medium | hard
+# session_context — prior session state ({} for clean runs)
+# expected:
+#   intent_type      — exact | proximity | comparison | context
+#   comparison_implied           — bool (default false)
+#   national_comparison_implied  — bool (default false)
+#   geo_refs[]       — list of ExtractedGeoRef subsets to match
+#   compounds        — list of CompoundSpec subsets (optional)
+#   resolved[]       — list of ResolvedGeography summary dicts, each with:
+#                        display_name_substring  (case-insensitive match)
+#                        geo_level               (exact)
+#                        geo_type                (optional; null = skip check)
+#                        tract_count_range       [lo, hi] or null
+#                        min_confidence          (0-1)
+#   clarification_required — bool (ambiguous cases)
+#   acceptable_options     — list of display_name substrings any of which pass
+#
+# When reviewing: see the "gold_review_guide" notes we discussed — check
+# ref_type, qualifier, proximity_tier, scope_hint, tract_count_range, and
+# min_confidence tier (>=0.95 silent, 0.80-0.95 w/ note, 0.50-0.80 choose,
+# <0.50 open-ended clarification).
+
+entries:
+
+  # ═════════════════════════════════════════════════════════════════════
+  # CITY OF ATLANTA (50) — 15 easy / 20 medium / 15 hard
+  # ═════════════════════════════════════════════════════════════════════
+
+  # ── CITY ATLANTA — EASY (15) ──────────────────────────────────────
+  - query: "Atlanta population"
+    category: administrative
+    scope: city_atlanta
+    difficulty: easy
+    session_context: {}
+    expected:
+      intent_type: exact
+      geo_refs:
+        - text: "Atlanta"
+          ref_type: administrative
+          scope_hint: "Georgia"
+      concepts:
+        - text: "population"
+          canonical_hint: "total population"
+      resolved:
+        - display_name_substring: "Atlanta"
+          geo_level: place
+          geo_type: place
+          tract_count_range: null
+          min_confidence: 0.90
+
+  - query: "tell me about Atlanta"
+    category: administrative
+    scope: city_atlanta
+    difficulty: easy
+    session_context: {}
+    expected:
+      intent_type: context
+      geo_refs:
+        - text: "Atlanta"
+          ref_type: administrative
+          scope_hint: "Georgia"
+      resolved:
+        - display_name_substring: "Atlanta"
+          geo_level: place
+          geo_type: place
+          tract_count_range: null
+          min_confidence: 0.85
+
+  - query: "income in Buckhead"
+    category: neighborhood
+    scope: city_atlanta
+    difficulty: easy
+    session_context: {}
+    expected:
+      intent_type: exact
+      geo_refs:
+        - text: "Buckhead"
+          ref_type: neighborhood
+          qualifier: in
+          scope_hint: "Atlanta"
+      concepts:
+        - text: "income"
+          canonical_hint: "median household income"
+      resolved:
+        - display_name_substring: "Buckhead"
+          geo_level: neighborhood
+          geo_type: null
+          tract_count_range: [3, 15]
+          min_confidence: 0.90
+
+  - query: "Midtown poverty rate"
+    category: neighborhood
+    scope: city_atlanta
+    difficulty: easy
+    session_context: {}
+    expected:
+      intent_type: exact
+      geo_refs:
+        - text: "Midtown"
+          ref_type: neighborhood
+          scope_hint: "Atlanta"
+      resolved:
+        - display_name_substring: "Midtown"
+          geo_level: neighborhood
+          geo_type: null
+          tract_count_range: [2, 8]
+          min_confidence: 0.85
+
+  - query: "downtown Atlanta demographics"
+    category: neighborhood
+    scope: city_atlanta
+    difficulty: easy
+    session_context: {}
+    expected:
+      intent_type: exact
+      geo_refs:
+        - text: "downtown Atlanta"
+          ref_type: neighborhood
+          scope_hint: "Atlanta"
+      resolved:
+        - display_name_substring: "Downtown"
+          geo_level: neighborhood
+          geo_type: null
+          tract_count_range: [3, 10]
+          min_confidence: 0.85
+
+  - query: "East Atlanta poverty"
+    category: neighborhood
+    scope: city_atlanta
+    difficulty: easy
+    session_context: {}
+    expected:
+      intent_type: exact
+      geo_refs:
+        - text: "East Atlanta"
+          ref_type: neighborhood
+          scope_hint: "Atlanta"
+      resolved:
+        - display_name_substring: "East Atlanta"
+          geo_level: neighborhood
+          geo_type: null
+          tract_count_range: [1, 6]
+          min_confidence: 0.85
+
+  - query: "Grant Park demographics"
+    category: neighborhood
+    scope: city_atlanta
+    difficulty: easy
+    session_context: {}
+    expected:
+      intent_type: exact
+      geo_refs:
+        - text: "Grant Park"
+          ref_type: neighborhood
+          scope_hint: "Atlanta"
+      resolved:
+        - display_name_substring: "Grant Park"
+          geo_level: neighborhood
+          geo_type: null
+          tract_count_range: [1, 4]
+          min_confidence: 0.85
+
+  - query: "Inman Park families"
+    category: neighborhood
+    scope: city_atlanta
+    difficulty: easy
+    session_context: {}
+    expected:
+      intent_type: exact
+      geo_refs:
+        - text: "Inman Park"
+          ref_type: neighborhood
+          scope_hint: "Atlanta"
+      resolved:
+        - display_name_substring: "Inman Park"
+          geo_level: neighborhood
+          geo_type: null
+          tract_count_range: [1, 4]
+          min_confidence: 0.85
+
+  - query: "Virginia-Highland median income"
+    category: neighborhood
+    scope: city_atlanta
+    difficulty: easy
+    session_context: {}
+    expected:
+      intent_type: exact
+      geo_refs:
+        - text: "Virginia-Highland"
+          ref_type: neighborhood
+          scope_hint: "Atlanta"
+      resolved:
+        - display_name_substring: "Virginia-Highland"
+          geo_level: neighborhood
+          geo_type: null
+          tract_count_range: [1, 4]
+          min_confidence: 0.85
+
+  - query: "Little Five Points"
+    category: neighborhood
+    scope: city_atlanta
+    difficulty: easy
+    session_context: {}
+    expected:
+      intent_type: context
+      geo_refs:
+        - text: "Little Five Points"
+          ref_type: neighborhood
+          scope_hint: "Atlanta"
+      resolved:
+        - display_name_substring: "Little Five Points"
+          geo_level: neighborhood
+          geo_type: null
+          tract_count_range: [1, 3]
+          min_confidence: 0.85
+
+  - query: "Atlantic Station"
+    category: neighborhood
+    scope: city_atlanta
+    difficulty: easy
+    session_context: {}
+    expected:
+      intent_type: context
+      geo_refs:
+        - text: "Atlantic Station"
+          ref_type: neighborhood
+          scope_hint: "Atlanta"
+      resolved:
+        - display_name_substring: "Atlantic Station"
+          geo_level: neighborhood
+          geo_type: null
+          tract_count_range: [1, 3]
+          min_confidence: 0.80
+
+  - query: "West End demographics"
+    category: neighborhood
+    scope: city_atlanta
+    difficulty: easy
+    session_context: {}
+    expected:
+      intent_type: exact
+      geo_refs:
+        - text: "West End"
+          ref_type: neighborhood
+          scope_hint: "Atlanta"
+      resolved:
+        - display_name_substring: "West End"
+          geo_level: neighborhood
+          geo_type: null
+          tract_count_range: [1, 4]
+          min_confidence: 0.85
+
+  - query: "near Hartsfield-Jackson"
+    category: landmark_area
+    scope: city_atlanta
+    difficulty: easy
+    session_context: {}
+    expected:
+      intent_type: proximity
+      geo_refs:
+        - text: "Hartsfield-Jackson"
+          ref_type: landmark_area
+          qualifier: near
+          proximity_tier: very_local
+          scope_hint: "Atlanta"
+      resolved:
+        - display_name_substring: "Hartsfield-Jackson"
+          geo_level: neighborhood
+          geo_type: airport
+          tract_count_range: [3, 12]
+          min_confidence: 0.90
+
+  - query: "around Piedmont Park"
+    category: landmark_area
+    scope: city_atlanta
+    difficulty: easy
+    session_context: {}
+    expected:
+      intent_type: proximity
+      geo_refs:
+        - text: "Piedmont Park"
+          ref_type: landmark_area
+          qualifier: around
+          proximity_tier: very_local
+          scope_hint: "Atlanta"
+      resolved:
+        - display_name_substring: "Piedmont Park"
+          geo_level: neighborhood
+          geo_type: park
+          tract_count_range: [2, 6]
+          min_confidence: 0.90
+
+  - query: "Georgia Tech student population"
+    category: landmark_area
+    scope: city_atlanta
+    difficulty: easy
+    session_context: {}
+    expected:
+      intent_type: context
+      geo_refs:
+        - text: "Georgia Tech"
+          ref_type: landmark_area
+          scope_hint: "Atlanta"
+      resolved:
+        - display_name_substring: "Georgia Tech"
+          geo_level: neighborhood
+          geo_type: university
+          tract_count_range: [1, 4]
+          min_confidence: 0.80
+
+  # ── CITY ATLANTA — MEDIUM (20) ────────────────────────────────────
+  - query: "Poncey-Highland demographics"
+    category: neighborhood
+    scope: city_atlanta
+    difficulty: medium
+    session_context: {}
+    expected:
+      intent_type: exact
+      geo_refs:
+        - text: "Poncey-Highland"
+          ref_type: neighborhood
+          scope_hint: "Atlanta"
+      resolved:
+        - display_name_substring: "Poncey-Highland"
+          geo_level: neighborhood
+          geo_type: null
+          tract_count_range: [1, 3]
+          min_confidence: 0.85
+
+  - query: "SuperDistrict 3"
+    category: neighborhood
+    scope: city_atlanta
+    difficulty: medium
+    session_context: {}
+    expected:
+      intent_type: exact
+      geo_refs:
+        - text: "SuperDistrict 3"
+          ref_type: neighborhood
+          scope_hint: "Atlanta"
+      resolved:
+        - display_name_substring: "SuperDistrict 3"
+          geo_level: neighborhood
+          geo_type: superdistrict
+          tract_count_range: [10, 60]
+          min_confidence: 0.85
+
+  - query: "NPU-M"
+    category: neighborhood
+    scope: city_atlanta
+    difficulty: medium
+    session_context: {}
+    expected:
+      intent_type: exact
+      geo_refs:
+        - text: "NPU-M"
+          ref_type: neighborhood
+          scope_hint: "Atlanta"
+      resolved:
+        - display_name_substring: "NPU-M"
+          geo_level: neighborhood
+          geo_type: npu
+          tract_count_range: [3, 15]
+          min_confidence: 0.85
+
+  - query: "Old Fourth Ward rent trends"
+    category: neighborhood
+    scope: city_atlanta
+    difficulty: medium
+    session_context: {}
+    expected:
+      intent_type: exact
+      geo_refs:
+        - text: "Old Fourth Ward"
+          ref_type: neighborhood
+          scope_hint: "Atlanta"
+      resolved:
+        - display_name_substring: "Old Fourth Ward"
+          geo_level: neighborhood
+          geo_type: null
+          tract_count_range: [1, 4]
+          min_confidence: 0.80
+
+  - query: "Sweet Auburn demographics"
+    category: neighborhood
+    scope: city_atlanta
+    difficulty: medium
+    session_context: {}
+    expected:
+      intent_type: exact
+      geo_refs:
+        - text: "Sweet Auburn"
+          ref_type: neighborhood
+          scope_hint: "Atlanta"
+      resolved:
+        - display_name_substring: "Sweet Auburn"
+          geo_level: neighborhood
+          geo_type: null
+          tract_count_range: [1, 3]
+          min_confidence: 0.75
+
+  - query: "Edgewood poverty"
+    category: neighborhood
+    scope: city_atlanta
+    difficulty: medium
+    session_context: {}
+    expected:
+      intent_type: exact
+      geo_refs:
+        - text: "Edgewood"
+          ref_type: neighborhood
+          scope_hint: "Atlanta"
+      resolved:
+        - display_name_substring: "Edgewood"
+          geo_level: neighborhood
+          geo_type: null
+          tract_count_range: [1, 3]
+          min_confidence: 0.80
+
+  - query: "Kirkwood demographics"
+    category: neighborhood
+    scope: city_atlanta
+    difficulty: medium
+    session_context: {}
+    expected:
+      intent_type: exact
+      geo_refs:
+        - text: "Kirkwood"
+          ref_type: neighborhood
+          scope_hint: "Atlanta"
+      resolved:
+        - display_name_substring: "Kirkwood"
+          geo_level: neighborhood
+          geo_type: null
+          tract_count_range: [1, 3]
+          min_confidence: 0.80
+
+  - query: "Cabbagetown"
+    category: neighborhood
+    scope: city_atlanta
+    difficulty: medium
+    session_context: {}
+    expected:
+      intent_type: context
+      geo_refs:
+        - text: "Cabbagetown"
+          ref_type: neighborhood
+          scope_hint: "Atlanta"
+      resolved:
+        - display_name_substring: "Cabbagetown"
+          geo_level: neighborhood
+          geo_type: null
+          tract_count_range: [1, 2]
+          min_confidence: 0.80
+
+  - query: "Reynoldstown median income"
+    category: neighborhood
+    scope: city_atlanta
+    difficulty: medium
+    session_context: {}
+    expected:
+      intent_type: exact
+      geo_refs:
+        - text: "Reynoldstown"
+          ref_type: neighborhood
+          scope_hint: "Atlanta"
+      resolved:
+        - display_name_substring: "Reynoldstown"
+          geo_level: neighborhood
+          geo_type: null
+          tract_count_range: [1, 3]
+          min_confidence: 0.80
+
+  - query: "Home Park student housing"
+    category: neighborhood
+    scope: city_atlanta
+    difficulty: medium
+    session_context: {}
+    expected:
+      intent_type: exact
+      geo_refs:
+        - text: "Home Park"
+          ref_type: neighborhood
+          scope_hint: "Atlanta"
+      resolved:
+        - display_name_substring: "Home Park"
+          geo_level: neighborhood
+          geo_type: null
+          tract_count_range: [1, 3]
+          min_confidence: 0.75
+
+  - query: "BeltLine"
+    category: region
+    scope: city_atlanta
+    difficulty: medium
+    session_context: {}
+    expected:
+      intent_type: context
+      geo_refs:
+        - text: "BeltLine"
+          ref_type: region
+          scope_hint: "Atlanta"
+      resolved:
+        - display_name_substring: "BeltLine"
+          geo_level: region
+          geo_type: null
+          tract_count_range: [10, 60]
+          min_confidence: 0.80
+
+  - query: "BeltLine Eastside Trail"
+    category: region
+    scope: city_atlanta
+    difficulty: medium
+    session_context: {}
+    expected:
+      intent_type: exact
+      geo_refs:
+        - text: "BeltLine Eastside Trail"
+          ref_type: region
+          scope_hint: "Atlanta"
+      resolved:
+        - display_name_substring: "BeltLine"
+          geo_level: region
+          geo_type: beltline_sub
+          tract_count_range: [2, 10]
+          min_confidence: 0.75
+
+  - query: "ITP demographics"
+    category: region
+    scope: city_atlanta
+    difficulty: medium
+    session_context: {}
+    expected:
+      intent_type: exact
+      geo_refs:
+        - text: "ITP"
+          ref_type: region
+          scope_hint: "Atlanta"
+      resolved:
+        - display_name_substring: "ITP"
+          geo_level: region
+          geo_type: null
+          tract_count_range: [150, 450]
+          min_confidence: 0.80
+
+  - query: "tracts along I-85"
+    category: corridor
+    scope: city_atlanta
+    difficulty: medium
+    session_context: {}
+    expected:
+      intent_type: proximity
+      geo_refs:
+        - text: "I-85"
+          ref_type: corridor
+          qualifier: along
+      resolved:
+        - display_name_substring: "I-85"
+          geo_level: corridor
+          geo_type: null
+          tract_count_range: [30, 120]
+          min_confidence: 0.90
+
+  - query: "near GA-400"
+    category: corridor
+    scope: city_atlanta
+    difficulty: medium
+    session_context: {}
+    expected:
+      intent_type: proximity
+      geo_refs:
+        - text: "GA-400"
+          ref_type: corridor
+          qualifier: near
+          proximity_tier: very_local
+      resolved:
+        - display_name_substring: "GA-400"
+          geo_level: corridor
+          geo_type: null
+          tract_count_range: [15, 80]
+          min_confidence: 0.85
+
+  - query: "near Mercedes-Benz Stadium"
+    category: landmark_area
+    scope: city_atlanta
+    difficulty: medium
+    session_context: {}
+    expected:
+      intent_type: proximity
+      geo_refs:
+        - text: "Mercedes-Benz Stadium"
+          ref_type: landmark_area
+          qualifier: near
+          proximity_tier: very_local
+          scope_hint: "Atlanta"
+      resolved:
+        - display_name_substring: "Mercedes-Benz Stadium"
+          geo_level: neighborhood
+          geo_type: stadium
+          tract_count_range: [2, 6]
+          min_confidence: 0.85
+
+  - query: "around Emory"
+    category: landmark_area
+    scope: city_atlanta
+    difficulty: medium
+    session_context: {}
+    expected:
+      intent_type: proximity
+      geo_refs:
+        - text: "Emory"
+          ref_type: landmark_area
+          qualifier: around
+          proximity_tier: very_local
+          scope_hint: "Atlanta"
+      resolved:
+        - display_name_substring: "Emory"
+          geo_level: neighborhood
+          geo_type: university
+          tract_count_range: [2, 8]
+          min_confidence: 0.85
+
+  - query: "around Georgia State"
+    category: landmark_area
+    scope: city_atlanta
+    difficulty: medium
+    session_context: {}
+    expected:
+      intent_type: proximity
+      geo_refs:
+        - text: "Georgia State"
+          ref_type: landmark_area
+          qualifier: around
+          proximity_tier: very_local
+          scope_hint: "Atlanta"
+      resolved:
+        - display_name_substring: "Georgia State"
+          geo_level: neighborhood
+          geo_type: university
+          tract_count_range: [1, 5]
+          min_confidence: 0.80
+
+  - query: "near Centennial Olympic Park"
+    category: landmark_area
+    scope: city_atlanta
+    difficulty: medium
+    session_context: {}
+    expected:
+      intent_type: proximity
+      geo_refs:
+        - text: "Centennial Olympic Park"
+          ref_type: landmark_area
+          qualifier: near
+          proximity_tier: very_local
+          scope_hint: "Atlanta"
+      resolved:
+        - display_name_substring: "Centennial"
+          geo_level: neighborhood
+          geo_type: park
+          tract_count_range: [1, 5]
+          min_confidence: 0.80
+
+  - query: "around Grady Hospital"
+    category: landmark_area
+    scope: city_atlanta
+    difficulty: medium
+    session_context: {}
+    expected:
+      intent_type: proximity
+      geo_refs:
+        - text: "Grady Hospital"
+          ref_type: landmark_area
+          qualifier: around
+          proximity_tier: very_local
+          scope_hint: "Atlanta"
+      resolved:
+        - display_name_substring: "Grady"
+          geo_level: neighborhood
+          geo_type: hospital
+          tract_count_range: [1, 5]
+          min_confidence: 0.75
+
+  # ── CITY ATLANTA — HARD (15) ──────────────────────────────────────
+  - query: "north side of Piedmont Park"
+    category: compound_directional
+    scope: city_atlanta
+    difficulty: hard
+    session_context: {}
+    expected:
+      intent_type: exact
+      geo_refs:
+        - text: "Piedmont Park"
+          ref_type: landmark_area
+          scope_hint: "Atlanta"
+      compounds:
+        - primary_ref_idx: 0
+          filter_ref_idx: 0
+          op: directional
+          direction: n
+      resolved:
+        - display_name_substring: "Piedmont Park"
+          geo_level: neighborhood
+          geo_type: park
+          tract_count_range: [1, 4]
+          min_confidence: 0.75
+
+  - query: "south side of Buckhead"
+    category: compound_directional
+    scope: city_atlanta
+    difficulty: hard
+    session_context: {}
+    expected:
+      intent_type: exact
+      geo_refs:
+        - text: "Buckhead"
+          ref_type: neighborhood
+          scope_hint: "Atlanta"
+      compounds:
+        - primary_ref_idx: 0
+          filter_ref_idx: 0
+          op: directional
+          direction: s
+      resolved:
+        - display_name_substring: "Buckhead"
+          geo_level: neighborhood
+          geo_type: null
+          tract_count_range: [1, 8]
+          min_confidence: 0.75
+
+  - query: "west side of Buckhead"
+    category: compound_directional
+    scope: city_atlanta
+    difficulty: hard
+    session_context: {}
+    expected:
+      intent_type: exact
+      geo_refs:
+        - text: "Buckhead"
+          ref_type: neighborhood
+          scope_hint: "Atlanta"
+      compounds:
+        - primary_ref_idx: 0
+          filter_ref_idx: 0
+          op: directional
+          direction: w
+      resolved:
+        - display_name_substring: "Buckhead"
+          geo_level: neighborhood
+          geo_type: null
+          tract_count_range: [1, 8]
+          min_confidence: 0.70
+
+  - query: "near I-85 in downtown Atlanta"
+    category: compound_intersect
+    scope: city_atlanta
+    difficulty: hard
+    session_context: {}
+    expected:
+      intent_type: proximity
+      geo_refs:
+        - text: "I-85"
+          ref_type: corridor
+          qualifier: near
+          proximity_tier: very_local
+        - text: "downtown Atlanta"
+          ref_type: region
+          scope_hint: "Atlanta"
+      compounds:
+        - primary_ref_idx: 0
+          filter_ref_idx: 1
+          op: intersect
+      resolved:
+        - display_name_substring: "I-85"
+          geo_level: corridor
+          geo_type: null
+          tract_count_range: [5, 25]
+          min_confidence: 0.75
+
+  - query: "compare Buckhead and Midtown poverty"
+    category: neighborhood
+    scope: city_atlanta
+    difficulty: hard
+    session_context: {}
+    expected:
+      intent_type: comparison
+      comparison_implied: true
+      geo_refs:
+        - text: "Buckhead"
+          ref_type: neighborhood
+          scope_hint: "Atlanta"
+        - text: "Midtown"
+          ref_type: neighborhood
+          scope_hint: "Atlanta"
+      concepts:
+        - text: "poverty"
+          canonical_hint: "poverty rate"
+      resolved:
+        - display_name_substring: "Buckhead"
+          geo_level: neighborhood
+          geo_type: null
+          tract_count_range: [3, 15]
+          min_confidence: 0.85
+        - display_name_substring: "Midtown"
+          geo_level: neighborhood
+          geo_type: null
+          tract_count_range: [2, 8]
+          min_confidence: 0.85
+
+  - query: "North Buckhead vs South Buckhead"
+    category: compound_directional
+    scope: city_atlanta
+    difficulty: hard
+    session_context: {}
+    expected:
+      intent_type: comparison
+      comparison_implied: true
+      geo_refs:
+        - text: "North Buckhead"
+          ref_type: neighborhood
+          scope_hint: "Atlanta"
+        - text: "South Buckhead"
+          ref_type: neighborhood
+          scope_hint: "Atlanta"
+      resolved:
+        - display_name_substring: "Buckhead"
+          geo_level: neighborhood
+          geo_type: null
+          tract_count_range: [1, 8]
+          min_confidence: 0.70
+        - display_name_substring: "Buckhead"
+          geo_level: neighborhood
+          geo_type: null
+          tract_count_range: [1, 8]
+          min_confidence: 0.70
+
+  - query: "intown Atlanta"
+    category: region
+    scope: city_atlanta
+    difficulty: hard
+    session_context: {}
+    expected:
+      intent_type: context
+      geo_refs:
+        - text: "intown Atlanta"
+          ref_type: region
+          scope_hint: "Atlanta"
+      resolved:
+        - display_name_substring: "Atlanta"
+          geo_level: region
+          geo_type: null
+          tract_count_range: [80, 300]
+          min_confidence: 0.65
+
+  # Compass-prefixed place names decompose into compound directional ops.
+  # After Phase 3, the LLM emits ref_type=administrative with compound op=directional.
+  - query: "Atlanta westside"
+    category: compound_directional
+    scope: city_atlanta
+    difficulty: hard
+    session_context: {}
+    expected:
+      intent_type: exact
+      geo_refs:
+        - text: "Atlanta"
+          ref_type: administrative
+          scope_hint: "Georgia"
+      compounds:
+        - primary_ref_idx: 0
+          filter_ref_idx: 0
+          op: directional
+          direction: w
+      resolved:
+        - display_name_substring: "Atlanta"
+          geo_level: place
+          geo_type: place
+          tract_count_range: [20, 150]
+          min_confidence: 0.65
+
+  - query: "Atlanta eastside"
+    category: compound_directional
+    scope: city_atlanta
+    difficulty: hard
+    session_context: {}
+    expected:
+      intent_type: exact
+      geo_refs:
+        - text: "Atlanta"
+          ref_type: administrative
+          scope_hint: "Georgia"
+      compounds:
+        - primary_ref_idx: 0
+          filter_ref_idx: 0
+          op: directional
+          direction: e
+      resolved:
+        - display_name_substring: "Atlanta"
+          geo_level: place
+          geo_type: place
+          tract_count_range: [20, 150]
+          min_confidence: 0.65
+
+  - query: "south Atlanta"
+    category: compound_directional
+    scope: city_atlanta
+    difficulty: hard
+    session_context: {}
+    expected:
+      intent_type: exact
+      geo_refs:
+        - text: "Atlanta"
+          ref_type: administrative
+          scope_hint: "Georgia"
+      compounds:
+        - primary_ref_idx: 0
+          filter_ref_idx: 0
+          op: directional
+          direction: s
+      resolved:
+        - display_name_substring: "Atlanta"
+          geo_level: place
+          geo_type: place
+          tract_count_range: [20, 150]
+          min_confidence: 0.65
+
+  - query: "southwest Atlanta"
+    category: compound_directional
+    scope: city_atlanta
+    difficulty: hard
+    session_context: {}
+    expected:
+      intent_type: exact
+      geo_refs:
+        - text: "Atlanta"
+          ref_type: administrative
+          scope_hint: "Georgia"
+      compounds:
+        - primary_ref_idx: 0
+          filter_ref_idx: 0
+          op: directional
+          direction: sw
+      resolved:
+        - display_name_substring: "Atlanta"
+          geo_level: place
+          geo_type: place
+          tract_count_range: [10, 100]
+          min_confidence: 0.65
+
+  - query: "the Perimeter"
+    category: corridor
+    scope: city_atlanta
+    difficulty: hard
+    session_context: {}
+    expected:
+      intent_type: context
+      geo_refs:
+        - text: "the Perimeter"
+          ref_type: corridor
+          scope_hint: "Atlanta"
+      resolved:
+        - display_name_substring: "I-285"
+          geo_level: corridor
+          geo_type: null
+          tract_count_range: [60, 180]
+          min_confidence: 0.70
+
+  - query: "around the Dome"
+    category: landmark_area
+    scope: city_atlanta
+    difficulty: hard
+    session_context: {}
+    expected:
+      intent_type: proximity
+      geo_refs:
+        - text: "the Dome"
+          ref_type: landmark_area
+          qualifier: around
+          proximity_tier: very_local
+          scope_hint: "Atlanta"
+      resolved:
+        - display_name_substring: "Mercedes-Benz"
+          geo_level: neighborhood
+          geo_type: stadium
+          tract_count_range: [2, 6]
+          min_confidence: 0.55
+
+  - query: "areas near Piedmont Park with high income"
+    category: landmark_area
+    scope: city_atlanta
+    difficulty: hard
+    session_context: {}
+    expected:
+      intent_type: proximity
+      geo_refs:
+        - text: "Piedmont Park"
+          ref_type: landmark_area
+          qualifier: near
+          proximity_tier: very_local
+          scope_hint: "Atlanta"
+      resolved:
+        - display_name_substring: "Piedmont Park"
+          geo_level: neighborhood
+          geo_type: park
+          tract_count_range: [2, 6]
+          min_confidence: 0.80
+
+  - query: "BeltLine Westside Trail"
+    category: region
+    scope: city_atlanta
+    difficulty: hard
+    session_context: {}
+    expected:
+      intent_type: exact
+      geo_refs:
+        - text: "BeltLine Westside Trail"
+          ref_type: region
+          scope_hint: "Atlanta"
+      resolved:
+        - display_name_substring: "BeltLine"
+          geo_level: region
+          geo_type: beltline_sub
+          tract_count_range: [2, 10]
+          min_confidence: 0.70
+
+  - query: "ATL population"
+    category: administrative
+    scope: city_atlanta
+    difficulty: hard
+    session_context: {}
+    expected:
+      intent_type: exact
+      geo_refs:
+        - text: "ATL"
+          ref_type: administrative
+          scope_hint: "Georgia"
+      resolved:
+        - display_name_substring: "Atlanta"
+          geo_level: place
+          geo_type: place
+          tract_count_range: null
+          min_confidence: 0.75
+
+  # ═════════════════════════════════════════════════════════════════════
+  # METRO ATLANTA (25) — 8 easy / 10 medium / 7 hard
+  # ═════════════════════════════════════════════════════════════════════
+
+  # ── METRO ATLANTA — EASY (8) ──────────────────────────────────────
+  - query: "poverty in Fulton County"
+    category: administrative
+    scope: metro_atlanta
+    difficulty: easy
+    session_context: {}
+    expected:
+      intent_type: exact
+      geo_refs:
+        - text: "Fulton County"
+          ref_type: administrative
+          qualifier: in
+          scope_hint: "Georgia"
+      concepts:
+        - text: "poverty"
+          canonical_hint: "poverty rate"
+      resolved:
+        - display_name_substring: "Fulton County"
+          geo_level: county
+          geo_type: county
+          tract_count_range: null
+          min_confidence: 0.95
+
+  - query: "DeKalb County education levels"
+    category: administrative
+    scope: metro_atlanta
+    difficulty: easy
+    session_context: {}
+    expected:
+      intent_type: exact
+      geo_refs:
+        - text: "DeKalb County"
+          ref_type: administrative
+          scope_hint: "Georgia"
+      resolved:
+        - display_name_substring: "DeKalb County"
+          geo_level: county
+          geo_type: county
+          tract_count_range: null
+          min_confidence: 0.95
+
+  - query: "Gwinnett County population"
+    category: administrative
+    scope: metro_atlanta
+    difficulty: easy
+    session_context: {}
+    expected:
+      intent_type: exact
+      geo_refs:
+        - text: "Gwinnett County"
+          ref_type: administrative
+          scope_hint: "Georgia"
+      resolved:
+        - display_name_substring: "Gwinnett County"
+          geo_level: county
+          geo_type: county
+          tract_count_range: null
+          min_confidence: 0.95
+
+  - query: "Cobb County demographics"
+    category: administrative
+    scope: metro_atlanta
+    difficulty: easy
+    session_context: {}
+    expected:
+      intent_type: exact
+      geo_refs:
+        - text: "Cobb County"
+          ref_type: administrative
+          scope_hint: "Georgia"
+      resolved:
+        - display_name_substring: "Cobb County"
+          geo_level: county
+          geo_type: county
+          tract_count_range: null
+          min_confidence: 0.95
+
+  - query: "Clayton County poverty"
+    category: administrative
+    scope: metro_atlanta
+    difficulty: easy
+    session_context: {}
+    expected:
+      intent_type: exact
+      geo_refs:
+        - text: "Clayton County"
+          ref_type: administrative
+          scope_hint: "Georgia"
+      resolved:
+        - display_name_substring: "Clayton County"
+          geo_level: county
+          geo_type: county
+          tract_count_range: null
+          min_confidence: 0.90
+
+  - query: "Decatur demographics"
+    category: administrative
+    scope: metro_atlanta
+    difficulty: easy
+    session_context: {}
+    expected:
+      intent_type: exact
+      geo_refs:
+        - text: "Decatur"
+          ref_type: administrative
+          scope_hint: "Georgia"
+      resolved:
+        - display_name_substring: "Decatur"
+          geo_level: place
+          geo_type: place
+          tract_count_range: null
+          min_confidence: 0.80
+
+  - query: "Marietta demographics"
+    category: administrative
+    scope: metro_atlanta
+    difficulty: easy
+    session_context: {}
+    expected:
+      intent_type: exact
+      geo_refs:
+        - text: "Marietta"
+          ref_type: administrative
+          scope_hint: "Georgia"
+      resolved:
+        - display_name_substring: "Marietta"
+          geo_level: place
+          geo_type: place
+          tract_count_range: null
+          min_confidence: 0.80
+
+  - query: "Roswell income"
+    category: administrative
+    scope: metro_atlanta
+    difficulty: easy
+    session_context: {}
+    expected:
+      intent_type: exact
+      geo_refs:
+        - text: "Roswell"
+          ref_type: administrative
+          scope_hint: "Georgia"
+      resolved:
+        - display_name_substring: "Roswell"
+          geo_level: place
+          geo_type: place
+          tract_count_range: null
+          min_confidence: 0.80
+
+  # ── METRO ATLANTA — MEDIUM (10) ───────────────────────────────────
+  - query: "Sandy Springs demographics"
+    category: administrative
+    scope: metro_atlanta
+    difficulty: medium
+    session_context: {}
+    expected:
+      intent_type: exact
+      geo_refs:
+        - text: "Sandy Springs"
+          ref_type: administrative
+          scope_hint: "Georgia"
+      resolved:
+        - display_name_substring: "Sandy Springs"
+          geo_level: place
+          geo_type: place
+          tract_count_range: null
+          min_confidence: 0.85
+
+  - query: "Dunwoody population"
+    category: administrative
+    scope: metro_atlanta
+    difficulty: medium
+    session_context: {}
+    expected:
+      intent_type: exact
+      geo_refs:
+        - text: "Dunwoody"
+          ref_type: administrative
+          scope_hint: "Georgia"
+      resolved:
+        - display_name_substring: "Dunwoody"
+          geo_level: place
+          geo_type: place
+          tract_count_range: null
+          min_confidence: 0.80
+
+  - query: "Alpharetta income"
+    category: administrative
+    scope: metro_atlanta
+    difficulty: medium
+    session_context: {}
+    expected:
+      intent_type: exact
+      geo_refs:
+        - text: "Alpharetta"
+          ref_type: administrative
+          scope_hint: "Georgia"
+      resolved:
+        - display_name_substring: "Alpharetta"
+          geo_level: place
+          geo_type: place
+          tract_count_range: null
+          min_confidence: 0.80
+
+  - query: "Smyrna poverty"
+    category: administrative
+    scope: metro_atlanta
+    difficulty: medium
+    session_context: {}
+    expected:
+      intent_type: exact
+      geo_refs:
+        - text: "Smyrna"
+          ref_type: administrative
+          scope_hint: "Georgia"
+      resolved:
+        - display_name_substring: "Smyrna"
+          geo_level: place
+          geo_type: place
+          tract_count_range: null
+          min_confidence: 0.75
+
+  - query: "metro Atlanta"
+    category: region
+    scope: metro_atlanta
+    difficulty: medium
+    session_context: {}
+    expected:
+      intent_type: context
+      geo_refs:
+        - text: "metro Atlanta"
+          ref_type: administrative
+          scope_hint: "Georgia"
+      resolved:
+        - display_name_substring: "Atlanta"
+          geo_level: msa
+          geo_type: cbsa
+          tract_count_range: null
+          min_confidence: 0.80
+
+  - query: "OTP demographics"
+    category: region
+    scope: metro_atlanta
+    difficulty: medium
+    session_context: {}
+    expected:
+      intent_type: exact
+      geo_refs:
+        - text: "OTP"
+          ref_type: region
+          scope_hint: "Atlanta"
+      resolved:
+        - display_name_substring: "OTP"
+          geo_level: region
+          geo_type: null
+          tract_count_range: [300, 900]
+          min_confidence: 0.75
+
+  - query: "South DeKalb poverty"
+    category: region
+    scope: metro_atlanta
+    difficulty: medium
+    session_context: {}
+    expected:
+      intent_type: exact
+      geo_refs:
+        - text: "South DeKalb"
+          ref_type: region
+          scope_hint: "Georgia"
+      resolved:
+        - display_name_substring: "South DeKalb"
+          geo_level: region
+          geo_type: null
+          tract_count_range: [30, 120]
+          min_confidence: 0.70
+
+  - query: "along I-285"
+    category: corridor
+    scope: metro_atlanta
+    difficulty: medium
+    session_context: {}
+    expected:
+      intent_type: proximity
+      geo_refs:
+        - text: "I-285"
+          ref_type: corridor
+          qualifier: along
+      resolved:
+        - display_name_substring: "I-285"
+          geo_level: corridor
+          geo_type: null
+          tract_count_range: [60, 180]
+          min_confidence: 0.90
+
+  - query: "compare Fulton and Cobb counties"
+    category: administrative
+    scope: metro_atlanta
+    difficulty: medium
+    session_context: {}
+    expected:
+      intent_type: comparison
+      comparison_implied: true
+      geo_refs:
+        - text: "Fulton"
+          ref_type: administrative
+          scope_hint: "Georgia"
+        - text: "Cobb"
+          ref_type: administrative
+          scope_hint: "Georgia"
+      resolved:
+        - display_name_substring: "Fulton County"
+          geo_level: county
+          geo_type: county
+          tract_count_range: null
+          min_confidence: 0.90
+        - display_name_substring: "Cobb County"
+          geo_level: county
+          geo_type: county
+          tract_count_range: null
+          min_confidence: 0.90
+
+  - query: "Stone Mountain area"
+    category: landmark_area
+    scope: metro_atlanta
+    difficulty: medium
+    session_context: {}
+    expected:
+      intent_type: proximity
+      geo_refs:
+        - text: "Stone Mountain"
+          ref_type: landmark_area
+          proximity_tier: very_local
+          scope_hint: "Georgia"
+      resolved:
+        - display_name_substring: "Stone Mountain"
+          geo_level: neighborhood
+          geo_type: null
+          tract_count_range: [2, 8]
+          min_confidence: 0.70
+
+  # ── METRO ATLANTA — HARD (7) ──────────────────────────────────────
+  - query: "north Fulton vs south Fulton"
+    category: compound_directional
+    scope: metro_atlanta
+    difficulty: hard
+    session_context: {}
+    expected:
+      intent_type: comparison
+      comparison_implied: true
+      geo_refs:
+        - text: "Fulton"
+          ref_type: administrative
+          scope_hint: "Georgia"
+      compounds:
+        - primary_ref_idx: 0
+          filter_ref_idx: 0
+          op: directional
+          direction: n
+      resolved:
+        - display_name_substring: "Fulton County"
+          geo_level: county
+          geo_type: county
+          tract_count_range: null
+          min_confidence: 0.65
+
+  - query: "compare the five metro counties"
+    category: administrative
+    scope: metro_atlanta
+    difficulty: hard
+    session_context: {}
+    expected:
+      intent_type: comparison
+      comparison_implied: true
+      geo_refs:
+        - text: "metro counties"
+          ref_type: region
+          scope_hint: "Atlanta"
+      resolved:
+        - display_name_substring: "Fulton"
+          geo_level: county
+          geo_type: county
+          tract_count_range: null
+          min_confidence: 0.50
+
+  - query: "poverty along GA-400 in Sandy Springs"
+    category: compound_intersect
+    scope: metro_atlanta
+    difficulty: hard
+    session_context: {}
+    expected:
+      intent_type: proximity
+      geo_refs:
+        - text: "GA-400"
+          ref_type: corridor
+          qualifier: along
+        - text: "Sandy Springs"
+          ref_type: administrative
+          scope_hint: "Georgia"
+      compounds:
+        - primary_ref_idx: 0
+          filter_ref_idx: 1
+          op: intersect
+      resolved:
+        - display_name_substring: "GA-400"
+          geo_level: corridor
+          geo_type: null
+          tract_count_range: [3, 15]
+          min_confidence: 0.75
+
+  - query: "areas near the airport"
+    category: landmark_area
+    scope: metro_atlanta
+    difficulty: hard
+    session_context: {}
+    expected:
+      intent_type: proximity
+      geo_refs:
+        - text: "the airport"
+          ref_type: landmark_area
+          qualifier: near
+          proximity_tier: very_local
+          scope_hint: "Atlanta"
+      resolved:
+        - display_name_substring: "Hartsfield-Jackson"
+          geo_level: neighborhood
+          geo_type: airport
+          tract_count_range: [3, 12]
+          min_confidence: 0.60
+
+  - query: "Clayton"
+    category: ambiguous
+    scope: metro_atlanta
+    difficulty: hard
+    session_context: {}
+    expected:
+      intent_type: context
+      geo_refs:
+        - text: "Clayton"
+          ref_type: administrative
+          scope_hint: "Georgia"
+      clarification_required: true
+      acceptable_options:
+        - "Clayton County"
+        - "Clayton"
+        - "Clayton State"
+
+  - query: "compare Sandy Springs and Dunwoody"
+    category: administrative
+    scope: metro_atlanta
+    difficulty: hard
+    session_context: {}
+    expected:
+      intent_type: comparison
+      comparison_implied: true
+      geo_refs:
+        - text: "Sandy Springs"
+          ref_type: administrative
+          scope_hint: "Georgia"
+        - text: "Dunwoody"
+          ref_type: administrative
+          scope_hint: "Georgia"
+      resolved:
+        - display_name_substring: "Sandy Springs"
+          geo_level: place
+          geo_type: place
+          tract_count_range: null
+          min_confidence: 0.85
+        - display_name_substring: "Dunwoody"
+          geo_level: place
+          geo_type: place
+          tract_count_range: null
+          min_confidence: 0.80
+
+  - query: "north DeKalb schools"
+    category: compound_directional
+    scope: metro_atlanta
+    difficulty: hard
+    session_context: {}
+    expected:
+      intent_type: exact
+      geo_refs:
+        - text: "DeKalb"
+          ref_type: administrative
+          scope_hint: "Georgia"
+      compounds:
+        - primary_ref_idx: 0
+          filter_ref_idx: 0
+          op: directional
+          direction: n
+      resolved:
+        - display_name_substring: "DeKalb County"
+          geo_level: county
+          geo_type: county
+          tract_count_range: null
+          min_confidence: 0.65
+
+  # ═════════════════════════════════════════════════════════════════════
+  # BROADER (25) — 7 easy / 10 medium / 8 hard
+  # ═════════════════════════════════════════════════════════════════════
+
+  # ── BROADER — EASY (7) ────────────────────────────────────────────
+  - query: "Georgia unemployment rate"
+    category: administrative
+    scope: broader
+    difficulty: easy
+    session_context: {}
+    expected:
+      intent_type: exact
+      geo_refs:
+        - text: "Georgia"
+          ref_type: administrative
+      resolved:
+        - display_name_substring: "Georgia"
+          geo_level: state
+          geo_type: state
+          tract_count_range: null
+          min_confidence: 0.95
+
+  - query: "US poverty rate"
+    category: national_comparison
+    scope: broader
+    difficulty: easy
+    session_context: {}
+    expected:
+      intent_type: exact
+      geo_refs:
+        - text: "US"
+          ref_type: national
+      resolved:
+        - display_name_substring: "US"
+          geo_level: us
+          geo_type: null
+          tract_count_range: null
+          min_confidence: 0.99
+
+  - query: "How does Georgia compare to the US?"
+    category: national_comparison
+    scope: broader
+    difficulty: easy
+    session_context: {}
+    expected:
+      intent_type: comparison
+      comparison_implied: true
+      national_comparison_implied: true
+      geo_refs:
+        - text: "Georgia"
+          ref_type: administrative
+        - text: "US"
+          ref_type: national
+      resolved:
+        - display_name_substring: "Georgia"
+          geo_level: state
+          geo_type: state
+          tract_count_range: null
+          min_confidence: 0.95
+        - display_name_substring: "US"
+          geo_level: us
+          geo_type: null
+          tract_count_range: null
+          min_confidence: 0.99
+
+  - query: "Atlanta vs US poverty"
+    category: national_comparison
+    scope: broader
+    difficulty: easy
+    session_context: {}
+    expected:
+      intent_type: comparison
+      comparison_implied: true
+      national_comparison_implied: true
+      geo_refs:
+        - text: "Atlanta"
+          ref_type: administrative
+          scope_hint: "Georgia"
+        - text: "US"
+          ref_type: national
+      resolved:
+        - display_name_substring: "Atlanta"
+          geo_level: place
+          geo_type: place
+          tract_count_range: null
+          min_confidence: 0.85
+        - display_name_substring: "US"
+          geo_level: us
+          geo_type: null
+          tract_count_range: null
+          min_confidence: 0.99
+
+  - query: "Savannah population"
+    category: administrative
+    scope: broader
+    difficulty: easy
+    session_context: {}
+    expected:
+      intent_type: exact
+      geo_refs:
+        - text: "Savannah"
+          ref_type: administrative
+          scope_hint: "Georgia"
+      resolved:
+        - display_name_substring: "Savannah"
+          geo_level: place
+          geo_type: place
+          tract_count_range: null
+          min_confidence: 0.85
+
+  - query: "Macon demographics"
+    category: administrative
+    scope: broader
+    difficulty: easy
+    session_context: {}
+    expected:
+      intent_type: exact
+      geo_refs:
+        - text: "Macon"
+          ref_type: administrative
+          scope_hint: "Georgia"
+      resolved:
+        - display_name_substring: "Macon"
+          geo_level: place
+          geo_type: place
+          tract_count_range: null
+          min_confidence: 0.80
+
+  - query: "national unemployment"
+    category: national_comparison
+    scope: broader
+    difficulty: easy
+    session_context: {}
+    expected:
+      intent_type: exact
+      geo_refs:
+        - text: "national"
+          ref_type: national
+      resolved:
+        - display_name_substring: "US"
+          geo_level: us
+          geo_type: null
+          tract_count_range: null
+          min_confidence: 0.95
+
+  # ── BROADER — MEDIUM (10) ─────────────────────────────────────────
+  - query: "Athens GA demographics"
+    category: administrative
+    scope: broader
+    difficulty: medium
+    session_context: {}
+    expected:
+      intent_type: exact
+      geo_refs:
+        - text: "Athens GA"
+          ref_type: administrative
+          scope_hint: "Georgia"
+      resolved:
+        - display_name_substring: "Athens"
+          geo_level: place
+          geo_type: place
+          tract_count_range: null
+          min_confidence: 0.85
+
+  - query: "Augusta vs Columbus Georgia"
+    category: administrative
+    scope: broader
+    difficulty: medium
+    session_context: {}
+    expected:
+      intent_type: comparison
+      comparison_implied: true
+      geo_refs:
+        - text: "Augusta"
+          ref_type: administrative
+          scope_hint: "Georgia"
+        - text: "Columbus Georgia"
+          ref_type: administrative
+          scope_hint: "Georgia"
+      resolved:
+        - display_name_substring: "Augusta"
+          geo_level: place
+          geo_type: place
+          tract_count_range: null
+          min_confidence: 0.80
+        - display_name_substring: "Columbus"
+          geo_level: place
+          geo_type: place
+          tract_count_range: null
+          min_confidence: 0.80
+
+  - query: "Georgia vs Florida poverty"
+    category: administrative
+    scope: broader
+    difficulty: medium
+    session_context: {}
+    expected:
+      intent_type: comparison
+      comparison_implied: true
+      geo_refs:
+        - text: "Georgia"
+          ref_type: administrative
+        - text: "Florida"
+          ref_type: administrative
+      resolved:
+        - display_name_substring: "Georgia"
+          geo_level: state
+          geo_type: state
+          tract_count_range: null
+          min_confidence: 0.95
+        - display_name_substring: "Florida"
+          geo_level: state
+          geo_type: state
+          tract_count_range: null
+          min_confidence: 0.95
+
+  - query: "North Georgia demographics"
+    category: region
+    scope: broader
+    difficulty: medium
+    session_context: {}
+    expected:
+      intent_type: exact
+      geo_refs:
+        - text: "North Georgia"
+          ref_type: region
+          scope_hint: "Georgia"
+      resolved:
+        - display_name_substring: "North Georgia"
+          geo_level: region
+          geo_type: null
+          tract_count_range: null
+          min_confidence: 0.65
+
+  - query: "I-75 corridor"
+    category: corridor
+    scope: broader
+    difficulty: medium
+    session_context: {}
+    expected:
+      intent_type: proximity
+      geo_refs:
+        - text: "I-75"
+          ref_type: corridor
+      resolved:
+        - display_name_substring: "I-75"
+          geo_level: corridor
+          geo_type: null
+          tract_count_range: [50, 200]
+          min_confidence: 0.85
+
+  - query: "US-78 tracts"
+    category: corridor
+    scope: broader
+    difficulty: medium
+    session_context: {}
+    expected:
+      intent_type: proximity
+      geo_refs:
+        - text: "US-78"
+          ref_type: corridor
+      resolved:
+        - display_name_substring: "US-78"
+          geo_level: corridor
+          geo_type: null
+          tract_count_range: [40, 150]
+          min_confidence: 0.85
+
+  - query: "Fulton County vs national average poverty rate"
+    category: national_comparison
+    scope: broader
+    difficulty: medium
+    session_context: {}
+    expected:
+      intent_type: comparison
+      comparison_implied: true
+      national_comparison_implied: true
+      geo_refs:
+        - text: "Fulton County"
+          ref_type: administrative
+          scope_hint: "Georgia"
+        - text: "national average"
+          ref_type: national
+      resolved:
+        - display_name_substring: "Fulton County"
+          geo_level: county
+          geo_type: county
+          tract_count_range: null
+          min_confidence: 0.90
+        - display_name_substring: "US"
+          geo_level: us
+          geo_type: null
+          tract_count_range: null
+          min_confidence: 0.95
+
+  - query: "compare Atlanta and Charlotte"
+    category: administrative
+    scope: broader
+    difficulty: medium
+    session_context: {}
+    expected:
+      intent_type: comparison
+      comparison_implied: true
+      geo_refs:
+        - text: "Atlanta"
+          ref_type: administrative
+          scope_hint: "Georgia"
+        - text: "Charlotte"
+          ref_type: administrative
+          scope_hint: "North Carolina"
+      resolved:
+        - display_name_substring: "Atlanta"
+          geo_level: place
+          geo_type: place
+          tract_count_range: null
+          min_confidence: 0.85
+        - display_name_substring: "Charlotte"
+          geo_level: place
+          geo_type: place
+          tract_count_range: null
+          min_confidence: 0.80
+
+  - query: "Coastal Georgia"
+    category: region
+    scope: broader
+    difficulty: medium
+    session_context: {}
+    expected:
+      intent_type: context
+      geo_refs:
+        - text: "Coastal Georgia"
+          ref_type: region
+          scope_hint: "Georgia"
+      resolved:
+        - display_name_substring: "Coastal"
+          geo_level: region
+          geo_type: null
+          tract_count_range: null
+          min_confidence: 0.60
+
+  - query: "Atlanta vs Nashville vs Charlotte"
+    category: administrative
+    scope: broader
+    difficulty: medium
+    session_context: {}
+    expected:
+      intent_type: comparison
+      comparison_implied: true
+      geo_refs:
+        - text: "Atlanta"
+          ref_type: administrative
+          scope_hint: "Georgia"
+        - text: "Nashville"
+          ref_type: administrative
+          scope_hint: "Tennessee"
+        - text: "Charlotte"
+          ref_type: administrative
+          scope_hint: "North Carolina"
+      resolved:
+        - display_name_substring: "Atlanta"
+          geo_level: place
+          geo_type: place
+          tract_count_range: null
+          min_confidence: 0.85
+        - display_name_substring: "Nashville"
+          geo_level: place
+          geo_type: place
+          tract_count_range: null
+          min_confidence: 0.80
+        - display_name_substring: "Charlotte"
+          geo_level: place
+          geo_type: place
+          tract_count_range: null
+          min_confidence: 0.80
+
+  # ── BROADER — HARD (8) ────────────────────────────────────────────
+  - query: "Jackson"
+    category: ambiguous
+    scope: broader
+    difficulty: hard
+    session_context: {}
+    expected:
+      intent_type: context
+      geo_refs:
+        - text: "Jackson"
+          ref_type: administrative
+          scope_hint: "Georgia"
+      clarification_required: true
+      acceptable_options:
+        - "Jackson County"
+        - "Jackson"
+        - "Jackson, TN"
+        - "Jackson, MS"
+
+  - query: "Columbus Georgia vs Columbus Ohio"
+    category: administrative
+    scope: broader
+    difficulty: hard
+    session_context: {}
+    expected:
+      intent_type: comparison
+      comparison_implied: true
+      geo_refs:
+        - text: "Columbus Georgia"
+          ref_type: administrative
+          scope_hint: "Georgia"
+        - text: "Columbus Ohio"
+          ref_type: administrative
+          scope_hint: "Ohio"
+      resolved:
+        - display_name_substring: "Columbus"
+          geo_level: place
+          geo_type: place
+          tract_count_range: null
+          min_confidence: 0.80
+        - display_name_substring: "Columbus"
+          geo_level: place
+          geo_type: place
+          tract_count_range: null
+          min_confidence: 0.75
+
+  - query: "30303"
+    category: administrative
+    scope: broader
+    difficulty: hard
+    session_context: {}
+    expected:
+      intent_type: context
+      geo_refs:
+        - text: "30303"
+          ref_type: administrative
+      resolved: []
+      clarification_required: true
+      acceptable_options:
+        - "ZIP queries not supported"
+
+  - query: "rural Georgia demographics"
+    category: region
+    scope: broader
+    difficulty: hard
+    session_context: {}
+    expected:
+      intent_type: context
+      geo_refs:
+        - text: "rural Georgia"
+          ref_type: region
+          scope_hint: "Georgia"
+      resolved:
+        - display_name_substring: "Georgia"
+          geo_level: region
+          geo_type: null
+          tract_count_range: null
+          min_confidence: 0.45
+
+  - query: "compare Georgia's five largest cities"
+    category: administrative
+    scope: broader
+    difficulty: hard
+    session_context: {}
+    expected:
+      intent_type: comparison
+      comparison_implied: true
+      geo_refs:
+        - text: "Georgia's five largest cities"
+          ref_type: region
+          scope_hint: "Georgia"
+      resolved:
+        - display_name_substring: "Atlanta"
+          geo_level: place
+          geo_type: place
+          tract_count_range: null
+          min_confidence: 0.50
+
+  - query: "Georgia counties with highest poverty"
+    category: administrative
+    scope: broader
+    difficulty: hard
+    session_context: {}
+    expected:
+      intent_type: context
+      geo_refs:
+        - text: "Georgia counties"
+          ref_type: region
+          scope_hint: "Georgia"
+      resolved:
+        - display_name_substring: "Georgia"
+          geo_level: state
+          geo_type: state
+          tract_count_range: null
+          min_confidence: 0.70
+
+  - query: "southeastern US"
+    category: region
+    scope: broader
+    difficulty: hard
+    session_context: {}
+    expected:
+      intent_type: context
+      geo_refs:
+        - text: "southeastern US"
+          ref_type: region
+      resolved:
+        - display_name_substring: "southeastern"
+          geo_level: region
+          geo_type: null
+          tract_count_range: null
+          min_confidence: 0.45
+
+  - query: "what is poverty?"
+    category: empty_geo
+    scope: broader
+    difficulty: hard
+    session_context: {}
+    expected:
+      intent_type: context
+      geo_refs: []
+      resolved: []
+
+  # ── MULTI-COMPOUND (post-Phase-C fix) ────────────────────────────
+  # Each operand of a comparison is an independent compound or free ref.
+
+  - query: "DeKalb county excluding Decatur"
+    category: compound_difference
+    scope: metro_atlanta
+    difficulty: hard
+    session_context: {}
+    expected:
+      intent_type: exact
+      geo_refs:
+        - text: "DeKalb county"
+          ref_type: administrative
+          scope_hint: "Georgia"
+        - text: "Decatur"
+          ref_type: administrative
+          scope_hint: "Georgia"
+      compounds:
+        - primary_ref_idx: 0
+          filter_ref_idx: 1
+          op: difference
+      resolved:
+        - display_name_substring: "excluding Decatur"
+          geo_level: county
+          geo_type: county
+          tract_count_range: [100, 200]
+          min_confidence: 0.70
+
+  # ── PHASE G concept + temporal exercises ───────────────────────────
+
+  - query: "show me gentrification indicators in Buckhead"
+    category: composite_concept
+    scope: city_atlanta
+    difficulty: hard
+    session_context: {}
+    expected:
+      intent_type: exact
+      geo_refs:
+        - text: "Buckhead"
+          ref_type: neighborhood
+          scope_hint: "Atlanta"
+      concepts:
+        - text: "gentrification indicators"
+          canonical_hint: "gentrification"
+          is_composite: true
+
+  - query: "how did poverty change in DeKalb from 2020 to 2023"
+    category: temporal_change
+    scope: metro_atlanta
+    difficulty: medium
+    session_context: {}
+    expected:
+      intent_type: exact
+      geo_refs:
+        - text: "DeKalb"
+          ref_type: administrative
+          scope_hint: "Georgia"
+      concepts:
+        - text: "poverty"
+          canonical_hint: "poverty rate"
+      temporal_intent: change
+      years: [2020, 2023]
+
+  - query: "compare Buckhead, southwest Atlanta, and DeKalb county excluding Decatur"
+    category: multi_compound
+    scope: metro_atlanta
+    difficulty: hard
+    session_context: {}
+    expected:
+      intent_type: comparison
+      comparison_implied: true
+      geo_refs:
+        - text: "Buckhead"
+          ref_type: neighborhood
+          scope_hint: "Atlanta"
+        - text: "Atlanta"
+          ref_type: administrative
+          scope_hint: "Georgia"
+        - text: "DeKalb county"
+          ref_type: administrative
+          scope_hint: "Georgia"
+        - text: "Decatur"
+          ref_type: administrative
+          scope_hint: "Georgia"
+      compounds:
+        - primary_ref_idx: 1
+          filter_ref_idx: 1
+          op: directional
+          direction: sw
+        - primary_ref_idx: 2
+          filter_ref_idx: 3
+          op: difference
+      resolved:
+        - display_name_substring: "Buckhead"
+          geo_level: neighborhood
+          geo_type: null
+          tract_count_range: [3, 15]
+          min_confidence: 0.85
+        - display_name_substring: "sw side of Atlanta"
+          geo_level: place
+          geo_type: place
+          tract_count_range: [10, 100]
+          min_confidence: 0.65
+        - display_name_substring: "excluding Decatur"
+          geo_level: county
+          geo_type: county
+          tract_count_range: [100, 200]
+          min_confidence: 0.70

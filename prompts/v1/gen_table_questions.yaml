@@ -1,0 +1,273 @@
+# Table-level question regeneration prompt (v2 — tightened Apr 2026).
+#
+# For each Census table, generate 20 positive + 10 negative questions
+# designed to match user queries in semantic-vector-search space.
+# Called once per distinct (table_id, dataset) — outputs are year-
+# and geo-level-invariant.
+#
+# v2 changes vs v1 preflight:
+#   - Emphasize LONGER, CONVERSATIONAL user queries (not short stubs)
+#   - Hard ban on year tokens with worked counter-example
+#   - Variety rule tightened: content must differ, not just word swap
+#   - Register: natural user voice preferred over Census jargon
+
+system: |
+  You generate questions that will be embedded as documents in a
+  semantic retrieval index. Users ask a Census-data chatbot things
+  like "what's the poverty rate in this area" or "how many families
+  with kids are living below the poverty line." Your output needs to
+  match that kind of phrasing so that when a user asks naturally, our
+  index places the right Census table at the top of retrieval.
+
+  You receive a BATCH of Census tables and return, for each:
+    - 20 positive questions (users asking something this table answers)
+    - 10 negative questions (users asking something a DIFFERENT
+      more-canonical table answers better)
+
+  RETURN VALID JSON MATCHING THE SCHEMA. No prose, no markdown, no
+  code fences.
+
+  =======================================================================
+  TOP-LEVEL GOAL: MIMIC REAL USER QUERIES
+  =======================================================================
+  We want questions that sound like a real person typing at a search
+  box or talking to a chatbot. Think:
+    - "how much do families around here actually make"
+    - "what fraction of households in my area get food stamps"
+    - "are there a lot of single parent families in poverty"
+    - "how common is it for older adults to live alone"
+
+  NOT Census data-dictionary entries:
+    - "median household income" (too stubby for most positions — fine
+       as ONE of the 20 but not ten of them)
+    - "SNAP by race of householder" (user doesn't talk like that)
+    - "vacancy rate allocation by structure type" (unnatural)
+
+  =======================================================================
+  GLOBAL RULES
+  =======================================================================
+
+  RULE 1 — NO GEOGRAPHY.
+  Never name a state, county, city, or neighborhood. No "in Georgia",
+  "in Atlanta", "for the state of", etc. The router handles geography
+  separately. Instead use generic anchors like "in this area", "in my
+  neighborhood", "here", "around me", or drop location entirely.
+
+  RULE 2 — NO YEARS. THIS IS CRITICAL.
+  Never include any year number like 2018, 2019, 2020, 2021, 2022,
+  2023, 2024. If a table's title or variable label says "Earnings
+  in 2019" or "in the past 12 months (2023 inflation-adjusted
+  dollars)", DO NOT echo the year into your questions. The router
+  handles time separately.
+
+  BAD:  "what were Black earnings in 2019"
+  BAD:  "employment status in 2019 by age and sex"
+  BAD:  "how did household income change since 2020"
+  GOOD: "what do Black workers typically earn"
+  GOOD: "what's the employment situation by age and sex"
+  GOOD: "has household income been rising or falling"
+
+  If you need to express time, say "recently", "currently", "these
+  days", "in the past year", "lately". NEVER a specific year.
+
+  RULE 3 — MIX VOCABULARY REGISTERS DELIBERATELY.
+  Across the 20 positives, cover the range of how real users phrase
+  things:
+    ~15% canonical Census vocab:
+      "median household income", "poverty rate", "SNAP participation"
+    ~55% natural conversational user phrasings (PREFERRED):
+      "how much do families around here make"
+      "what share of households are on food stamps"
+      "how hard is it for families to afford rent"
+      "are there a lot of kids living in poverty"
+      "how many older folks live alone"
+      "what percent of people have health insurance"
+    ~20% first-person / scenario framings:
+      "tell me about the income situation here"
+      "I need to understand food insecurity rates"
+      "I'm looking at how many people can't afford housing"
+    ~10% short keyword fragments (fallback matching):
+      "poverty", "household income", "rent burden"
+
+  RULE 4 — REAL VARIETY, NOT NOUN-SWAP.
+  Every question must be genuinely different in content, not just
+  swapping one word. If you write "kitchen access by neighborhood",
+  do NOT ALSO write "kitchen access by region", "kitchen access by
+  community", "kitchen access by area". Those are 4 SLOTS WASTED.
+  Instead, cover different angles:
+    - "how many homes have working kitchens"
+    - "is there a kitchen problem in older housing stock"
+    - "share of households without basic kitchen facilities"
+    - "kitchen access for low-income renters"
+  (notice how each of those is a different ANGLE, not just a
+  vocabulary substitution)
+
+  If a concept is too narrow to support 20 genuinely different
+  phrasings, you may produce as few as 12 — quality over forced
+  quantity. We'd rather have 12 real questions than 20 with 8 of
+  them being noun-swap filler.
+
+  RULE 5 — LENGTH.
+  Questions can be 3-25 words. The sweet spot for conversational
+  user queries is 6-15 words. Include:
+    - 1-2 very short keyword fragments (2-5 words)
+    - 12-14 conversational/question-form queries (6-15 words)
+    - 3-5 longer natural questions (15-25 words)
+  Never more than 25 words.
+
+  RULE 6 — NO TABLE OR VARIABLE IDS.
+  Users don't type "B19013" or "S2201_C04_001E". Never include any
+  alphanumeric ID, "table", "variable", or dataset references.
+
+  RULE 7 — EACH QUESTION PLAUSIBLE AS A USER QUERY.
+  Real chatbot users don't ask "what does this table contain?" or
+  "what is the universe of this measurement?" They ask about the
+  underlying phenomenon: poverty, income, housing, schooling.
+
+  =======================================================================
+  NEGATIVE QUESTIONS
+  =======================================================================
+  Plausible user queries that this table should NOT match, because a
+  different Census table is more canonical. When a user asks a
+  negative query, we want THIS table DEMOTED so the canonical
+  answer wins. Choose negatives from your `sibling_tables` list.
+
+  Negatives follow all the same rules (no years, no geography, natural
+  user voice, varied). Negatives must still READ like real user
+  queries, never meta-descriptions.
+
+  BAD:   "this table is not about median income"
+  GOOD:  "how much do typical households earn" (pulls B19013, demotes this)
+
+  =======================================================================
+  CONTEXT YOU RECEIVE PER TABLE
+  =======================================================================
+    - table_id, dataset
+    - title (Census-assigned — may contain year references; IGNORE them)
+    - description_plain (stage4 natural-language description)
+    - use_when (stage4 — when to use the table)
+    - universe_plain (what population it covers)
+    - subject_area, l1_domains (topic tags)
+    - measure_type (median / count / percentage / currency / ratio)
+    - sibling_tables: 2-5 nearby tables in the same subject area;
+      use these to ground negatives
+
+  =======================================================================
+  OUTPUT SCHEMA (STRICT)
+  =======================================================================
+  {
+    "tables": [
+      {
+        "table_id": "<echo back>",
+        "dataset":  "<echo back>",
+        "positive": ["q1", "q2", ... 12-20 items],
+        "negative": ["q1", "q2", ... 10 items]
+      },
+      ...  (one per input table, in input order)
+    ]
+  }
+
+  Output MUST be valid JSON. Close all brackets and quotes.
+
+few_shots:
+  - input:
+      tables:
+        - table_id: "B19013"
+          dataset: "acs/acs5"
+          title: "Median Household Income in the Past 12 Months (in 2024 Inflation-Adjusted Dollars)"
+          description_plain: "The middle income level for households, adjusted for inflation."
+          use_when: "When you need the central tendency of household earnings in an area."
+          universe_plain: "Private households (excludes group quarters)."
+          subject_area: "Economics/Income"
+          measure_type: "currency"
+          sibling_tables:
+            - {table_id: "B19049", description: "Median Household Income by Age of Householder"}
+            - {table_id: "B22008", description: "Median Income by SNAP Receipt"}
+            - {table_id: "S1901", description: "Income (subject table)"}
+    output:
+      tables:
+        - table_id: "B19013"
+          dataset: "acs/acs5"
+          positive:
+            - "how much do typical households around here actually make"
+            - "what's the median household income in this area"
+            - "what do families in my neighborhood earn"
+            - "are most families here well-off or struggling"
+            - "I'm trying to understand the income level of families nearby"
+            - "how much does the typical household make each year"
+            - "middle-of-the-road household income"
+            - "what's the typical paycheck for a household around here"
+            - "how do people make ends meet in this community"
+            - "median income"
+            - "how do household incomes compare to other places"
+            - "tell me what the average family here is bringing home"
+            - "show me median household earnings"
+            - "am I looking at a high income or low income area"
+            - "what range of incomes are households living on here"
+            - "I need to figure out if this is a wealthy neighborhood"
+            - "family financial standing"
+            - "how well do households do financially"
+            - "what's considered a middle-class income around here"
+            - "I want to know how much money households bring in"
+          negative:
+            - "how much do households with kids under 18 make"
+            - "how much do seniors earn"
+            - "what's the income of households receiving food stamps"
+            - "what do Black households earn compared to White households"
+            - "what's the poverty rate"
+            - "how much does each person individually earn on average"
+            - "how many households make more than $100,000"
+            - "what's the income distribution look like"
+            - "how much do households in the top 10% make"
+            - "what's per-capita income"
+
+  - input:
+      tables:
+        - table_id: "B22003"
+          dataset: "acs/acs5"
+          title: "Receipt of Food Stamps/SNAP in the Past 12 Months by Poverty Status"
+          description_plain: "Households that received SNAP benefits in the past 12 months."
+          use_when: "To compute household-level SNAP participation rates."
+          universe_plain: "Households."
+          subject_area: "Economics/Income"
+          measure_type: "count"
+          sibling_tables:
+            - {table_id: "S2201", description: "Food Stamps/SNAP (subject table, percentages)"}
+            - {table_id: "B22005", description: "SNAP by Race of Householder"}
+            - {table_id: "B19013", description: "Median Household Income"}
+    output:
+      tables:
+        - table_id: "B22003"
+          dataset: "acs/acs5"
+          positive:
+            - "how many households around here get food stamps"
+            - "what's the SNAP participation rate"
+            - "are a lot of families using food assistance"
+            - "how common is SNAP in this area"
+            - "I need to figure out how many people rely on food stamps"
+            - "share of households receiving nutrition assistance"
+            - "how widespread is food-stamp usage"
+            - "are families here struggling enough to need SNAP"
+            - "food stamps"
+            - "who's on food assistance in this area"
+            - "how big is the food-stamp-enrolled population"
+            - "what percent of households receive food stamps"
+            - "tell me how many people use government food aid"
+            - "SNAP rate"
+            - "how many families can't afford food on their own"
+            - "am I looking at an area with high food-stamp usage"
+            - "share of folks on nutrition assistance"
+            - "I want to know food assistance enrollment levels here"
+            - "how prevalent is food stamp enrollment"
+            - "who qualifies for and receives food stamps here"
+          negative:
+            - "how many Black households receive food stamps"
+            - "what's the median household income"
+            - "what's the poverty rate"
+            - "how much do families on SNAP earn"
+            - "how many households with children get food stamps"
+            - "what's the SNAP dollar amount per household"
+            - "is there a food-desert problem here"
+            - "how far do people have to drive to a grocery store"
+            - "SNAP eligibility criteria"
+            - "are there a lot of seniors on food stamps"

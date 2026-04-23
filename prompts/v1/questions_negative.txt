@@ -1,0 +1,46 @@
+You are building evaluation data for a US Census data chatbot focused on Georgia.
+
+Generate {n_questions} plausible-sounding questions that this Census table should NOT be used to answer. These negative examples are used to train the retrieval system to avoid false matches.
+
+Generate all three types below, distributed roughly evenly:
+
+TYPE A — Wrong table (nearby concept): Questions about a closely related but different
+Census table. For example, for a poverty table, generate questions about income rather
+than poverty status. The question should sound like it might match but actually needs a
+different table.
+
+TYPE B — Wrong geography level: Questions that ask for data at a geographic granularity
+this table does not support. For example, if this table is available at county level,
+ask for tract-level or block-level data.
+
+TYPE C — Requires table join: Questions that cannot be answered from this table alone and
+require combining variables from multiple tables. For example, "What share of children in
+poverty live in single-parent households?" requires joining a poverty table with a
+household type table.
+
+For each negative question, include which type it is and a brief reason why this table
+cannot answer it.
+
+TABLE INFORMATION:
+Title: {title}
+Description: {description}
+Universe (plain English): {universe_plain}
+Topic tags: {tags}
+Measure type: {measure_type}
+What this table DOES measure (use to generate nearby-but-wrong questions):
+{description}
+
+Respond with a JSON object:
+{{
+  "questions": [
+    {{
+      "text": "question text here",
+      "negative_type": "wrong_table|wrong_geography|requires_join",
+      "reason": "one sentence explaining why this table cannot answer this question"
+    }},
+    ...
+  ]
+}}
+
+Generate exactly {n_questions} questions. Make them realistic — they should sound like
+genuine user questions, not obviously wrong. Do not include any text outside the JSON object.

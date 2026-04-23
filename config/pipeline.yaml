@@ -1,0 +1,46 @@
+# Pipeline-wide configuration
+
+pipeline_version: "0.1.0"
+
+paths:
+  # All paths relative to the repository root
+  data_root: "data"
+  raw_subdir: "raw"
+  processed_subdir: "processed"
+  curated_subdir: "curated"
+  state_subdir: "state"
+  config_dir: "config"
+  prompts_dir: "prompts"
+
+# Census API settings
+census_api:
+  base_url: "https://api.census.gov/data"
+  # API key loaded from CENSUS_API_KEY env var if set
+  # Requests work without a key but are rate-limited more aggressively
+  timeout_seconds: 60
+  max_retries: 4
+  backoff_base_seconds: 2.0
+  # Conservative concurrency — Census API tolerates more but we're being polite
+  max_concurrent_requests: 6
+  # Seconds between requests per worker, minimum
+  min_request_interval_seconds: 0.1
+
+# Scope for v1 POC
+scope:
+  state_fips: "13"  # Georgia
+  # Years to process — can be expanded
+  years:
+    - 2020
+    - 2021
+    - 2022
+    - 2023
+    - 2024
+    - 2025
+
+# Logging
+logging:
+  level: "INFO"
+  format: "%(asctime)s [%(levelname)s] %(name)s: %(message)s"
+  
+batching:
+  max_concurrent_tables_s8: 8   # tune based on Census API response

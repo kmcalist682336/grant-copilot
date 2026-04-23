@@ -1,0 +1,1323 @@
+# Curated grant-narrative frames.
+#
+# Each frame is a rhetorical structure the synthesizer should target
+# when the GrantFrameMatcher classifies a query into it. The frame
+# also tells the Expander which *other* concepts to fetch beyond the
+# one(s) the user explicitly asked about — a food-access case needs
+# vehicle access and SNAP data whether or not the user asked for them.
+#
+# Fields:
+#   name: frame ID (stable; referenced from code)
+#   description: one-line; shown to the LLM in the classifier prompt
+#   triggers: phrases / concepts that commonly indicate this frame
+#   required_additional_concepts: canonical concept names the Expander
+#     should add when this frame fires. Must appear in concept_map.yaml
+#     OR be resolvable by the semantic router (frame can name proxies
+#     the cmap doesn't have; those go through normal routing).
+#   rhetorical_target: short hint passed to the synthesizer — what
+#     shape should the final prose take?
+#   standard_caveats: frame-level caveats to always surface
+#
+# "specific_lookup" is the default when no narrative frame fits.
+# "other" is the catch-all for queries that don't match any frame.
+
+frames:
+  - name: specific_lookup
+    description: |
+      A user wants a specific number (a value or a small set of
+      related numbers). No grant narrative implied. Example: "what is
+      the median income in Buckhead" or "uninsured rate in Atlanta".
+    triggers:
+      - "what is / what's"
+      - "how many / how much"
+      - direct single-concept questions
+    required_additional_concepts: []
+    rhetorical_target: "One-paragraph answer stating the value with context (year, geo, caveats). No narrative arc."
+    standard_caveats: []
+
+  - name: demographic_snapshot
+    description: |
+      User asks for a demographic profile of a geography, often to open
+      a grant with context ("tell me about X", "demographic snapshot").
+      No specific metric pinned — the synthesizer should assemble a
+      composite picture.
+    triggers:
+      - "tell me about"
+      - "demographic snapshot of"
+      - "profile of"
+      - "overview of"
+      - "what does X look like"
+    required_additional_concepts:
+      - "total population"
+      - "median household income"
+      - "poverty rate"
+      - "racial composition"
+      - "bachelor's degree or higher"
+      - "median age"
+    rhetorical_target: "Opening paragraph suitable for a grant introduction — paint the demographic picture of the area."
+    standard_caveats:
+      - "Figures are ACS 5-year estimates; small-area values carry meaningful margins of error."
+
+  - name: food_access
+    description: |
+      User is making or supporting a case for food access / food pantry /
+      nutrition programming. Key proxies: SNAP, poverty, vehicle access,
+      child food insecurity.
+    triggers:
+      - "food pantry"
+      - "food bank"
+      - "food banks"
+      - "food access"
+      - "food insecurity"
+      - "food desert"
+      - "grocery access"
+      - "hunger"
+      - "hungry"
+      - "SNAP / food stamps"
+      - "nutrition program"
+      - "meal program"
+      - "feeding program"
+    required_additional_concepts:
+      - "SNAP participation rate"
+      - "poverty rate"
+      - "share without a vehicle"
+      - "child poverty rate"
+      - "median household income"
+    rhetorical_target: "Build a food-access case: poverty + SNAP participation + grocery access constraints (vehicle)."
+    standard_caveats:
+      - "Census data approximates food-access conditions; direct food-insecurity measures come from USDA ERS / Feeding America."
+
+  - name: housing_instability
+    description: |
+      User is building a housing / rent burden / affordable-housing
+      case. Focus on cost burden, tenure, affordability, crowding.
+    triggers:
+      - "rent burden"
+      - "housing instability"
+      - "affordable housing"
+      - "cost burden"
+      - "housing stress"
+    required_additional_concepts:
+      - "rent burden"
+      - "homeownership rate"
+      - "median gross rent"
+      - "median household income"
+      - "poverty rate"
+    rhetorical_target: "Housing-instability case: cost-burden rate + tenure mix + income vs rent + disparity."
+    standard_caveats:
+      - "Rent and cost-burden data reflect 5-year ACS averages; they lag current conditions by up to 3 years."
+
+  - name: displacement
+    description: |
+      User is building a displacement / gentrification narrative. Key
+      signals are rising rents, changing racial composition, income
+      shifts.
+    triggers:
+      - "displacement"
+      - "gentrification"
+      - "neighborhood change"
+      - "being priced out"
+    required_additional_concepts:
+      - "median gross rent"
+      - "median household income"
+      - "racial composition"
+      - "homeownership rate"
+      - "population change"
+    rhetorical_target: "Displacement narrative: year-over-year shifts in rent + racial composition + tenure over the trend window."
+    standard_caveats:
+      - "Displacement is inferred from Census snapshots; causation requires longitudinal analysis beyond ACS."
+
+  - name: workforce_gap
+    description: |
+      User is building a workforce development / job training case.
+      Key proxies: unemployment, educational attainment, NEET youth,
+      sectoral employment.
+    triggers:
+      - "workforce"
+      - "job training"
+      - "employment"
+      - "disconnected youth / NEET"
+      - "sectoral / trades"
+    required_additional_concepts:
+      - "unemployment rate"
+      - "bachelor's degree or higher"
+      - "median household income"
+      - "poverty rate"
+      - "share of youth not in school or employed"
+    rhetorical_target: "Workforce case: unemployment + attainment + disconnected-youth share + income."
+    standard_caveats:
+      - "ACS employment data is self-reported and reflects the 5-year survey window."
+
+  - name: senior_isolation
+    description: |
+      User is building a case for senior services (isolation, aging,
+      senior centers, 65+ support programs).
+    triggers:
+      - "senior services"
+      - "senior center"
+      - "aging"
+      - "isolation"
+      - "older adults"
+      - "65+ / elderly"
+    required_additional_concepts:
+      - "share 65 and over"
+      - "seniors living alone"
+      - "seniors in poverty"
+      - "share without a vehicle"
+      - "broadband subscription rate"
+    rhetorical_target: "Senior-isolation case: 65+ population share + living-alone rate + vehicle access + broadband for remote-service reach."
+    standard_caveats:
+      - "Isolation is inferred from household composition and access indicators; direct measures of social isolation are not in ACS."
+
+  - name: child_welfare
+    description: |
+      User is building a case for children's programs, child welfare,
+      youth services. Focus on child poverty, single-parent
+      households, uninsured children.
+    triggers:
+      - "children"
+      - "child welfare / child poverty"
+      - "youth program (non-workforce)"
+      - "after-school"
+      - "single-parent"
+    required_additional_concepts:
+      - "child poverty rate"
+      - "share under 18"
+      - "single-parent households"
+      - "child uninsured rate"
+      - "median household income"
+    rhetorical_target: "Child-welfare case: child poverty + family structure + uninsured children + income context."
+    standard_caveats:
+      - "Small-area child-specific estimates have wide confidence intervals; cite MOE where material."
+
+  - name: digital_divide
+    description: |
+      User is asking about broadband / computer access / digital
+      equity. Usually ties to workforce or senior contexts but can
+      stand alone.
+    triggers:
+      - "digital divide"
+      - "broadband"
+      - "computer access"
+      - "internet access"
+      - "digital equity"
+    required_additional_concepts:
+      - "broadband subscription rate"
+      - "computer ownership rate"
+      - "median household income"
+      - "share 65 and over"
+    rhetorical_target: "Digital-equity case: broadband subscription + device ownership + income + age composition."
+    standard_caveats:
+      - "ACS broadband measures subscription, not quality-of-service or speed; actual digital access may be lower."
+
+  - name: immigrant_services
+    description: |
+      User is building a case for immigrant services (ESL, workforce
+      for immigrants, integration programs).
+    triggers:
+      - "immigrant"
+      - "foreign-born"
+      - "refugee"
+      - "ESL"
+      - "linguistic isolation"
+    required_additional_concepts:
+      - "foreign-born share"
+      - "limited English-speaking households"
+      - "share of Hispanic or Latino population"
+      - "median household income"
+      - "bachelor's degree or higher"
+    rhetorical_target: "Immigrant-services case: foreign-born share + linguistic isolation + educational attainment + income."
+    standard_caveats:
+      - "Foreign-born status and linguistic isolation are self-reported; undercount is well documented."
+
+  - name: transit_access
+    description: |
+      User is building a transit / mobility case. Focus on vehicle
+      access, commute, work-from-home.
+    triggers:
+      - "transit"
+      - "mobility"
+      - "commute"
+      - "no-vehicle households"
+      - "work from home"
+    required_additional_concepts:
+      - "share without a vehicle"
+      - "commute mode"
+      - "share working from home"
+      - "median household income"
+      - "poverty rate"
+    rhetorical_target: "Transit-access case: no-vehicle rate + commute mode mix + income context."
+    standard_caveats:
+      - "Commute-mode data reflects pre-pandemic norms in 5-year windows covering 2019-2023 or earlier."
+
+  - name: mental_health
+    description: |
+      User is building a case for mental-health services. ACS has
+      limited direct mental-health measures; proxies include
+      disability, poverty, isolation indicators.
+    triggers:
+      - "mental health"
+      - "behavioral health"
+      - "psychological / trauma"
+    required_additional_concepts:
+      - "disability rate"
+      - "poverty rate"
+      - "seniors living alone"
+      - "uninsured rate"
+      - "median household income"
+    rhetorical_target: "Mental-health case: disability + poverty + isolation proxies + uninsured. Acknowledge ACS limitations."
+    standard_caveats:
+      - "ACS does not directly measure mental health; proxies (disability, isolation, uninsured) approximate service demand."
+
+  # -------------------------------------------------------------------------
+  # Expanded library of grant-narrative frames. Each has a rich trigger
+  # list so the deterministic matcher short-circuits before hitting the
+  # LLM classifier; required_additional_concepts reference real canonical
+  # concepts from config/concept_map.yaml so Tier 1 hits stay clean.
+  # -------------------------------------------------------------------------
+
+  # === EDUCATION & YOUTH ===
+
+  - name: early_childhood
+    description: |
+      Early childhood education, pre-K access, kindergarten readiness,
+      childcare deserts. Proxies: young-child share, income,
+      single-parent households, maternal labor force participation.
+    triggers:
+      - "early childhood"
+      - "early learning"
+      - "pre-k"
+      - "pre-kindergarten"
+      - "preschool"
+      - "head start"
+      - "childcare"
+      - "child care"
+      - "daycare"
+      - "day care"
+      - "kindergarten readiness"
+      - "infant toddler"
+      - "babies and toddlers"
+    required_additional_concepts:
+      - "children under 18"
+      - "median household income"
+      - "single-parent households"
+      - "child poverty rate"
+      - "labor force participation"
+    rhetorical_target: "Early-childhood case: share of young children + working mothers + family income + single-parent pressure."
+    standard_caveats:
+      - "ACS reports children under 5 but not enrollment in specific early-childhood programs; program gaps are inferred from income + family structure."
+
+  - name: k12_education_gap
+    description: |
+      K-12 achievement gap, public vs private enrollment, school
+      funding equity, high-school completion at the community level.
+    triggers:
+      - "school enrollment"
+      - "public school"
+      - "private school"
+      - "high school completion"
+      - "high school dropout"
+      - "education gap"
+      - "school quality"
+      - "k-12"
+      - "k through 12"
+      - "achievement gap"
+      - "title i"
+      - "free and reduced lunch"
+    required_additional_concepts:
+      - "school enrollment"
+      - "public school enrollment"
+      - "less than high school"
+      - "child poverty rate"
+      - "median household income"
+    rhetorical_target: "K-12 equity case: enrollment patterns + attainment gaps + child poverty + income context."
+    standard_caveats:
+      - "Census does not measure school performance directly; achievement gap claims should cite NAEP or district data."
+
+  - name: adult_education
+    description: |
+      Adult literacy, GED programs, basic-skills for workforce entry,
+      English language learning for adults.
+    triggers:
+      - "adult education"
+      - "adult literacy"
+      - "ged"
+      - "basic skills"
+      - "adult learning"
+      - "esl for adults"
+      - "adult esol"
+      - "high school equivalency"
+    required_additional_concepts:
+      - "less than high school"
+      - "high school graduate or higher"
+      - "limited English-speaking households"
+      - "unemployment rate"
+      - "median earnings"
+    rhetorical_target: "Adult-education case: adults without HS diploma + earnings gap + LEP share."
+    standard_caveats:
+      - "ACS reports attainment, not enrollment in adult-ed programs — use state/local adult-ed agencies for program reach."
+
+  - name: college_access
+    description: |
+      College access, first-generation students, scholarship programs,
+      postsecondary enrollment gaps.
+    triggers:
+      - "college access"
+      - "college attainment"
+      - "first generation college"
+      - "first-gen"
+      - "scholarship"
+      - "postsecondary"
+      - "post-secondary"
+      - "higher education"
+      - "college completion"
+      - "bachelor's attainment"
+      - "community college"
+    required_additional_concepts:
+      - "bachelor's degree or higher"
+      - "some college no degree"
+      - "high school graduate or higher"
+      - "median household income"
+      - "child poverty rate"
+    rhetorical_target: "College-access case: attainment ladder + income context + youth population."
+    standard_caveats:
+      - "ACS captures completed attainment, not enrollment or persistence; combine with IPEDS for institutional data."
+
+  - name: youth_workforce
+    description: |
+      Workforce development targeting youth/young adults (16-24):
+      disconnected youth (NEET), first jobs, apprenticeships, career
+      and technical education.
+    triggers:
+      - "disconnected youth"
+      - "opportunity youth"
+      - "neet"
+      - "youth unemployment"
+      - "young adults not working"
+      - "16-24"
+      - "16 to 24"
+      - "youth apprenticeship"
+      - "career technical education"
+      - "cte"
+      - "summer jobs"
+      - "first job"
+    required_additional_concepts:
+      - "school enrollment"
+      - "employment by sex by age"
+      - "less than high school"
+      - "unemployment rate"
+      - "median household income"
+    rhetorical_target: "Youth-workforce case: disconnected-youth share (16-24 not in school or work) + income + attainment."
+    standard_caveats:
+      - "NEET share is inferred from ACS enrollment + employment tables; sample sizes are small at sub-county levels."
+
+  - name: afterschool_programs
+    description: |
+      After-school programming, out-of-school time, enrichment for
+      school-age children — usually framed around latchkey kids,
+      working parents, achievement support.
+    triggers:
+      - "afterschool"
+      - "after-school"
+      - "after school program"
+      - "out-of-school time"
+      - "ost"
+      - "latchkey"
+      - "youth enrichment"
+      - "summer program"
+      - "summer learning loss"
+    required_additional_concepts:
+      - "children under 18"
+      - "single-parent households"
+      - "labor force participation"
+      - "child poverty rate"
+      - "median household income"
+    rhetorical_target: "After-school case: school-age population + working parents (labor force) + family income pressure."
+    standard_caveats:
+      - "ACS does not measure after-school program availability; need inferred from demographics and working-parent proxies."
+
+  # === HEALTH & HEALTHCARE ===
+
+  - name: healthcare_access
+    description: |
+      Primary care access, community health clinics, uninsured rate,
+      clinic deserts. Proxies: uninsured, poverty, public insurance.
+    triggers:
+      - "healthcare access"
+      - "health care access"
+      - "primary care"
+      - "community health"
+      - "fqhc"
+      - "clinic access"
+      - "clinic desert"
+      - "health center"
+      - "doctor shortage"
+      - "medical care"
+      - "health disparity"
+      - "health equity"
+    required_additional_concepts:
+      - "uninsured rate"
+      - "public health insurance"
+      - "poverty rate"
+      - "median household income"
+      - "disability status"
+    rhetorical_target: "Healthcare-access case: uninsured + public-coverage share + poverty + disability context."
+    standard_caveats:
+      - "Coverage isn't the same as access; actual utilization depends on provider supply and transportation."
+
+  - name: maternal_health
+    description: |
+      Maternal and infant health, OB/GYN access, home visiting
+      programs, birth outcomes (Census proxies limited).
+    triggers:
+      - "maternal health"
+      - "maternal mortality"
+      - "infant mortality"
+      - "prenatal"
+      - "postpartum"
+      - "home visiting"
+      - "ob gyn"
+      - "birth outcomes"
+      - "new moms"
+      - "pregnancy"
+      - "teen pregnancy"
+    required_additional_concepts:
+      - "women who had a birth"
+      - "fertility by age"
+      - "uninsured rate"
+      - "poverty rate"
+      - "single-parent households"
+    rhetorical_target: "Maternal-health case: recent-birth rate + young-mom share + insurance + poverty."
+    standard_caveats:
+      - "ACS reports fertility and births in the last 12 months; actual birth outcomes come from CDC WONDER or state vital stats."
+
+  - name: disability_services
+    description: |
+      Disability services, accessibility programs, independent-living
+      support. Proxies: ACS disability items (ambulatory, cognitive,
+      self-care, independent living, hearing, vision).
+    triggers:
+      - "disability services"
+      - "accessibility"
+      - "adaptive"
+      - "people with disabilities"
+      - "ambulatory"
+      - "cognitive disability"
+      - "hearing impairment"
+      - "vision impairment"
+      - "assistive technology"
+      - "independent living"
+      - "ada compliance"
+    required_additional_concepts:
+      - "disability status"
+      - "ambulatory difficulty"
+      - "independent living difficulty"
+      - "poverty rate"
+      - "median household income"
+    rhetorical_target: "Disability-services case: disability prevalence + specific functional limitations + poverty context."
+    standard_caveats:
+      - "ACS disability items are self-reported and capture 6 functional domains only; clinical definitions differ."
+
+  - name: veterans_services
+    description: |
+      Veteran-focused services: employment, housing, mental health,
+      physical disability among veterans.
+    triggers:
+      - "veteran"
+      - "veterans services"
+      - "veterans affairs"
+      - "va benefits"
+      - "military"
+      - "post-9/11 vet"
+      - "gulf war"
+      - "veteran homelessness"
+    required_additional_concepts:
+      - "veterans"
+      - "disability status"
+      - "unemployment rate"
+      - "median earnings"
+      - "poverty rate"
+    rhetorical_target: "Veterans case: veteran share + veteran-specific disability and economic indicators."
+    standard_caveats:
+      - "ACS veteran status is self-reported; service-era detail uses the 5-year file."
+
+  - name: uninsured_coverage
+    description: |
+      Insurance-coverage gaps, Medicaid/Medicare enrollment pushes,
+      navigator programs.
+    triggers:
+      - "uninsured"
+      - "no health insurance"
+      - "lacking insurance"
+      - "medicaid"
+      - "medicare"
+      - "chip"
+      - "aca marketplace"
+      - "obamacare"
+      - "insurance navigator"
+      - "coverage gap"
+      - "underinsured"
+    required_additional_concepts:
+      - "uninsured rate"
+      - "public health insurance"
+      - "private health insurance"
+      - "poverty rate"
+      - "median household income"
+    rhetorical_target: "Coverage case: uninsured rate + public/private split + income context."
+    standard_caveats:
+      - "ACS distinguishes coverage type but not continuity; gaps during the year are under-measured."
+
+  # === HOUSING (beyond existing frames) ===
+
+  - name: homelessness_risk
+    description: |
+      Homelessness prevention, emergency rental assistance, risk
+      indicators for housing loss. Proxies: severe rent burden,
+      single-parent low-income, eviction-adjacent signals.
+    triggers:
+      - "homeless"
+      - "homelessness"
+      - "housing first"
+      - "eviction"
+      - "rent arrears"
+      - "shelter capacity"
+      - "housing loss"
+      - "rapid rehousing"
+      - "housing risk"
+      - "at risk of homelessness"
+    required_additional_concepts:
+      - "severe rent burden"
+      - "rent burden"
+      - "poverty rate"
+      - "single-parent households"
+      - "median gross rent"
+    rhetorical_target: "Homelessness-risk case: severe rent burden + deep poverty + precarious family structure."
+    standard_caveats:
+      - "ACS doesn't measure literal homelessness; HUD PIT counts and state HMIS are the source-of-truth. Use ACS only for at-risk population sizing."
+
+  - name: homeownership_gap
+    description: |
+      First-time homebuyer programs, down-payment assistance,
+      closing the racial homeownership gap.
+    triggers:
+      - "homeownership"
+      - "first-time homebuyer"
+      - "first time buyer"
+      - "down payment assistance"
+      - "homeownership gap"
+      - "racial homeownership gap"
+      - "closing costs"
+      - "mortgage assistance"
+    required_additional_concepts:
+      - "homeownership rate"
+      - "median home value"
+      - "median household income"
+      - "mortgage status"
+      - "racial composition"
+    rhetorical_target: "Homeownership-gap case: tenure by race + value + income affordability gap."
+    standard_caveats:
+      - "ACS homeownership is by householder race; gaps at small-area level have wide margins of error."
+
+  - name: weatherization_rehab
+    description: |
+      Home weatherization, LIHEAP, energy efficiency, lead abatement,
+      aging housing stock rehab.
+    triggers:
+      - "weatherization"
+      - "liheap"
+      - "energy efficiency"
+      - "home rehab"
+      - "housing rehab"
+      - "lead abatement"
+      - "old housing"
+      - "housing stock"
+      - "substandard housing"
+      - "roof repair"
+    required_additional_concepts:
+      - "year structure built"
+      - "heating fuel type"
+      - "median household income"
+      - "poverty rate"
+      - "lacking complete kitchen"
+    rhetorical_target: "Rehab case: housing age + heating-fuel distribution + income-eligible households."
+    standard_caveats:
+      - "ACS 'year structure built' is bucketed decade ranges; lead-exposure risk is inferred from pre-1978 stock."
+
+  - name: energy_cost_burden
+    description: |
+      Energy cost burden, utility-assistance programs, high heating
+      and cooling bills relative to income.
+    triggers:
+      - "energy cost"
+      - "utility bill"
+      - "utility assistance"
+      - "heating bill"
+      - "cooling bill"
+      - "energy burden"
+      - "power shutoff"
+      - "energy poverty"
+    required_additional_concepts:
+      - "heating fuel type"
+      - "median household income"
+      - "poverty rate"
+      - "year structure built"
+      - "median monthly housing costs"
+    rhetorical_target: "Energy-burden case: heating-fuel mix + old stock + income-constrained households."
+    standard_caveats:
+      - "ACS does not report utility bills directly; burden is inferred from monthly housing costs + income."
+
+  - name: senior_housing
+    description: |
+      Senior housing production, age-in-place supports, aging-
+      friendly neighborhoods.
+    triggers:
+      - "senior housing"
+      - "aging in place"
+      - "older adult housing"
+      - "senior living"
+      - "assisted living"
+      - "retirement community"
+      - "age-restricted"
+    required_additional_concepts:
+      - "share 65 and over"
+      - "seniors living alone"
+      - "homeownership rate"
+      - "median household income"
+      - "disability status"
+    rhetorical_target: "Senior-housing case: 65+ share + living-alone + tenure + income + disability context."
+    standard_caveats:
+      - "ACS group-quarters undercount may affect small-area senior counts."
+
+  # === ECONOMIC DEVELOPMENT ===
+
+  - name: small_business
+    description: |
+      Small-business development, entrepreneurship, minority-owned
+      business programs.
+    triggers:
+      - "small business"
+      - "entrepreneur"
+      - "entrepreneurship"
+      - "startup"
+      - "minority business"
+      - "women-owned business"
+      - "self-employed"
+      - "mom and pop"
+      - "main street business"
+    required_additional_concepts:
+      - "households with self-employment income"
+      - "self-employment income"
+      - "median household income"
+      - "racial composition"
+      - "bachelor's degree or higher"
+    rhetorical_target: "Small-business case: self-employment share + racial composition + education + income context."
+    standard_caveats:
+      - "ACS self-employment captures sole proprietors; the Survey of Business Owners / ABS has better firm-level detail."
+
+  - name: financial_inclusion
+    description: |
+      Financial inclusion, banking-desert / unbanked outreach,
+      credit-building programs.
+    triggers:
+      - "unbanked"
+      - "underbanked"
+      - "banking desert"
+      - "credit building"
+      - "financial inclusion"
+      - "payday lending"
+      - "check cashing"
+      - "ida program"
+      - "bank account access"
+    required_additional_concepts:
+      - "households with wage or salary income"
+      - "households with interest dividend or rental income"
+      - "median household income"
+      - "poverty rate"
+      - "foreign-born population"
+    rhetorical_target: "Financial-inclusion case: asset-income share gap + immigrant population + income."
+    standard_caveats:
+      - "ACS doesn't measure banking status; FDIC Survey of Unbanked is the source-of-truth."
+
+  - name: living_wage
+    description: |
+      Living-wage campaigns, working-poor support, wage-gap advocacy.
+    triggers:
+      - "living wage"
+      - "working poor"
+      - "low-wage worker"
+      - "minimum wage"
+      - "wage gap"
+      - "working poverty"
+      - "full-time poor"
+      - "gig worker"
+    required_additional_concepts:
+      - "low-income workers"
+      - "median earnings"
+      - "poverty rate"
+      - "employment by industry"
+      - "median household income"
+    rhetorical_target: "Living-wage case: low-wage worker share + earnings distribution + in-work poverty."
+    standard_caveats:
+      - "ACS earnings are annual self-reports; hourly-wage distribution requires CPS ORG."
+
+  - name: income_inequality
+    description: |
+      Income inequality, Gini, top-share concentration, wealth-gap
+      narratives.
+    triggers:
+      - "income inequality"
+      - "inequality"
+      - "gini"
+      - "top 1 percent"
+      - "wealth gap"
+      - "income polarization"
+      - "shrinking middle class"
+    required_additional_concepts:
+      - "income inequality"
+      - "household income distribution"
+      - "median household income"
+      - "poverty rate"
+      - "aggregate household income"
+    rhetorical_target: "Inequality case: Gini + income distribution + poverty rate + top-share."
+    standard_caveats:
+      - "ACS Gini is reported at state, county, and place levels; small-area Ginis have large MOEs."
+
+  - name: racial_income_gap
+    description: |
+      Racial income / wealth gap narratives at the community level.
+    triggers:
+      - "racial income gap"
+      - "racial wealth gap"
+      - "black income gap"
+      - "hispanic income gap"
+      - "income by race"
+      - "earnings by race"
+      - "economic equity"
+    required_additional_concepts:
+      - "median household income black"
+      - "median household income white"
+      - "median household income hispanic"
+      - "poverty rate black"
+      - "poverty rate hispanic"
+    rhetorical_target: "Racial-income-gap case: income medians by race + poverty rate by race + racial composition context."
+    standard_caveats:
+      - "Income-by-race medians at sub-state levels carry wide MOEs; combine with longer 5-year windows."
+
+  # === FAMILY & CHILD WELFARE ===
+
+  - name: single_parent_support
+    description: |
+      Single-parent household support programs, head-of-household
+      services.
+    triggers:
+      - "single parent"
+      - "single mother"
+      - "single father"
+      - "single mom"
+      - "single dad"
+      - "head of household"
+      - "female-headed"
+      - "one parent"
+    required_additional_concepts:
+      - "single-parent households"
+      - "child poverty rate"
+      - "children under 18"
+      - "median household income"
+      - "labor force participation"
+    rhetorical_target: "Single-parent case: single-parent household share + child poverty + working-parent pressure."
+    standard_caveats:
+      - "ACS family structure is at the household level; joint-custody or multi-site arrangements aren't reflected."
+
+  - name: kinship_caregiving
+    description: |
+      Grandparents raising grandchildren, kinship care, informal
+      foster arrangements.
+    triggers:
+      - "grandparents raising grandchildren"
+      - "kinship care"
+      - "grandfamilies"
+      - "relative caregivers"
+      - "kinship caregivers"
+      - "informal foster"
+    required_additional_concepts:
+      - "grandparents responsible for grandchildren"
+      - "grandparents living with grandchildren"
+      - "children under 18"
+      - "poverty rate"
+      - "median household income"
+    rhetorical_target: "Kinship-care case: grandparent-caregiver share + child poverty + income context."
+    standard_caveats:
+      - "ACS identifies grandparents responsible for grandchildren; formal foster placements are undercounted."
+
+  # === LANGUAGE, IMMIGRATION, CULTURE ===
+
+  - name: language_access
+    description: |
+      Limited-English-proficiency services, interpretation, bilingual
+      outreach — distinct from broader immigrant-services framing.
+    triggers:
+      - "language access"
+      - "limited english"
+      - "lep"
+      - "linguistic isolation"
+      - "esol"
+      - "bilingual services"
+      - "interpretation services"
+      - "translation services"
+      - "title vi language"
+    required_additional_concepts:
+      - "limited English-speaking households"
+      - "language spoken at home"
+      - "english-speaking ability"
+      - "foreign-born population"
+      - "hispanic or latino population"
+    rhetorical_target: "Language-access case: LEP share + language mix + foreign-born context."
+    standard_caveats:
+      - "Linguistic isolation is household-level; individual English proficiency varies within households."
+
+  - name: refugee_services
+    description: |
+      Refugee and new-immigrant integration services, specifically
+      recent arrivals (5 years or less).
+    triggers:
+      - "refugee"
+      - "asylum seeker"
+      - "new american"
+      - "recent immigrant"
+      - "resettlement"
+      - "integration services"
+      - "newcomer"
+    required_additional_concepts:
+      - "foreign-born population"
+      - "year of entry to us"
+      - "limited English-speaking households"
+      - "noncitizen population"
+      - "poverty rate"
+    rhetorical_target: "Refugee-services case: recent-arrival share + LEP + citizenship status + economic indicators."
+    standard_caveats:
+      - "ACS doesn't identify refugee status directly; recent-arrival non-citizen share is the closest proxy."
+
+  # === CIVIC ENGAGEMENT & REPRESENTATION ===
+
+  - name: civic_engagement
+    description: |
+      Voter turnout, census participation, civic capacity, nonprofit
+      ecosystem mapping.
+    triggers:
+      - "voter turnout"
+      - "voter registration"
+      - "voter engagement"
+      - "census participation"
+      - "civic engagement"
+      - "civic capacity"
+      - "voting age population"
+      - "voter access"
+    required_additional_concepts:
+      - "citizen voting age population"
+      - "voting age population"
+      - "foreign-born population"
+      - "median household income"
+      - "bachelor's degree or higher"
+    rhetorical_target: "Civic-engagement case: citizen voting age pop + turnout-correlated demographics (income, education)."
+    standard_caveats:
+      - "Turnout itself isn't Census; ACS provides the voting-eligible denominator. Combine with state SOS data."
+
+  # === HEALTH BEHAVIOR PROXIES ===
+
+  - name: substance_use_proxies
+    description: |
+      Substance-use prevention/treatment programs. ACS has no direct
+      substance-use measures; use deep-poverty, disability,
+      joblessness, single-parent, and young-adult-male proxies.
+    triggers:
+      - "substance use"
+      - "substance abuse"
+      - "opioid"
+      - "addiction"
+      - "recovery services"
+      - "treatment program"
+      - "harm reduction"
+      - "overdose"
+    required_additional_concepts:
+      - "disability status"
+      - "unemployment rate"
+      - "poverty rate"
+      - "population by age and sex"
+      - "median household income"
+    rhetorical_target: "Substance-use case: demographic risk profile (age, poverty, disability) — flag direct measures absent."
+    standard_caveats:
+      - "ACS does not measure substance use or overdose. Use CDC WONDER, state Medicaid data, or SAMHSA for actual rates."
+
+  # === MOBILITY & TRANSPORTATION (beyond existing) ===
+
+  - name: commute_burden
+    description: |
+      Long-commute burden, super-commuters, transit-dependent
+      workforce.
+    triggers:
+      - "long commute"
+      - "super commuter"
+      - "commute burden"
+      - "commute time"
+      - "traffic burden"
+      - "travel time to work"
+      - "1 hour commute"
+    required_additional_concepts:
+      - "long commute"
+      - "mean commute time"
+      - "commute time distribution"
+      - "means of transportation to work"
+      - "median household income"
+    rhetorical_target: "Commute-burden case: long-commute share + mode mix + income context."
+    standard_caveats:
+      - "Pre-pandemic commute patterns dominate most 5-year windows; post-2020 shifts emerge slowly."
+
+  - name: carless_households
+    description: |
+      No-car households, auto-repair programs, car-access to jobs.
+    triggers:
+      - "no car"
+      - "no vehicle"
+      - "carless"
+      - "car ownership"
+      - "auto access"
+      - "auto repair assistance"
+      - "transportation equity"
+      - "vehicle access"
+    required_additional_concepts:
+      - "households without a vehicle"
+      - "vehicles available"
+      - "means of transportation to work"
+      - "poverty rate"
+      - "median household income"
+    rhetorical_target: "Carless case: no-vehicle share + commute mode + economic pressure."
+    standard_caveats:
+      - "Household-level vehicle data may understate individual access constraints within multi-adult households."
+
+  # === RURAL & GEOGRAPHIC EQUITY ===
+
+  - name: rural_services
+    description: |
+      Rural service delivery, broadband/transit/healthcare deserts
+      in small towns and unincorporated areas.
+    triggers:
+      - "rural"
+      - "small town"
+      - "unincorporated"
+      - "rural healthcare"
+      - "rural broadband"
+      - "frontier area"
+      - "persistent rural"
+    required_additional_concepts:
+      - "median household income"
+      - "poverty rate"
+      - "share 65 and over"
+      - "internet access"
+      - "uninsured rate"
+    rhetorical_target: "Rural case: age + income + connectivity + insurance context for a small/dispersed area."
+    standard_caveats:
+      - "ACS sample sizes thin fast in rural areas; 5-year estimates are the only reliable option."
+
+  - name: neighborhood_revitalization
+    description: |
+      Neighborhood revitalization, Main Street programs, place-
+      based community development.
+    triggers:
+      - "neighborhood revitalization"
+      - "main street program"
+      - "place-based development"
+      - "community development"
+      - "corridor investment"
+      - "commercial corridor"
+      - "blighted"
+      - "blight"
+      - "reinvestment"
+    required_additional_concepts:
+      - "vacancy rate"
+      - "median home value"
+      - "median household income"
+      - "poverty rate"
+      - "homeownership rate"
+    rhetorical_target: "Revitalization case: vacancy + values + income + tenure mix on the target corridor/neighborhood."
+    standard_caveats:
+      - "Vacancy is a lagging indicator in ACS 5-year files; pair with local code-enforcement or postal data."
+
+  # === LOOK-IT-UP / NON-NARRATIVE QUERIES ===
+
+  # (Pure trend_lookup / comparison_lookup frames were removed too:
+  # their triggers like "has changed", "compare", "versus" overlap
+  # with every topical grant narrative that naturally discusses
+  # time-series or peer comparisons, so they were displacing the
+  # more-useful topical frame match. The synthesizer already
+  # detects multi-year + multi-geo plans via the planner and
+  # frames the prose accordingly — no dedicated frame needed.)
+
+  # (count_lookup, rate_calculation, and ranking_lookup frames were
+  # considered and dropped: their triggers collided with "how many",
+  # "what percent", and "top N" phrasings that topical frames like
+  # early_childhood, child_welfare, and poverty also need. Since
+  # those frames add zero required_additional_concepts, the net
+  # effect of keeping them was wrong-frame matches without any
+  # upside. specific_lookup already covers the generic-number-
+  # lookup case via the LLM classifier when no topical frame fits.)
+
+  # === DISPARITY & EQUITY FRAMES ===
+
+  - name: racial_disparity
+    description: |
+      Racial-disparity narrative on any outcome: education, housing,
+      health, employment. Expand with race-specific cuts.
+    triggers:
+      - "racial disparity"
+      - "racial inequity"
+      - "racial gap"
+      - "by race"
+      - "black versus white"
+      - "black white gap"
+      - "racial equity"
+      - "racial justice"
+    required_additional_concepts:
+      - "racial composition"
+      - "poverty rate black"
+      - "poverty rate hispanic"
+      - "median household income black"
+      - "median household income white"
+    rhetorical_target: "Racial-disparity case: race-specific indicator values + gap size + geographic context."
+    standard_caveats:
+      - "Race-disaggregated ACS estimates have wider MOEs; combine with 5-year data at small geographies."
+
+  - name: age_disparity
+    description: |
+      Age-cohort disparity narrative (e.g. senior poverty vs child
+      poverty, youth unemployment vs adult).
+    triggers:
+      - "age gap"
+      - "age disparity"
+      - "by age group"
+      - "young vs old"
+      - "generational gap"
+      - "age cohort"
+    required_additional_concepts:
+      - "population by age and sex"
+      - "child poverty rate"
+      - "seniors in poverty"
+      - "employment by sex by age"
+    rhetorical_target: "Age-cohort disparity: metric broken out by age + life-stage narrative."
+    standard_caveats:
+      - "Age cohorts of interest often require 5-year data for acceptable MOEs at small geographies."
+
+  - name: gender_disparity
+    description: |
+      Gender / sex disparity in earnings, employment, or other
+      outcomes.
+    triggers:
+      - "gender gap"
+      - "gender pay gap"
+      - "women's earnings"
+      - "male female"
+      - "pay equity"
+      - "women in workforce"
+      - "gender disparity"
+    required_additional_concepts:
+      - "earnings by occupation female"
+      - "earnings by occupation male"
+      - "labor force participation"
+      - "employment by sex by age"
+      - "median earnings"
+    rhetorical_target: "Gender-disparity case: earnings and participation by sex with an equity framing."
+    standard_caveats:
+      - "ACS reports sex-binary earnings only; pay gap excludes non-binary and non-reported workers."
+
+  # === GRANT-WRITING META-FRAMES ===
+
+  - name: needs_assessment
+    description: |
+      Explicit grant needs-assessment: user wants a baseline of
+      multiple indicators painting the problem.
+    triggers:
+      - "needs assessment"
+      - "baseline data"
+      - "problem statement"
+      - "scope of need"
+      - "case statement"
+      - "community assessment"
+      - "grant narrative baseline"
+    required_additional_concepts:
+      - "total population"
+      - "poverty rate"
+      - "median household income"
+      - "racial composition"
+      - "children under 18"
+    rhetorical_target: "Needs-assessment case: multi-indicator baseline + acute-need callout + comparator framing."
+    standard_caveats:
+      - "ACS 5-year estimates lag by up to 3 years; flag the vintage against the grant period."
+
+  - name: theory_of_change
+    description: |
+      User is building a theory-of-change justification for a
+      specific program — they want upstream indicators that the
+      program plausibly moves.
+    triggers:
+      - "theory of change"
+      - "logic model"
+      - "program logic"
+      - "upstream indicator"
+      - "root cause"
+      - "program justification"
+    required_additional_concepts:
+      - "poverty rate"
+      - "educational attainment"
+      - "unemployment rate"
+      - "median household income"
+    rhetorical_target: "Theory-of-change: indicators the intervention targets + context metrics."
+    standard_caveats:
+      - "ACS indicators are lagging; use them for baseline establishment, not program-outcome measurement."
+
+  - name: outcome_measurement
+    description: |
+      User wants ongoing community-level indicators for tracking
+      program outcomes.
+    triggers:
+      - "outcome measurement"
+      - "community indicator"
+      - "progress indicator"
+      - "kpi"
+      - "evaluation metric"
+      - "performance measure"
+    required_additional_concepts:
+      - "poverty rate"
+      - "median household income"
+      - "unemployment rate"
+      - "uninsured rate"
+    rhetorical_target: "Outcome-measurement case: indicators appropriate for annual tracking + vintage + MOE caveats."
+    standard_caveats:
+      - "Annual fine-grained tracking is limited by ACS's 5-year release cadence at sub-county scales."
+
+  - name: sustainability_plan
+    description: |
+      User is articulating grant-sustainability: how the program
+      persists after the funding cycle. Less data-heavy — expand
+      with economic-base indicators.
+    triggers:
+      - "sustainability plan"
+      - "post-grant"
+      - "long-term funding"
+      - "diversified funding"
+      - "earned revenue"
+      - "program sustainability"
+    required_additional_concepts:
+      - "median household income"
+      - "households with self-employment income"
+      - "total housing units"
+      - "poverty rate"
+    rhetorical_target: "Sustainability case: economic-base indicators that undergird long-run program viability."
+    standard_caveats: []
+
+  # === CRIME / SAFETY PROXIES (limited Census) ===
+
+  - name: community_safety
+    description: |
+      Community-safety programming, violence prevention, reentry
+      supports. ACS has no direct crime measures — use proxies.
+    triggers:
+      - "community safety"
+      - "public safety"
+      - "violence prevention"
+      - "gun violence"
+      - "crime prevention"
+      - "street outreach"
+      - "reentry"
+      - "returning citizens"
+      - "formerly incarcerated"
+    required_additional_concepts:
+      - "unemployment rate"
+      - "poverty rate"
+      - "single-parent households"
+      - "disability status"
+      - "population by age and sex"
+    rhetorical_target: "Safety-proxy case: demographic risk factors + economic pressure — explicit that crime counts are non-Census."
+    standard_caveats:
+      - "ACS does not report crime, arrests, or incarceration. Use FBI UCR / BJS for those; Census supports context only."
+
+  # === ENVIRONMENT & CLIMATE ===
+
+  - name: climate_resilience
+    description: |
+      Climate adaptation / resilience programs for vulnerable
+      populations (elderly, low-income, mobility-limited).
+    triggers:
+      - "climate resilience"
+      - "climate vulnerability"
+      - "heat vulnerability"
+      - "heat island"
+      - "flood risk"
+      - "disaster preparedness"
+      - "emergency evacuation"
+      - "heat wave"
+    required_additional_concepts:
+      - "share 65 and over"
+      - "poverty rate"
+      - "disability status"
+      - "households without a vehicle"
+      - "year structure built"
+    rhetorical_target: "Climate-resilience case: vulnerability stack — elderly + poverty + mobility + old stock — as who-to-protect."
+    standard_caveats:
+      - "Census doesn't measure climate risk directly. Pair with NOAA, FEMA NFIP, or EJScreen for hazard data."
+
+  - name: environmental_justice
+    description: |
+      Environmental-justice case for a community disproportionately
+      exposed to pollution, with demographic proxies for EJ index
+      denominators.
+    triggers:
+      - "environmental justice"
+      - "ej community"
+      - "pollution burden"
+      - "air quality equity"
+      - "cumulative impact"
+      - "frontline community"
+    required_additional_concepts:
+      - "racial composition"
+      - "poverty rate"
+      - "median household income"
+      - "limited English-speaking households"
+      - "share 65 and over"
+    rhetorical_target: "EJ case: demographic burden proxies that feed the EJ screening index for the area."
+    standard_caveats:
+      - "Actual pollution / exposure data comes from EPA (EJScreen, Toxics Release Inventory). ACS provides the demographic side only."
+
+  # === ARTS, CULTURE, TOURISM ===
+
+  - name: arts_culture
+    description: |
+      Arts-organization funding, cultural-district programs. Census
+      proxies are thin; lean on income + education + age.
+    triggers:
+      - "arts program"
+      - "cultural district"
+      - "museum"
+      - "performing arts"
+      - "cultural equity"
+      - "creative economy"
+      - "public art"
+      - "arts funding"
+    required_additional_concepts:
+      - "median household income"
+      - "bachelor's degree or higher"
+      - "racial composition"
+      - "population by age and sex"
+    rhetorical_target: "Arts case: population size + education + income + racial composition as audience/participation base."
+    standard_caveats:
+      - "ACS does not measure arts participation. Combine with NEA SPPA survey for participation rates."
+
+  # === INTERNAL / DEVELOPER ===
+
+  - name: other
+    description: |
+      Catch-all for queries that don't fit any named frame. The
+      Expander falls back to whatever the user actually asked about,
+      no additional concepts added.
+    triggers: []
+    required_additional_concepts: []
+    rhetorical_target: "Answer the user's question directly; no particular grant structure."
+    standard_caveats: []

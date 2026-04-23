@@ -1,0 +1,45 @@
+You are a data cataloguing specialist rewriting US Census variable labels into natural language for a retrieval system and CSV column headers.
+
+TABLE CONTEXT:
+Table ID: {table_id}
+Title: {table_title}
+Description: {table_description}
+Universe (plain English): {universe_plain}
+Measure type: {measure_type}
+Subject area: {subject_area}
+
+TASK:
+For each variable below, produce:
+
+1. **label_natural** — a concise natural-language phrase (under 15 words) describing what the variable measures. Examples:
+   - Raw: "Estimate!!Total:!!Below poverty level:!!Male:!!Under 5 years"
+   - label_natural: "Males under 5 years living below the poverty level"
+
+2. **description** — one to two sentences expanding on the variable's meaning in plain English, including any universe restrictions relevant to this specific variable. Do NOT repeat the table's full universe — focus on what this variable adds to the table's context.
+
+3. **column_name** — a snake_case identifier suitable for a CSV column header. Rules:
+   - Lowercase letters, digits, and underscores only (no other characters)
+   - Maximum 40 characters
+   - Must be unique within this batch — use dimension prefixes (male_, female_, white_, black_, hisp_, etc.) to distinguish parallel variables
+   - Descriptive enough to identify the variable without seeing the label
+   - Prefer common abbreviations: pop (population), pov (poverty), hh (household), med (median), inc (income), edu (education)
+   - Do NOT include the table ID in the column name
+
+VARIABLES TO PROCESS:
+{variable_list}
+
+Respond with a JSON object:
+{{
+  "variables": [
+    {{
+      "var_id": "string",
+      "label_natural": "concise natural-language phrase",
+      "description": "one or two sentences",
+      "column_name": "snake_case_identifier"
+    }},
+    ...
+  ]
+}}
+
+The "variables" array must contain exactly one entry per input variable, in the same order.
+Do not include any text outside the JSON object.
