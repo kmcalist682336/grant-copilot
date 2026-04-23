@@ -1317,7 +1317,7 @@ too varied for a grammar.  The response is schema-validated
 (pydantic) and any pydantic validation error converts the query
 to a graceful failure rather than a crash.
 
-**Bounded by a 60 s hard timeout** in the LLM client
+**Bounded by a 120 s hard timeout** in the LLM client
 (see §7); typical latency is 1–3 s.
 
 ## Stage 2: Geographic resolution
@@ -1723,7 +1723,7 @@ ax.set_xlim(0, 10); ax.set_ylim(0, 10); ax.axis("off")
 
 layers = [
     ("Scope gate",      "Out-of-scope queries → polite refusal",           PALETTE["accent"],  9.0),
-    ("LLM timeouts",    "Daemon-thread 60s hard cap per call",             PALETTE["llm"],     7.8),
+    ("LLM timeouts",    "Daemon-thread 120s hard cap per call",             PALETTE["llm"],     7.8),
     ("Tier 1 priority", "Curated concept_map overrides the semantic router", PALETTE["det"],   6.6),
     ("Score floor",     "Router critic: weak matches force fallback",     PALETTE["det"],     5.4),
     ("Critic gap-retry","Dropped verdicts get a second-pass LLM call",     PALETTE["llm"],     4.2),
@@ -1774,8 +1774,8 @@ pipeline kept freezing until the outer watchdog fired.
 Every node that uses an LLM (`extractor`, `concept_rewriter`,
 `router_critic`, `plan_reviewer`, `clarifier`, `scope_gate`,
 `grant_frame_matcher`, `followup_gap_finder`, `synthesizer`) is
-bounded by this timeout.  Default is 60 s for the client-level
-cap; specific nodes (plan_reviewer, clarifier) have an outer 75
+bounded by this timeout.  Default is 120 s for the client-level
+cap; specific nodes (plan_reviewer, clarifier) have an outer 135
 s wrapper as belt-and-suspenders.
 
 ## Exclusion compounds: roadmap caveat, not a crash

@@ -112,7 +112,7 @@ class GeminiVertexClient:
         location: str = "us-central1",
         model: str = "gemini-2.5-flash",
         temperature: float = 0.1,
-        timeout_seconds: float = 60.0,
+        timeout_seconds: float = 120.0,
         enable_cache: bool = True,
         cache_ttl_seconds: int = 3600,
     ):
@@ -412,7 +412,7 @@ def build_default_client(config: dict) -> GeminiVertexClient:
         location=vertex.get("location", "us-central1"),
         model=vertex.get("model", "gemini-2.5-flash"),
         temperature=vertex.get("temperature", 0.1),
-        timeout_seconds=vertex.get("timeout_seconds", 60.0),
+        timeout_seconds=vertex.get("timeout_seconds", 120.0),
         enable_cache=vertex.get("enable_cache", True),
         cache_ttl_seconds=vertex.get("cache_ttl_seconds", 3600),
     )

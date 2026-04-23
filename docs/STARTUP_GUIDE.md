@@ -654,9 +654,9 @@ disabled in `config/chatbot.yaml` via
 
 ## 12. Troubleshooting
 
-### "Vertex call timed out after 60s"
+### "Vertex call timed out after 120s"
 
-Gemini occasionally cold-starts at 30–60s on first call.  Retry
+Gemini occasionally cold-starts at 30–60s (occasionally longer on a busy region) on first call.  Retry
 the query.  If it happens repeatedly, check Vertex AI quota for
 your project:
 

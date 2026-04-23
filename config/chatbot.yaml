@@ -15,14 +15,14 @@ vertex_ai:
     - us-west4
   model: gemini-2.5-flash
   temperature: 0.1
-  # Hard wall-clock ceiling per LLM call. 10s was too tight —
-  # synthesizer prose generation with full peer/frame/anomaly
-  # context legitimately runs 15-25s, and we were occasionally
-  # hanging indefinitely because the google-genai SDK doesn't
-  # enforce a timeout on its own. 60s gives prose room while
-  # still catching true hangs (frame matcher / critic calls that
-  # normally return in 1-3s should never approach this).
-  timeout_seconds: 60
+  # Hard wall-clock ceiling per LLM call.  Gemini 2.5 Flash is
+  # usually fast (1–5 s) but cold-starts and big synthesizer
+  # payloads can legitimately push into the 30–60 s range,
+  # especially on the first query after startup.  120 s gives
+  # those calls room without letting a truly-stuck Vertex
+  # request freeze the whole pipeline — the daemon-thread
+  # wrapper in llm_client.py enforces this as a hard cap.
+  timeout_seconds: 120
   # Explicit context caching off by default. Gemini 2.5 Flash already
   # applies implicit prefix caching (75% input-token discount) at no
   # storage cost, so explicit caches are a net loss for light usage

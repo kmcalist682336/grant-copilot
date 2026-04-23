@@ -465,7 +465,7 @@ grant-copilot/
 ### "Vertex call timed out"
 
 Gemini 2.5 Flash is usually fast (1–5 s) but occasionally cold-
-starts at 15–30 s.  The client has a 60 s hard timeout.  If you
+starts at 15–30 s.  The client has a 120 s hard timeout.  If you
 see a timeout, re-run the query; if it persists, check Vertex
 quota on your GCP project.
 

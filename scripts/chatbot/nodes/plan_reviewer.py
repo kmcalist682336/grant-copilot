@@ -218,11 +218,11 @@ def _user_payload(
 # ---------------------------------------------------------------------------
 
 # Outer timeout on the reviewer. Acts as a belt-and-suspenders safety
-# net above the LLM client's own 60s per-call timeout — the reviewer
+# net above the LLM client's own 120s per-call timeout — the reviewer
 # can in principle do work before and after the single LLM call, and
-# we want one bounded number to stand behind the whole stage. 75s
-# leaves the 60s LLM budget room without blowing past user patience.
-_REVIEWER_HARD_TIMEOUT_S = 75.0
+# we want one bounded number to stand behind the whole stage. 135s
+# leaves the 120s LLM budget room without blowing past user patience.
+_REVIEWER_HARD_TIMEOUT_S = 135.0
 
 
 def review_plan(

@@ -435,10 +435,10 @@ def _user_payload(
 # minutes on a single geo-clarifier call), we bail with a
 # no-clarification result rather than freezing the whole pipeline.
 # Clarification is an enrichment — never worth stalling the answer.
-# Outer timeout above the LLM client's own 60s per-call cap. The
-# clarifier's LLM step is the only blocking work, so 75s matches
-# the plan_reviewer budget and cleanly wraps the 60s inner cap.
-_CLARIFIER_HARD_TIMEOUT_S = 75.0
+# Outer timeout above the LLM client's own 120s per-call cap. The
+# clarifier's LLM step is the only blocking work, so 135s matches
+# the plan_reviewer budget and cleanly wraps the 120s inner cap.
+_CLARIFIER_HARD_TIMEOUT_S = 135.0
 
 
 # Observable-ambiguity gate — decides WHICH clarifier scopes (if any)
