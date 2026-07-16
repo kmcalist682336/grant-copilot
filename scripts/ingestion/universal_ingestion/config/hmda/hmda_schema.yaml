@@ -1,0 +1,29 @@
+# Analytical types for processed HMDA Parquet files.
+# Identifiers, geography codes, and decoded categories remain strings.
+# Every numeric field receives a companion <field>_status string column for
+# values such as "Not applicable" and "Exempt".
+
+numeric_fields:
+  activity_year: int64
+  loan_amount: float64
+  loan_to_value_ratio: float64
+  interest_rate: float64
+  rate_spread: float64
+  total_loan_costs: float64
+  total_points_and_fees: float64
+  origination_charges: float64
+  discount_points: float64
+  lender_credits: float64
+  loan_term: float64
+  prepayment_penalty_term: float64
+  intro_rate_period: float64
+  property_value: float64
+  multifamily_affordable_units: float64
+  income: float64
+  tract_population: int64
+  tract_minority_population_percent: float64
+  ffiec_msa_md_median_family_income: float64
+  tract_to_msa_income_percentage: float64
+  tract_owner_occupied_units: int64
+  tract_one_to_four_family_homes: int64
+  tract_median_age_of_housing_units: int64

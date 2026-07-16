@@ -1,0 +1,116 @@
+# HMDA metric recipes
+# These rules define how natural-language lending metrics become SQL aggregations.
+# Keep this file small and hand-reviewed. The codebook CSV is the source of truth for field/value meanings.
+
+metrics:
+  denial_rate:
+    label: Mortgage denial rate
+    description: Share of completed decision applications that were denied.
+    numerator:
+      operation: count_records
+      filters:
+        - field: action_taken
+          values: ["Application denied"]
+          meaning: Application denied
+    denominator:
+      operation: count_records
+      filters:
+        - field: action_taken
+          values: ["Loan originated", "Application approved but not accepted", "Application denied"]
+          meaning: Completed decision outcomes: originated, approved but not accepted, or denied
+    required_fields: [activity_year, census_tract, action_taken]
+    optional_group_by: [derived_race, derived_ethnicity, derived_sex, loan_purpose, loan_type, ageapplicant]
+    caveat: Excludes withdrawn applications, incomplete files, purchased loans, and preapproval outcomes unless explicitly requested.
+
+  origination_rate:
+    label: Mortgage origination rate
+    description: Share of completed decision applications that resulted in originated loans.
+    numerator:
+      operation: count_records
+      filters:
+        - field: action_taken
+          values: ["Loan originated"]
+          meaning: Loan originated
+    denominator:
+      operation: count_records
+      filters:
+        - field: action_taken
+          values: ["Loan originated", "Application approved but not accepted", "Application denied"]
+          meaning: Completed decision outcomes
+    required_fields: [activity_year, census_tract, action_taken]
+    optional_group_by: [derived_race, derived_ethnicity, derived_sex, loan_purpose, loan_type, ageapplicant]
+
+  average_loan_amount:
+    label: Average loan amount
+    description: Average reported loan amount among selected records.
+    numerator:
+      operation: sum
+      field: loan_amount
+    denominator:
+      operation: count_valid
+      field: loan_amount
+    required_fields: [activity_year, census_tract, loan_amount]
+    caveat: Loan amount is reported for applications/loans and does not necessarily equal final home sale price.
+
+  total_loan_volume:
+    label: Total loan volume
+    description: Sum of reported loan amounts among selected records.
+    numerator:
+      operation: sum
+      field: loan_amount
+    required_fields: [activity_year, census_tract, loan_amount]
+
+  fha_share:
+    label: FHA loan share among originated loans
+    description: Share of originated loans that are FHA-insured.
+    numerator:
+      operation: count_records
+      filters:
+        - field: action_taken
+          values: ["Loan originated"]
+        - field: loan_type
+          values: ["Federal Housing Administration insured (FHA)"]
+          meaning: FHA-insured
+    denominator:
+      operation: count_records
+      filters:
+        - field: action_taken
+          values: ["Loan originated"]
+          meaning: Originated loans
+    required_fields: [activity_year, census_tract, action_taken, loan_type]
+
+  home_purchase_share:
+    label: Home purchase loan share among originated loans
+    description: Share of originated loans that were for home purchase.
+    numerator:
+      operation: count_records
+      filters:
+        - field: action_taken
+          values: ["Loan originated"]
+        - field: loan_purpose
+          values: ["Home purchase"]
+          meaning: Home purchase
+    denominator:
+      operation: count_records
+      filters:
+        - field: action_taken
+          values: ["Loan originated"]
+          meaning: Originated loans
+    required_fields: [activity_year, census_tract, action_taken, loan_purpose]
+
+  high_cost_mortgage_share:
+    label: High-cost mortgage share
+    description: Share of selected loans/applications marked as high-cost mortgages.
+    numerator:
+      operation: count_records
+      filters:
+        - field: hoepa_status
+          values: ["High-cost mortgage"]
+          meaning: High-cost mortgage
+    denominator:
+      operation: count_records
+      filters:
+        - field: hoepa_status
+          values: ["High-cost mortgage", "Not a high-cost mortgage"]
+          meaning: High-cost or not high-cost mortgage, excluding not applicable
+    required_fields: [activity_year, census_tract, hoepa_status]
