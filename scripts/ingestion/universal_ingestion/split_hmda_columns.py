@@ -2,7 +2,8 @@
 
 This is the single entry point for the demo ingestion flow. It applies the
 same codebook, geography, and numeric cleaning rules as ``preprocess_lar`` and
-then writes one two-column Parquet file per decoded variable. The decoded
+then writes one two-column Parquet file per decoded variable under the
+dataset/year hierarchy. The decoded
 whole-table Parquet is temporary unless ``--keep-processed`` is supplied.
 
 The command defaults to a dry run. Nothing is written unless ``--execute`` is
@@ -22,6 +23,7 @@ from __future__ import annotations
 import argparse
 import csv
 import hashlib
+import json
 import tempfile
 from pathlib import Path
 
@@ -58,12 +60,20 @@ def variable_id(source_name: str) -> str:
 
 def update_registry(dataset_root: Path, variables: list[str]) -> Path:
     """Maintain the durable mapping between opaque IDs and source columns."""
-    registry_path = dataset_root / "variable_registry.csv"
+    registry_path = dataset_root / "variable_registry.json"
     entries: dict[str, str] = {}
     if registry_path.is_file():
-        with registry_path.open(newline="", encoding="utf-8") as file:
-            for row in csv.DictReader(file):
-                entries[row["variable_id"]] = row["source_name"]
+        with registry_path.open(encoding="utf-8") as file:
+            document = json.load(file)
+        for entry in document.get("variables", []):
+            entries[entry["variable_id"]] = entry["source_name"]
+    else:
+        # Import the previous demo registry once when upgrading to JSON.
+        legacy_path = dataset_root / "variable_registry.csv"
+        if legacy_path.is_file():
+            with legacy_path.open(newline="", encoding="utf-8") as file:
+                for row in csv.DictReader(file):
+                    entries[row["variable_id"]] = row["source_name"]
 
     for source_name in variables:
         opaque_id = variable_id(source_name)
@@ -75,11 +85,17 @@ def update_registry(dataset_root: Path, variables: list[str]) -> Path:
         entries[opaque_id] = source_name
 
     dataset_root.mkdir(parents=True, exist_ok=True)
-    with registry_path.open("w", newline="", encoding="utf-8") as file:
-        writer = csv.DictWriter(file, fieldnames=["variable_id", "source_name"])
-        writer.writeheader()
-        for opaque_id, source_name in sorted(entries.items(), key=lambda item: item[1]):
-            writer.writerow({"variable_id": opaque_id, "source_name": source_name})
+    document = {
+        "dataset": "hmda",
+        "id_strategy": "sha256(hmda:<source_name>)[:12]",
+        "variables": [
+            {"variable_id": opaque_id, "source_name": source_name}
+            for opaque_id, source_name in sorted(entries.items(), key=lambda item: item[1])
+        ],
+    }
+    with registry_path.open("w", encoding="utf-8") as file:
+        json.dump(document, file, indent=2)
+        file.write("\n")
     return registry_path
 
 
@@ -136,7 +152,6 @@ def split_partition(
                     output_root
                     / "dataset=hmda"
                     / f"year={year}"
-                    / f"geography=state-{state}"
                     / f"variable={opaque_id}"
                     / "part-000.parquet"
                 )
@@ -166,7 +181,6 @@ def split_partition(
             destination = (
                 dataset_root
                 / f"year={year}"
-                / f"geography=state-{state}"
                 / f"variable={opaque_id}"
                 / "part-000.parquet"
             )

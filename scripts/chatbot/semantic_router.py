@@ -440,6 +440,7 @@ class SemanticRouter:
         self.metadata_db.row_factory = sqlite3.Row
         self.embedder = embedder
         self.config = config or RouterConfig()
+        self._dataset_vector_cache: dict[str, tuple[np.ndarray, np.ndarray]] = {}
         logger.info(
             "SemanticRouter loaded: %s vectors, dim=%d",
             self.index.ntotal, self.index.d,
@@ -534,9 +535,122 @@ class SemanticRouter:
             n_hits_after_filter=len(hits),
         )
 
+    def route_dataset(
+        self,
+        query: str,
+        target_dataset: str,
+        *,
+        top_k: int = 10,
+    ) -> RoutedResult:
+        """Search only cards belonging to one dataset.
+
+        This is intended for hierarchical routing: first choose a dataset,
+        then compare variables inside that dataset. It prevents a small
+        dataset such as HMDA from being crowded out by a much larger card
+        collection such as ACS.
+        """
+        if not query.strip() or not target_dataset.strip():
+            return RoutedResult(query=query)
+
+        ids, vectors = self._vectors_for_dataset(target_dataset)
+        if not len(ids):
+            return RoutedResult(query=query)
+
+        query_vec = np.asarray(
+            self.embedder.embed_one(query), dtype=np.float32,
+        ).reshape(-1)
+        if query_vec.size != vectors.shape[1]:
+            raise ValueError(
+                f"Query embedding dimension {query_vec.size} does not match "
+                f"the FAISS index dimension {vectors.shape[1]}"
+            )
+
+        distances = np.sum((vectors - query_vec) ** 2, axis=1)
+        n_fetch = min(
+            len(ids), max(top_k, top_k * self.config.over_fetch_factor),
+        )
+        order = np.argsort(distances)[:n_fetch]
+        hits = self._hydrate(ids[order], distances[order])
+        n_total = len(hits)
+
+        hits = [h for h in hits if h.cosine >= -self.config.max_l2_distance]
+        for hit in hits:
+            if hit.target_variable_id and hit.is_commonly_queried:
+                hit.weighted_score *= 1.10
+
+        table_targets, var_targets = self._aggregate(hits)
+        if self.config.table_family_bias:
+            _apply_table_family_bias(
+                table_targets, self.config.table_family_weights,
+            )
+            _apply_table_family_bias(
+                var_targets, self.config.table_family_weights,
+            )
+
+        top_tables = sorted(
+            table_targets.values(), key=lambda target: -target.aggregate_score,
+        )[:top_k]
+        top_variables = sorted(
+            var_targets.values(), key=lambda target: -target.aggregate_score,
+        )[:top_k]
+        top_tables = [
+            target for target in top_tables
+            if target.aggregate_score >= self.config.min_aggregate_score
+        ]
+        top_variables = [
+            target for target in top_variables
+            if target.aggregate_score >= self.config.min_aggregate_score
+        ]
+
+        return RoutedResult(
+            query=query,
+            top_tables=top_tables,
+            top_variables=top_variables,
+            raw_hits=hits[:50],
+            n_hits_retrieved=n_total,
+            n_hits_after_filter=len(hits),
+        )
+
     # ------------------------------------------------------------------
     # Internals
     # ------------------------------------------------------------------
+
+    def _vectors_for_dataset(
+        self, target_dataset: str,
+    ) -> tuple[np.ndarray, np.ndarray]:
+        """Return cached ``(rowids, vectors)`` for one dataset."""
+        cached = self._dataset_vector_cache.get(target_dataset)
+        if cached is not None:
+            return cached
+
+        rows = self.metadata_db.execute(
+            "SELECT rowid FROM cards WHERE target_dataset = ? ORDER BY rowid",
+            (target_dataset,),
+        ).fetchall()
+        rowids: list[int] = []
+        vectors: list[np.ndarray] = []
+        for row in rows:
+            rowid = int(row["rowid"])
+            try:
+                vector = self.index.reconstruct(rowid)
+            except RuntimeError:
+                logger.warning(
+                    "Card rowid=%d for dataset=%s has no FAISS vector",
+                    rowid, target_dataset,
+                )
+                continue
+            rowids.append(rowid)
+            vectors.append(np.asarray(vector, dtype=np.float32))
+
+        ids_array = np.asarray(rowids, dtype=np.int64)
+        vectors_array = (
+            np.vstack(vectors)
+            if vectors
+            else np.empty((0, self.index.d), dtype=np.float32)
+        )
+        result = (ids_array, vectors_array)
+        self._dataset_vector_cache[target_dataset] = result
+        return result
 
     def _hydrate(
         self, faiss_ids: np.ndarray, faiss_distances: np.ndarray,

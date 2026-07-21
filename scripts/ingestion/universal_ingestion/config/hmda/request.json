@@ -1,7 +1,6 @@
 {
   "dataset": "hmda",
   "year": 2024,
-  "geography": "state-GA",
   "variable_ids": [
     "906bb78b0f70",
     "6057363dc2e9",
