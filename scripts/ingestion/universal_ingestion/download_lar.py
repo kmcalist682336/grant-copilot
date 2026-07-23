@@ -1,9 +1,20 @@
-import requests
-from pathlib import Path
+from __future__ import annotations
+
 import argparse
+from pathlib import Path
+
+import requests
 
 
-def download_csv(year: int, state: str, output_dir: str = "data/raw/hmda") -> Path:
+REPO_ROOT = Path(__file__).resolve().parents[3]
+DEFAULT_RAW_ROOT = REPO_ROOT / "data" / "raw"
+
+
+def download_csv(
+    year: int,
+    state: str,
+    output_root: Path = DEFAULT_RAW_ROOT,
+) -> Path:
 
     """
     Download HMDA LAR CSV data for one state and year.
@@ -15,9 +26,9 @@ def download_csv(year: int, state: str, output_dir: str = "data/raw/hmda") -> Pa
     state = state.upper()
     link = f"https://ffiec.cfpb.gov/v2/data-browser-api/view/csv?states={state}&years={year}&sexes=Female,Male,Joint,Sex%20Not%20Available"
     output_path = (
-        Path(output_dir)
+        output_root
+        / "dataset=hmda"
         / f"year={year}"
-        / f"state={state}"
         / f"hmda_lar_{year}_{state}.csv"
     )
 
@@ -57,10 +68,11 @@ def main() -> None:
     )
 
     parser.add_argument(
-        "--output-dir",
-        type=str,
-        default="data/raw/hmda",
-        help="Base output directory. Default: data/raw/hmda",
+        "--output-root", "--output-dir",
+        dest="output_root",
+        type=Path,
+        default=DEFAULT_RAW_ROOT,
+        help="Raw data root. Default: data/raw",
     )
 
     args = parser.parse_args()
@@ -68,7 +80,7 @@ def main() -> None:
     download_csv(
         year=args.year,
         state=args.state,
-        output_dir=args.output_dir,
+        output_root=args.output_root,
     )
 
 

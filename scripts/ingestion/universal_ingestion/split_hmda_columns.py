@@ -231,10 +231,20 @@ def decode_and_split(
     if not execute:
         raw_path = (
             raw_root
+            / "dataset=hmda"
             / f"year={year}"
-            / f"state={state}"
             / f"hmda_lar_{year}_{state}.csv"
         )
+        if not raw_path.is_file():
+            legacy_path = (
+                raw_root
+                / "hmda"
+                / f"year={year}"
+                / f"state={state}"
+                / f"hmda_lar_{year}_{state}.csv"
+            )
+            if legacy_path.is_file():
+                raw_path = legacy_path
         if not raw_path.is_file():
             raise FileNotFoundError(f"Raw HMDA file not found: {raw_path}")
         print(f"Raw source: {raw_path}")

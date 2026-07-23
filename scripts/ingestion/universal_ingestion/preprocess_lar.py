@@ -18,7 +18,7 @@ import yaml
 
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
-DEFAULT_RAW_DIR = REPO_ROOT / "data" / "raw" / "hmda"
+DEFAULT_RAW_DIR = REPO_ROOT / "data" / "raw"
 DEFAULT_OUTPUT_DIR = REPO_ROOT / "data" / "processed" / "hmda"
 DEFAULT_CODEBOOK = Path(__file__).parent / "config" / "hmda" / "hmda_lar_codebook.csv"
 DEFAULT_SCHEMA = Path(__file__).parent / "config" / "hmda" / "hmda_schema.yaml"
@@ -144,19 +144,16 @@ def decode_chunk(
     return chunk
 
 
-def decode_lar(
+def decode_csv_to_parquet(
+    input_path: Path,
+    output_path: Path,
+    *,
     year: int,
-    state: str,
-    raw_dir: Path = DEFAULT_RAW_DIR,
-    output_dir: Path = DEFAULT_OUTPUT_DIR,
     codebook_path: Path = DEFAULT_CODEBOOK,
     schema_path: Path = DEFAULT_SCHEMA,
     chunk_size: int = 50_000,
 ) -> Path:
-    """Decode one state/year HMDA LAR file and write it as Parquet."""
-    state = state.upper()
-    input_path = raw_dir / f"year={year}" / f"state={state}" / f"hmda_lar_{year}_{state}.csv"
-    output_path = output_dir / f"year={year}" / f"state={state}" / f"hmda_lar_{year}_{state}.parquet"
+    """Decode an exact raw HMDA CSV path into an exact Parquet path."""
     temp_path = output_path.with_suffix(".parquet.tmp")
 
     if not input_path.is_file():
@@ -232,6 +229,49 @@ def decode_lar(
             print(f"  {field}: {preview}{suffix}")
 
     return output_path
+
+
+def decode_lar(
+    year: int,
+    state: str,
+    raw_dir: Path = DEFAULT_RAW_DIR,
+    output_dir: Path = DEFAULT_OUTPUT_DIR,
+    codebook_path: Path = DEFAULT_CODEBOOK,
+    schema_path: Path = DEFAULT_SCHEMA,
+    chunk_size: int = 50_000,
+) -> Path:
+    """Decode one state/year HMDA LAR file and write it as Parquet."""
+    state = state.upper()
+    input_path = (
+        raw_dir
+        / "dataset=hmda"
+        / f"year={year}"
+        / f"hmda_lar_{year}_{state}.csv"
+    )
+    if not input_path.is_file():
+        legacy_path = (
+            raw_dir
+            / "hmda"
+            / f"year={year}"
+            / f"state={state}"
+            / f"hmda_lar_{year}_{state}.csv"
+        )
+        if legacy_path.is_file():
+            input_path = legacy_path
+    output_path = (
+        output_dir
+        / f"year={year}"
+        / f"state={state}"
+        / f"hmda_lar_{year}_{state}.parquet"
+    )
+    return decode_csv_to_parquet(
+        input_path,
+        output_path,
+        year=year,
+        codebook_path=codebook_path,
+        schema_path=schema_path,
+        chunk_size=chunk_size,
+    )
 
 
 def main() -> None:
