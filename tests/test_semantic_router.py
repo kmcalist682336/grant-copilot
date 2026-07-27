@@ -248,6 +248,24 @@ def test_route_includes_evidence(tiny_router):
     assert res.raw_hits[0].cosine > 0.9
 
 
+def test_route_dataset_limits_candidates_to_requested_dataset(tiny_router):
+    db = tiny_router.metadata_db
+    db.execute(
+        "UPDATE cards SET target_dataset = 'hmda' WHERE rowid IN (5, 6, 7)"
+    )
+    db.commit()
+
+    result = tiny_router.route_dataset(
+        "median household income", "hmda", top_k=5,
+    )
+
+    assert result.top_variables
+    assert all(
+        target.target_dataset == "hmda" for target in result.top_variables
+    )
+    assert result.top_variables[0].target_variable_id == "B19013_001E"
+
+
 # ---------------------------------------------------------------------------
 # Table-family bias (Phase 2a)
 # ---------------------------------------------------------------------------
