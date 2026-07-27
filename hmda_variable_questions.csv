@@ -1,0 +1,1060 @@
+﻿table_id,dataset,variable_id,polarity,text
+HMDA_LAR,hmda,64cabc47acab,positive,How has total mortgage application volume changed?
+HMDA_LAR,hmda,64cabc47acab,positive,Has the mortgage denial rate improved or worsened?
+HMDA_LAR,hmda,64cabc47acab,positive,Which year had the highest number of home-purchase originations?
+HMDA_LAR,hmda,64cabc47acab,positive,When did FHA lending peak?
+HMDA_LAR,hmda,64cabc47acab,positive,Has the racial approval gap widened or narrowed over time?
+HMDA_LAR,hmda,64cabc47acab,positive,How has the [race] applicant share changed over time?
+HMDA_LAR,hmda,64cabc47acab,positive,Did home-improvement lending rise after COVID-19?
+HMDA_LAR,hmda,64cabc47acab,positive,How much has the median loan-to-income ratio increased or decreased?
+HMDA_LAR,hmda,64cabc47acab,positive,Are higher-priced loans becoming more or less common?
+HMDA_LAR,hmda,64cabc47acab,positive,Has affordable multifamily financing increased or declined over time?
+HMDA_LAR,hmda,64cabc47acab,negative,What is the current mortgage denial rate?
+HMDA_LAR,hmda,64cabc47acab,negative,Which mortgage type is most common these days?
+HMDA_LAR,hmda,64cabc47acab,negative,What is the typical loan amount currently?
+HMDA_LAR,hmda,64cabc47acab,negative,Which lenders receive the most applications lately?
+HMDA_LAR,hmda,64cabc47acab,negative,What is the average mortgage interest rate these days?
+HMDA_LAR,hmda,a89a6d2d85ad,positive,Which lenders receive the most mortgage applications?
+HMDA_LAR,hmda,a89a6d2d85ad,positive,Which institutions originate the most home-purchase loans?
+HMDA_LAR,hmda,a89a6d2d85ad,positive,Which lenders have the highest and lowest denial rates?
+HMDA_LAR,hmda,a89a6d2d85ad,positive,Which lenders make the largest share of FHA loans?
+HMDA_LAR,hmda,a89a6d2d85ad,positive,Which institutions are most active in manufactured-home lending?
+HMDA_LAR,hmda,a89a6d2d85ad,positive,"Which lenders originate the most small-dollar mortgages ($100,000 or less)?"
+HMDA_LAR,hmda,a89a6d2d85ad,positive,Which institutions serve the largest share of Black applicants?
+HMDA_LAR,hmda,a89a6d2d85ad,positive,Which lenders report the highest share of incomplete applications?
+HMDA_LAR,hmda,a89a6d2d85ad,positive,Which lenders have the lowest average borrower costs?
+HMDA_LAR,hmda,a89a6d2d85ad,positive,Which institutions appear to be strong potential partners for a down-payment-assistance program?
+HMDA_LAR,hmda,a89a6d2d85ad,positive,Which lenders are most active in low-income census tracts?
+HMDA_LAR,hmda,a89a6d2d85ad,positive,How concentrated is mortgage activity among the top lenders?
+HMDA_LAR,hmda,a89a6d2d85ad,negative,Who purchases the loans after they are originated?
+HMDA_LAR,hmda,a89a6d2d85ad,negative,Was the loan originally payable to the reporting institution?
+HMDA_LAR,hmda,a89a6d2d85ad,negative,How were applications submitted to lenders?
+HMDA_LAR,hmda,a89a6d2d85ad,negative,Which underwriting system was used most often?
+HMDA_LAR,hmda,a89a6d2d85ad,negative,Which credit-scoring model did lenders use for applicants?
+HMDA_LAR,hmda,fcb1bed96d05,positive,"What share of mortgage applications are conventional, FHA, VA, or USDA/RHS/FSA?"
+HMDA_LAR,hmda,fcb1bed96d05,positive,Which loan type has the highest origination rate?
+HMDA_LAR,hmda,fcb1bed96d05,positive,Which loan type has the highest denial rate?
+HMDA_LAR,hmda,fcb1bed96d05,positive,What type of population relies most heavily on FHA lending?
+HMDA_LAR,hmda,fcb1bed96d05,positive,Are lower-income applicants more likely to use government-backed loans?
+HMDA_LAR,hmda,fcb1bed96d05,positive,Is USDA lending reaching rural counties in the service area?
+HMDA_LAR,hmda,fcb1bed96d05,positive,How does the loan-type mix differ between home purchase and refinancing?
+HMDA_LAR,hmda,fcb1bed96d05,positive,Do manufactured-home borrowers use different loan types from site-built-home borrowers?
+HMDA_LAR,hmda,fcb1bed96d05,positive,Where are VA loans most concentrated?
+HMDA_LAR,hmda,fcb1bed96d05,positive,Has conventional lending replaced or expanded alongside FHA lending over time?
+HMDA_LAR,hmda,fcb1bed96d05,negative,"Are borrowers purchasing, improving, or refinancing homes?"
+HMDA_LAR,hmda,fcb1bed96d05,negative,Are these loans for primary homes or investment properties?
+HMDA_LAR,hmda,fcb1bed96d05,negative,Are the properties site-built or manufactured?
+HMDA_LAR,hmda,fcb1bed96d05,negative,Are the loans secured by first or subordinate liens?
+HMDA_LAR,hmda,fcb1bed96d05,negative,Are these mortgages open-end lines of credit?
+HMDA_LAR,hmda,89e2ff651aa4,positive,"What are residents seeking mortgage credit for: purchase, improvement, refinancing, or cash-out refinancing?"
+HMDA_LAR,hmda,89e2ff651aa4,positive,How hard is it to get approved for a home-purchase loan?
+HMDA_LAR,hmda,89e2ff651aa4,positive,What is the denial rate for home-improvement loans?
+HMDA_LAR,hmda,89e2ff651aa4,positive,Are cash-out refinances becoming more common?
+HMDA_LAR,hmda,89e2ff651aa4,positive,Which neighborhoods receive the fewest home-purchase originations?
+HMDA_LAR,hmda,89e2ff651aa4,positive,Are lower-income tracts receiving fewer home-improvement loans?
+HMDA_LAR,hmda,89e2ff651aa4,positive,Which applicant groups are most likely to seek refinancing?
+HMDA_LAR,hmda,89e2ff651aa4,positive,Does the racial approval gap differ by loan purpose?
+HMDA_LAR,hmda,89e2ff651aa4,positive,How much local lending supports home repair rather than acquisition?
+HMDA_LAR,hmda,89e2ff651aa4,positive,Which loan purpose has the highest incomplete-application rate?
+HMDA_LAR,hmda,89e2ff651aa4,positive,Which loan purpose has the highest application denial rate?
+HMDA_LAR,hmda,89e2ff651aa4,negative,"Are these loans conventional, FHA, VA, or USDA-backed?"
+HMDA_LAR,hmda,89e2ff651aa4,negative,Are the properties primary residences or investments?
+HMDA_LAR,hmda,89e2ff651aa4,negative,Did applicants request preapproval?
+HMDA_LAR,hmda,89e2ff651aa4,negative,Are these open-end mortgage lines?
+HMDA_LAR,hmda,89e2ff651aa4,negative,Are these loans for business or commercial use?
+HMDA_LAR,hmda,d84c2e59b9ab,positive,How often do applicants request preapproval?
+HMDA_LAR,hmda,d84c2e59b9ab,positive,What share of preapproval requests are denied?
+HMDA_LAR,hmda,d84c2e59b9ab,positive,What share of preapproval requests are approved but not accepted?
+HMDA_LAR,hmda,d84c2e59b9ab,positive,Do applicants who request preapproval later achieve higher origination rates?
+HMDA_LAR,hmda,d84c2e59b9ab,positive,Are preapproval denials more common for Black or Hispanic applicants?
+HMDA_LAR,hmda,d84c2e59b9ab,positive,Does preapproval usage differ by income level?
+HMDA_LAR,hmda,d84c2e59b9ab,positive,Which lenders receive the most preapproval requests?
+HMDA_LAR,hmda,d84c2e59b9ab,positive,Is preapproval less common in lower-income census tracts?
+HMDA_LAR,hmda,d84c2e59b9ab,positive,How has preapproval activity changed over time?
+HMDA_LAR,hmda,d84c2e59b9ab,positive,Does the preapproval stage appear to be a meaningful barrier to homeownership?
+HMDA_LAR,hmda,d84c2e59b9ab,negative,"Were the applications originated, denied, or withdrawn?"
+HMDA_LAR,hmda,d84c2e59b9ab,negative,What were applicants seeking the loan for?
+HMDA_LAR,hmda,d84c2e59b9ab,negative,How were the applications submitted?
+HMDA_LAR,hmda,d84c2e59b9ab,negative,Was the loan initially payable to the reporting institution?
+HMDA_LAR,hmda,d84c2e59b9ab,negative,Which underwriting system reviewed the application?
+HMDA_LAR,hmda,77340ba9aa79,positive,What share of mortgage activity involves manufactured homes?
+HMDA_LAR,hmda,77340ba9aa79,positive,Are manufactured-home applications approved less often than site-built-home applications?
+HMDA_LAR,hmda,77340ba9aa79,positive,Which counties or tracts have the most manufactured-home applications?
+HMDA_LAR,hmda,77340ba9aa79,positive,Has manufactured-home lending increased or declined?
+HMDA_LAR,hmda,77340ba9aa79,positive,Which lenders are most active in manufactured-home finance?
+HMDA_LAR,hmda,77340ba9aa79,positive,Do manufactured-home applicants receive smaller loans?
+HMDA_LAR,hmda,77340ba9aa79,positive,Are interest rates higher for manufactured homes?
+HMDA_LAR,hmda,77340ba9aa79,positive,Are lower-income applicants more likely to finance manufactured homes?
+HMDA_LAR,hmda,77340ba9aa79,positive,Does the denial-reason mix differ between manufactured and site-built housing?
+HMDA_LAR,hmda,77340ba9aa79,positive,Is manufactured housing functioning as an affordable homeownership pathway?
+HMDA_LAR,hmda,77340ba9aa79,negative,"Is the manufactured-home loan secured by the home, land, or both?"
+HMDA_LAR,hmda,77340ba9aa79,negative,Does the borrower own or lease the manufactured-home land?
+HMDA_LAR,hmda,77340ba9aa79,negative,Is the property a primary residence or investment property?
+HMDA_LAR,hmda,77340ba9aa79,negative,How many housing units are in the property?
+HMDA_LAR,hmda,77340ba9aa79,negative,Is this a reverse mortgage?
+HMDA_LAR,hmda,6.81955E+11,positive,"What share of home-purchase lending is for principal residences, second homes, or investment properties?"
+HMDA_LAR,hmda,6.81955E+11,positive,Are investment-property originations increasing?
+HMDA_LAR,hmda,6.81955E+11,positive,Which tracts have the highest investor-loan share?
+HMDA_LAR,hmda,6.81955E+11,positive,Do owner-occupants have higher approval rates than investors?
+HMDA_LAR,hmda,6.81955E+11,positive,Does the racial approval gap differ for principal-residence applications?
+HMDA_LAR,hmda,6.81955E+11,positive,Are investment-property loans concentrated in rapidly changing neighborhoods?
+HMDA_LAR,hmda,6.81955E+11,positive,Which lenders originate the most investor-property loans?
+HMDA_LAR,hmda,6.81955E+11,positive,How do loan amounts differ by occupancy type?
+HMDA_LAR,hmda,6.81955E+11,positive,Are interest rates higher for investment properties?
+HMDA_LAR,hmda,6.81955E+11,positive,Has owner-occupied lending declined relative to investor lending?
+HMDA_LAR,hmda,6.81955E+11,negative,Is the property site-built or manufactured?
+HMDA_LAR,hmda,6.81955E+11,negative,"Is the loan for purchase, improvement, or refinancing?"
+HMDA_LAR,hmda,6.81955E+11,negative,Does the loan have a first or subordinate lien?
+HMDA_LAR,hmda,6.81955E+11,negative,Is this a reverse mortgage?
+HMDA_LAR,hmda,6.81955E+11,negative,Is the loan for a business or commercial purpose?
+HMDA_LAR,hmda,c02eb39025e6,positive,What is the average and median mortgage loan amount?
+HMDA_LAR,hmda,c02eb39025e6,positive,Which racial groups receive the smallest and largest median loan amounts?
+HMDA_LAR,hmda,c02eb39025e6,positive,Are small-dollar mortgage applications denied more often?
+HMDA_LAR,hmda,c02eb39025e6,positive,"What share of purchase originations are below $100,000 or another threshold?"
+HMDA_LAR,hmda,c02eb39025e6,positive,How has the median loan amount changed over time?
+HMDA_LAR,hmda,c02eb39025e6,positive,Are loan amounts growing faster than applicant income?
+HMDA_LAR,hmda,c02eb39025e6,positive,Which tracts have the lowest typical loan amounts?
+HMDA_LAR,hmda,c02eb39025e6,positive,"How do loan amounts differ by FHA, VA, USDA, and conventional status?"
+HMDA_LAR,hmda,c02eb39025e6,positive,Are manufactured-home loans substantially smaller than site-built-home loans?
+HMDA_LAR,hmda,c02eb39025e6,positive,Which lenders originate the greatest number of small-dollar mortgage loans?
+HMDA_LAR,hmda,c02eb39025e6,positive,How wide is the loan-amount gap between Black and White borrowers?
+HMDA_LAR,hmda,c02eb39025e6,positive,"Does loan amount differ between approved, denied, and withdrawn applications?"
+HMDA_LAR,hmda,c02eb39025e6,negative,What is the typical financed property value?
+HMDA_LAR,hmda,c02eb39025e6,negative,How much income do mortgage applicants report?
+HMDA_LAR,hmda,c02eb39025e6,negative,What percentage of the property value is financed?
+HMDA_LAR,hmda,c02eb39025e6,negative,What are borrowers paying in total loan costs?
+HMDA_LAR,hmda,c02eb39025e6,negative,What interest rate are borrowers receiving?
+HMDA_LAR,hmda,906bb78b0f70,positive,How hard is it to get approved for a home loan?
+HMDA_LAR,hmda,906bb78b0f70,positive,"What share of applications are originated, approved but not accepted, denied, withdrawn, or closed as incomplete?"
+HMDA_LAR,hmda,906bb78b0f70,positive,Which racial group has the highest origination rate?
+HMDA_LAR,hmda,906bb78b0f70,positive,Which racial group has the highest denial rate?
+HMDA_LAR,hmda,906bb78b0f70,positive,Which income group has the lowest approval rate?
+HMDA_LAR,hmda,906bb78b0f70,positive,Which census tracts have the lowest origination rates?
+HMDA_LAR,hmda,906bb78b0f70,positive,How does the local denial rate compare with the county or state?
+HMDA_LAR,hmda,906bb78b0f70,positive,Are home-improvement applications denied more often than purchase applications?
+HMDA_LAR,hmda,906bb78b0f70,positive,How often do applicants withdraw before a decision?
+HMDA_LAR,hmda,906bb78b0f70,positive,Which lenders have the highest incomplete-file rates?
+HMDA_LAR,hmda,906bb78b0f70,positive,Has the approval rate improved?
+HMDA_LAR,hmda,906bb78b0f70,positive,"Is there a racial, ethnic, sex, or age gap in who gets approved?"
+HMDA_LAR,hmda,906bb78b0f70,negative,Why were mortgage applications denied?
+HMDA_LAR,hmda,906bb78b0f70,negative,Did applicants request preapproval before applying?
+HMDA_LAR,hmda,906bb78b0f70,negative,What were borrowers seeking mortgage credit for?
+HMDA_LAR,hmda,906bb78b0f70,negative,Who purchased the originated loans?
+HMDA_LAR,hmda,906bb78b0f70,negative,How were applications submitted?
+HMDA_LAR,hmda,b03739e1b46b,positive,How does mortgage activity in [state] compare with other states?
+HMDA_LAR,hmda,b03739e1b46b,positive,Which counties within [state] have the highest denial rates?
+HMDA_LAR,hmda,b03739e1b46b,positive,What share of statewide originations occur in the target service area?
+HMDA_LAR,hmda,b03739e1b46b,positive,Which states have the largest racial approval gaps?
+HMDA_LAR,hmda,b03739e1b46b,positive,How does FHA usage in [state] compare with the national pattern?
+HMDA_LAR,hmda,b03739e1b46b,positive,Is manufactured-home lending more common in [state] than elsewhere?
+HMDA_LAR,hmda,b03739e1b46b,positive,How has statewide mortgage activity changed over time?
+HMDA_LAR,hmda,b03739e1b46b,positive,Which states have the highest share of small-dollar mortgages?
+HMDA_LAR,hmda,b03739e1b46b,negative,How do mortgage outcomes compare across counties?
+HMDA_LAR,hmda,b03739e1b46b,negative,Which census tracts have the highest denial rates?
+HMDA_LAR,hmda,b03739e1b46b,negative,Which lenders are most active in the market?
+HMDA_LAR,hmda,b03739e1b46b,negative,How has mortgage activity changed recently?
+HMDA_LAR,hmda,b03739e1b46b,negative,What share of applications are approved or denied?
+HMDA_LAR,hmda,6422e2d2aab7,positive,Which counties have the highest and lowest mortgage approval rates?
+HMDA_LAR,hmda,6422e2d2aab7,positive,Which counties receive the largest share of FHA or USDA lending?
+HMDA_LAR,hmda,6422e2d2aab7,positive,Where are Black applicants most likely to be denied?
+HMDA_LAR,hmda,6422e2d2aab7,positive,Which counties have the fewest home-purchase originations?
+HMDA_LAR,hmda,6422e2d2aab7,positive,How does [target county] compare with Georgia overall?
+HMDA_LAR,hmda,6422e2d2aab7,positive,Which counties have the highest share of manufactured-home lending?
+HMDA_LAR,hmda,6422e2d2aab7,positive,Where are small-dollar mortgages most common?
+HMDA_LAR,hmda,6422e2d2aab7,positive,Which counties have the highest average interest rates?
+HMDA_LAR,hmda,6422e2d2aab7,positive,Which counties show the largest loan-to-income burden?
+HMDA_LAR,hmda,6422e2d2aab7,positive,Where should regional housing-counseling resources be prioritized?
+HMDA_LAR,hmda,6422e2d2aab7,negative,How do mortgage outcomes compare across states?
+HMDA_LAR,hmda,6422e2d2aab7,negative,Which census tracts have the lowest origination rates?
+HMDA_LAR,hmda,6422e2d2aab7,negative,Which lenders receive the most applications?
+HMDA_LAR,hmda,6422e2d2aab7,negative,How has local mortgage activity changed recently?
+HMDA_LAR,hmda,6422e2d2aab7,negative,What share of applications are denied?
+HMDA_LAR,hmda,2bf4b55b66da,positive,Which census tracts have the highest mortgage denial rates?
+HMDA_LAR,hmda,2bf4b55b66da,positive,Which tracts receive the fewest home-purchase originations?
+HMDA_LAR,hmda,2bf4b55b66da,positive,Which tracts have the largest race approval gaps?
+HMDA_LAR,hmda,2bf4b55b66da,positive,Which neighborhoods have the highest share of FHA lending?
+HMDA_LAR,hmda,2bf4b55b66da,positive,Where are small-dollar mortgages most concentrated?
+HMDA_LAR,hmda,2bf4b55b66da,positive,Which tracts have the highest interest rates or rate spreads?
+HMDA_LAR,hmda,2bf4b55b66da,positive,Are low-income neighborhoods receiving a smaller share of mortgage lending?
+HMDA_LAR,hmda,2bf4b55b66da,positive,Which tracts have the most manufactured-home applications?
+HMDA_LAR,hmda,2bf4b55b66da,positive,Where are home-improvement loans least available?
+HMDA_LAR,hmda,2bf4b55b66da,positive,Which tracts should be prioritized for down-payment assistance?
+HMDA_LAR,hmda,2bf4b55b66da,positive,Which tracts have the highest withdrawal or incomplete-file rates?
+HMDA_LAR,hmda,2bf4b55b66da,positive,Are affordable multifamily loans reaching the areas with the greatest need?
+HMDA_LAR,hmda,2bf4b55b66da,negative,How do mortgage outcomes compare across counties?
+HMDA_LAR,hmda,2bf4b55b66da,negative,How does mortgage activity compare across states?
+HMDA_LAR,hmda,2bf4b55b66da,negative,Which lenders are most active in underserved areas?
+HMDA_LAR,hmda,2bf4b55b66da,negative,How has tract-level mortgage activity changed recently?
+HMDA_LAR,hmda,2bf4b55b66da,negative,What share of applications are originated or denied?
+HMDA_LAR,hmda,b4588a673468,positive,What is the count of applicants whose primary reported ethnicity is Hispanic or Latino?
+HMDA_LAR,hmda,b4588a673468,positive,What share of all applicants identify as Hispanic or Latino in the first ethnicity field?
+HMDA_LAR,hmda,b4588a673468,positive,What is the denial rate for applicants recorded as Hispanic or Latino in the primary slot?
+HMDA_LAR,hmda,b4588a673468,positive,Which Hispanic subgroup appears most often as the primary ethnicity?
+HMDA_LAR,hmda,b4588a673468,positive,How often do primary Hispanic applicants seek home-purchase loans?
+HMDA_LAR,hmda,b4588a673468,positive,How does the origination rate for primary Hispanic applicants compare with non-Hispanic applicants?
+HMDA_LAR,hmda,b4588a673468,positive,Which tracts have the highest count of primary Hispanic applicants?
+HMDA_LAR,hmda,b4588a673468,positive,Has the primary Hispanic applicant share changed over time?
+HMDA_LAR,hmda,b4588a673468,negative,How many applicants report a second ethnicity?
+HMDA_LAR,hmda,b4588a673468,negative,How many applicants report a third ethnicity?
+HMDA_LAR,hmda,b4588a673468,negative,How many applicants report a fourth ethnicity?
+HMDA_LAR,hmda,b4588a673468,negative,How many applicants report a fifth ethnicity?
+HMDA_LAR,hmda,b4588a673468,negative,What is the co-applicant's primary reported ethnicity?
+HMDA_LAR,hmda,72950f62c1c3,positive,How many applicants report a second ethnicity selection?
+HMDA_LAR,hmda,72950f62c1c3,positive,What share of applicants provide more than one ethnicity?
+HMDA_LAR,hmda,72950f62c1c3,positive,Which secondary Hispanic ethnicity is reported most often?
+HMDA_LAR,hmda,72950f62c1c3,positive,Do multi-ethnicity applicants have different approval rates from single-ethnicity applicants?
+HMDA_LAR,hmda,72950f62c1c3,positive,How often does a secondary ethnicity add information not captured in the primary field?
+HMDA_LAR,hmda,72950f62c1c3,positive,Which applicant groups are most likely to report a second ethnicity?
+HMDA_LAR,hmda,72950f62c1c3,positive,Has multi-ethnicity reporting increased over time?
+HMDA_LAR,hmda,72950f62c1c3,negative,What is the applicant's primary reported ethnicity?
+HMDA_LAR,hmda,72950f62c1c3,negative,How many applicants report a third ethnicity?
+HMDA_LAR,hmda,72950f62c1c3,negative,How many applicants report a fourth ethnicity?
+HMDA_LAR,hmda,72950f62c1c3,negative,How many applicants report a fifth ethnicity?
+HMDA_LAR,hmda,72950f62c1c3,negative,What is the co-applicant's primary reported ethnicity?
+HMDA_LAR,hmda,74727f082272,positive,How many applicants report a third ethnicity selection?
+HMDA_LAR,hmda,74727f082272,positive,Which third-position ethnicity codes occur most often?
+HMDA_LAR,hmda,74727f082272,positive,Are applicants with three reported ethnicities more likely to have joint applications?
+HMDA_LAR,hmda,74727f082272,positive,Do applicants using a third ethnicity slot have different outcomes from other applicants?
+HMDA_LAR,hmda,74727f082272,positive,How much would Hispanic applicant counts be understated if the third slot were ignored?
+HMDA_LAR,hmda,74727f082272,positive,Which lenders report the highest use of a third ethnicity field?
+HMDA_LAR,hmda,74727f082272,negative,What is the applicant's primary reported ethnicity?
+HMDA_LAR,hmda,74727f082272,negative,How many applicants report a second ethnicity?
+HMDA_LAR,hmda,74727f082272,negative,How many applicants report a fourth ethnicity?
+HMDA_LAR,hmda,74727f082272,negative,How many applicants report a fifth ethnicity?
+HMDA_LAR,hmda,74727f082272,negative,What is the co-applicant's primary reported ethnicity?
+HMDA_LAR,hmda,23f483616e17,positive,How many applicants report a fourth ethnicity selection?
+HMDA_LAR,hmda,23f483616e17,positive,Which fourth-position ethnicity codes are most common?
+HMDA_LAR,hmda,23f483616e17,positive,How much demographic detail would be lost if the fourth slot were excluded?
+HMDA_LAR,hmda,23f483616e17,positive,Do applications with four ethnicity entries cluster by lender or geography?
+HMDA_LAR,hmda,23f483616e17,positive,Are multi-ethnicity applicants with four entries approved at different rates?
+HMDA_LAR,hmda,23f483616e17,positive,Has use of the fourth ethnicity field changed over time?
+HMDA_LAR,hmda,23f483616e17,negative,What is the applicant's primary reported ethnicity?
+HMDA_LAR,hmda,23f483616e17,negative,How many applicants report a second ethnicity?
+HMDA_LAR,hmda,23f483616e17,negative,How many applicants report a third ethnicity?
+HMDA_LAR,hmda,23f483616e17,negative,How many applicants report a fifth ethnicity?
+HMDA_LAR,hmda,23f483616e17,negative,What is the co-applicant's primary reported ethnicity?
+HMDA_LAR,hmda,b9b6cc7b407d,positive,How many applicants report a fifth ethnicity selection?
+HMDA_LAR,hmda,b9b6cc7b407d,positive,Which fifth-position ethnicity codes appear in the data?
+HMDA_LAR,hmda,b9b6cc7b407d,positive,How many Hispanic applicants would be missed if the fifth slot were ignored?
+HMDA_LAR,hmda,b9b6cc7b407d,positive,Are five-entry ethnicity records concentrated among particular lenders?
+HMDA_LAR,hmda,b9b6cc7b407d,positive,Do applicants using all five ethnicity slots have distinct application outcomes?
+HMDA_LAR,hmda,b9b6cc7b407d,positive,Is the fifth ethnicity field frequent enough to affect published subgroup metrics?
+HMDA_LAR,hmda,b9b6cc7b407d,negative,What is the applicant's primary reported ethnicity?
+HMDA_LAR,hmda,b9b6cc7b407d,negative,How many applicants report a second ethnicity?
+HMDA_LAR,hmda,b9b6cc7b407d,negative,How many applicants report a third ethnicity?
+HMDA_LAR,hmda,b9b6cc7b407d,negative,How many applicants report a fourth ethnicity?
+HMDA_LAR,hmda,b9b6cc7b407d,negative,What is the co-applicant's primary reported ethnicity?
+HMDA_LAR,hmda,02f75397166c,positive,How many applications include a co-applicant whose primary ethnicity is Hispanic or Latino?
+HMDA_LAR,hmda,02f75397166c,positive,What share of joint applications include a primary Hispanic co-applicant?
+HMDA_LAR,hmda,02f75397166c,positive,What is the approval rate when the co-applicant's primary ethnicity is Hispanic?
+HMDA_LAR,hmda,02f75397166c,positive,How do outcomes differ between solo applicants and applications with a Hispanic co-applicant?
+HMDA_LAR,hmda,02f75397166c,positive,Which tracts have the highest number of applications with Hispanic co-applicants?
+HMDA_LAR,hmda,02f75397166c,positive,Has Hispanic co-applicant participation changed over time?
+HMDA_LAR,hmda,02f75397166c,positive,What applicant/co-applicant ethnicity combinations are most common?
+HMDA_LAR,hmda,02f75397166c,negative,How many co-applicants report a second ethnicity?
+HMDA_LAR,hmda,02f75397166c,negative,How many co-applicants report a third ethnicity?
+HMDA_LAR,hmda,02f75397166c,negative,How many co-applicants report a fourth ethnicity?
+HMDA_LAR,hmda,02f75397166c,negative,How many co-applicants report a fifth ethnicity?
+HMDA_LAR,hmda,02f75397166c,negative,What is the applicant's primary reported ethnicity?
+HMDA_LAR,hmda,e89ca2c98a2c,positive,How many co-applicants report a second ethnicity?
+HMDA_LAR,hmda,e89ca2c98a2c,positive,What share of co-applicants identify with more than one ethnicity?
+HMDA_LAR,hmda,e89ca2c98a2c,positive,Which secondary co-applicant ethnicity is most common?
+HMDA_LAR,hmda,e89ca2c98a2c,positive,Do multi-ethnicity co-applicants appear more often in particular geographies?
+HMDA_LAR,hmda,e89ca2c98a2c,positive,How much would co-applicant ethnicity diversity be understated without the second slot?
+HMDA_LAR,hmda,e89ca2c98a2c,positive,Do applications with a second co-applicant ethnicity have different outcomes?
+HMDA_LAR,hmda,e89ca2c98a2c,negative,What is the co-applicant's primary reported ethnicity?
+HMDA_LAR,hmda,e89ca2c98a2c,negative,How many co-applicants report a third ethnicity?
+HMDA_LAR,hmda,e89ca2c98a2c,negative,How many co-applicants report a fourth ethnicity?
+HMDA_LAR,hmda,e89ca2c98a2c,negative,How many co-applicants report a fifth ethnicity?
+HMDA_LAR,hmda,e89ca2c98a2c,negative,What is the applicant's primary reported ethnicity?
+HMDA_LAR,hmda,9e5f38d89a6a,positive,How many co-applicants report a third ethnicity?
+HMDA_LAR,hmda,9e5f38d89a6a,positive,Which third-position co-applicant ethnicities appear most often?
+HMDA_LAR,hmda,9e5f38d89a6a,positive,How much additional Hispanic identification is captured by the third slot?
+HMDA_LAR,hmda,9e5f38d89a6a,positive,Are third-slot co-applicant ethnicity records concentrated by lender?
+HMDA_LAR,hmda,9e5f38d89a6a,positive,Do these applications differ in loan type or purpose?
+HMDA_LAR,hmda,9e5f38d89a6a,positive,Is the third co-applicant ethnicity field material for disparity analysis?
+HMDA_LAR,hmda,9e5f38d89a6a,negative,What is the co-applicant's primary reported ethnicity?
+HMDA_LAR,hmda,9e5f38d89a6a,negative,How many co-applicants report a second ethnicity?
+HMDA_LAR,hmda,9e5f38d89a6a,negative,How many co-applicants report a fourth ethnicity?
+HMDA_LAR,hmda,9e5f38d89a6a,negative,How many co-applicants report a fifth ethnicity?
+HMDA_LAR,hmda,9e5f38d89a6a,negative,What is the applicant's primary reported ethnicity?
+HMDA_LAR,hmda,8e9ec948a34c,positive,How many co-applicants report a fourth ethnicity?
+HMDA_LAR,hmda,8e9ec948a34c,positive,Which fourth-position co-applicant ethnicity codes are observed?
+HMDA_LAR,hmda,8e9ec948a34c,positive,Would excluding this slot materially reduce multi-ethnicity counts?
+HMDA_LAR,hmda,8e9ec948a34c,positive,Are fourth-slot records concentrated geographically?
+HMDA_LAR,hmda,8e9ec948a34c,positive,Do applications with four co-applicant ethnicities have different approval outcomes?
+HMDA_LAR,hmda,8e9ec948a34c,negative,What is the co-applicant's primary reported ethnicity?
+HMDA_LAR,hmda,8e9ec948a34c,negative,How many co-applicants report a second ethnicity?
+HMDA_LAR,hmda,8e9ec948a34c,negative,How many co-applicants report a third ethnicity?
+HMDA_LAR,hmda,8e9ec948a34c,negative,How many co-applicants report a fifth ethnicity?
+HMDA_LAR,hmda,8e9ec948a34c,negative,What is the applicant's primary reported ethnicity?
+HMDA_LAR,hmda,c3b59ab89ea2,positive,How many co-applicants report a fifth ethnicity?
+HMDA_LAR,hmda,c3b59ab89ea2,positive,Which fifth-position co-applicant ethnicity codes occur?
+HMDA_LAR,hmda,c3b59ab89ea2,positive,How many co-applicant ethnicity matches would be missed without this field?
+HMDA_LAR,hmda,c3b59ab89ea2,positive,Are fifth-slot records associated with specific lenders?
+HMDA_LAR,hmda,c3b59ab89ea2,positive,Is this field frequent enough to affect joint-application demographic metrics?
+HMDA_LAR,hmda,c3b59ab89ea2,negative,What is the co-applicant's primary reported ethnicity?
+HMDA_LAR,hmda,c3b59ab89ea2,negative,How many co-applicants report a second ethnicity?
+HMDA_LAR,hmda,c3b59ab89ea2,negative,How many co-applicants report a third ethnicity?
+HMDA_LAR,hmda,c3b59ab89ea2,negative,How many co-applicants report a fourth ethnicity?
+HMDA_LAR,hmda,c3b59ab89ea2,negative,What is the applicant's primary reported ethnicity?
+HMDA_LAR,hmda,e9d89de4bbaf,positive,How often was applicant ethnicity recorded through visual observation or surname?
+HMDA_LAR,hmda,e9d89de4bbaf,positive,What share of applicant ethnicity data was self-reported?
+HMDA_LAR,hmda,e9d89de4bbaf,positive,Which lenders have the highest use of inferred applicant ethnicity?
+HMDA_LAR,hmda,e9d89de4bbaf,positive,Does inferred ethnicity reporting vary by application channel?
+HMDA_LAR,hmda,e9d89de4bbaf,positive,Are inferred-ethnicity records concentrated in particular census tracts?
+HMDA_LAR,hmda,e9d89de4bbaf,positive,Has the use of visual observation or surname declined over time?
+HMDA_LAR,hmda,e9d89de4bbaf,positive,Do approval rates differ between self-reported and inferred ethnicity records?
+HMDA_LAR,hmda,e9d89de4bbaf,positive,Should ethnicity-based findings in this geography carry a stronger data-quality caveat?
+HMDA_LAR,hmda,e9d89de4bbaf,negative,What ethnicity did the applicant report?
+HMDA_LAR,hmda,e9d89de4bbaf,negative,Was the co-applicant's ethnicity inferred?
+HMDA_LAR,hmda,e9d89de4bbaf,negative,Was the applicant's race inferred?
+HMDA_LAR,hmda,e9d89de4bbaf,negative,Was the applicant's sex inferred?
+HMDA_LAR,hmda,e9d89de4bbaf,negative,How was the application submitted?
+HMDA_LAR,hmda,47ae10abcba7,positive,How often was co-applicant ethnicity recorded through visual observation or surname?
+HMDA_LAR,hmda,47ae10abcba7,positive,What share of co-applicant ethnicity data was self-reported?
+HMDA_LAR,hmda,47ae10abcba7,positive,Which lenders have the highest use of inferred co-applicant ethnicity?
+HMDA_LAR,hmda,47ae10abcba7,positive,Does inferred co-applicant ethnicity vary geographically?
+HMDA_LAR,hmda,47ae10abcba7,positive,Are joint-application comparisons affected by non-self-reported ethnicity?
+HMDA_LAR,hmda,47ae10abcba7,positive,Has inferred co-applicant ethnicity reporting changed over time?
+HMDA_LAR,hmda,47ae10abcba7,positive,Which application channels have the most inferred co-applicant ethnicity?
+HMDA_LAR,hmda,47ae10abcba7,negative,What ethnicity did the co-applicant report?
+HMDA_LAR,hmda,47ae10abcba7,negative,Was the applicant's ethnicity inferred?
+HMDA_LAR,hmda,47ae10abcba7,negative,Was the co-applicant's race inferred?
+HMDA_LAR,hmda,47ae10abcba7,negative,Was the co-applicant's sex inferred?
+HMDA_LAR,hmda,47ae10abcba7,negative,How was the application submitted?
+HMDA_LAR,hmda,38ad9c360a98,positive,"What is the count of applicants whose primary race is Black, White, Asian, American Indian/Alaska Native, or Native Hawaiian/Pacific Islander?"
+HMDA_LAR,hmda,38ad9c360a98,positive,"Out of all applicants, what share belongs to each primary racial group?"
+HMDA_LAR,hmda,38ad9c360a98,positive,Which primary racial group has the highest origination rate?
+HMDA_LAR,hmda,38ad9c360a98,positive,Which primary racial group has the highest denial rate?
+HMDA_LAR,hmda,38ad9c360a98,positive,How often are Black primary applicants seeking home-purchase mortgages?
+HMDA_LAR,hmda,38ad9c360a98,positive,Which tracts have the highest count of Black primary applicants?
+HMDA_LAR,hmda,38ad9c360a98,positive,How does the approval rate for Black primary applicants compare with White primary applicants?
+HMDA_LAR,hmda,38ad9c360a98,positive,Has the racial composition of applicants changed over time?
+HMDA_LAR,hmda,38ad9c360a98,positive,Which racial group receives the smallest median loan amount?
+HMDA_LAR,hmda,38ad9c360a98,positive,Which racial group reports the highest average interest rate?
+HMDA_LAR,hmda,38ad9c360a98,negative,How many applicants report a second race?
+HMDA_LAR,hmda,38ad9c360a98,negative,How many applicants report a third race?
+HMDA_LAR,hmda,38ad9c360a98,negative,How many applicants report a fourth race?
+HMDA_LAR,hmda,38ad9c360a98,negative,How many applicants report a fifth race?
+HMDA_LAR,hmda,38ad9c360a98,negative,What is the co-applicant's primary reported race?
+HMDA_LAR,hmda,7a2e9fa707a1,positive,How many applicants report a second race?
+HMDA_LAR,hmda,7a2e9fa707a1,positive,What share of applicants identify with more than one race?
+HMDA_LAR,hmda,7a2e9fa707a1,positive,Which secondary race is most common?
+HMDA_LAR,hmda,7a2e9fa707a1,positive,How many applicants would be misclassified as single-race if the second field were ignored?
+HMDA_LAR,hmda,7a2e9fa707a1,positive,Do applicants with a second race have different approval rates?
+HMDA_LAR,hmda,7a2e9fa707a1,positive,Which lenders report the highest share of multi-racial applicants?
+HMDA_LAR,hmda,7a2e9fa707a1,positive,Has second-race reporting increased over time?
+HMDA_LAR,hmda,7a2e9fa707a1,positive,How does the loan-purpose mix differ for multi-racial applicants?
+HMDA_LAR,hmda,7a2e9fa707a1,negative,What is the applicant's primary reported race?
+HMDA_LAR,hmda,7a2e9fa707a1,negative,How many applicants report a third race?
+HMDA_LAR,hmda,7a2e9fa707a1,negative,How many applicants report a fourth race?
+HMDA_LAR,hmda,7a2e9fa707a1,negative,How many applicants report a fifth race?
+HMDA_LAR,hmda,7a2e9fa707a1,negative,What is the co-applicant's primary reported race?
+HMDA_LAR,hmda,d64f1d7371f9,positive,How many applicants report a third race?
+HMDA_LAR,hmda,d64f1d7371f9,positive,Which third-position race codes appear most frequently?
+HMDA_LAR,hmda,d64f1d7371f9,positive,How many applicants would be omitted from subgroup counts without the third race field?
+HMDA_LAR,hmda,d64f1d7371f9,positive,Are third-race entries concentrated in certain geographies?
+HMDA_LAR,hmda,d64f1d7371f9,positive,Do applicants reporting three races have different denial rates?
+HMDA_LAR,hmda,d64f1d7371f9,positive,Which lenders report the most third-race entries?
+HMDA_LAR,hmda,d64f1d7371f9,negative,What is the applicant's primary reported race?
+HMDA_LAR,hmda,d64f1d7371f9,negative,How many applicants report a second race?
+HMDA_LAR,hmda,d64f1d7371f9,negative,How many applicants report a fourth race?
+HMDA_LAR,hmda,d64f1d7371f9,negative,How many applicants report a fifth race?
+HMDA_LAR,hmda,d64f1d7371f9,negative,What is the co-applicant's primary reported race?
+HMDA_LAR,hmda,e87716fc889d,positive,How many applicants report a fourth race?
+HMDA_LAR,hmda,e87716fc889d,positive,Which fourth-position race codes occur most often?
+HMDA_LAR,hmda,e87716fc889d,positive,Does the fourth race field materially change multi-racial applicant counts?
+HMDA_LAR,hmda,e87716fc889d,positive,Are fourth-race entries concentrated by lender or geography?
+HMDA_LAR,hmda,e87716fc889d,positive,Do applicants reporting four races have distinct loan-product patterns?
+HMDA_LAR,hmda,e87716fc889d,negative,What is the applicant's primary reported race?
+HMDA_LAR,hmda,e87716fc889d,negative,How many applicants report a second race?
+HMDA_LAR,hmda,e87716fc889d,negative,How many applicants report a third race?
+HMDA_LAR,hmda,e87716fc889d,negative,How many applicants report a fifth race?
+HMDA_LAR,hmda,e87716fc889d,negative,What is the co-applicant's primary reported race?
+HMDA_LAR,hmda,18b10812f586,positive,How many applicants report a fifth race?
+HMDA_LAR,hmda,18b10812f586,positive,Which fifth-position race codes occur in the data?
+HMDA_LAR,hmda,18b10812f586,positive,How many subgroup matches would be missed if the fifth field were ignored?
+HMDA_LAR,hmda,18b10812f586,positive,Are fifth-race entries concentrated among particular institutions?
+HMDA_LAR,hmda,18b10812f586,positive,Is the fifth race field frequent enough to affect disparity calculations?
+HMDA_LAR,hmda,18b10812f586,negative,What is the applicant's primary reported race?
+HMDA_LAR,hmda,18b10812f586,negative,How many applicants report a second race?
+HMDA_LAR,hmda,18b10812f586,negative,How many applicants report a third race?
+HMDA_LAR,hmda,18b10812f586,negative,How many applicants report a fourth race?
+HMDA_LAR,hmda,18b10812f586,negative,What is the co-applicant's primary reported race?
+HMDA_LAR,hmda,042cc8aeafd9,positive,How many applications include a co-applicant from each primary racial group?
+HMDA_LAR,hmda,042cc8aeafd9,positive,What share of joint applications include a Black primary co-applicant?
+HMDA_LAR,hmda,042cc8aeafd9,positive,Which co-applicant racial group is associated with the highest approval rate?
+HMDA_LAR,hmda,042cc8aeafd9,positive,How do solo applications compare with applications that include a Black co-applicant?
+HMDA_LAR,hmda,042cc8aeafd9,positive,Which applicant/co-applicant racial combinations are most common?
+HMDA_LAR,hmda,042cc8aeafd9,positive,Which tracts have the highest number of joint applications with minority co-applicants?
+HMDA_LAR,hmda,042cc8aeafd9,positive,Has co-applicant racial composition changed over time?
+HMDA_LAR,hmda,042cc8aeafd9,negative,How many co-applicants report a second race?
+HMDA_LAR,hmda,042cc8aeafd9,negative,How many co-applicants report a third race?
+HMDA_LAR,hmda,042cc8aeafd9,negative,How many co-applicants report a fourth race?
+HMDA_LAR,hmda,042cc8aeafd9,negative,How many co-applicants report a fifth race?
+HMDA_LAR,hmda,042cc8aeafd9,negative,What is the applicant's primary reported race?
+HMDA_LAR,hmda,f5534f859597,positive,How many co-applicants report a second race?
+HMDA_LAR,hmda,f5534f859597,positive,What share of co-applicants identify with more than one race?
+HMDA_LAR,hmda,f5534f859597,positive,Which secondary co-applicant race appears most often?
+HMDA_LAR,hmda,f5534f859597,positive,Do applications with a second co-applicant race have different outcomes?
+HMDA_LAR,hmda,f5534f859597,negative,What is the co-applicant's primary reported race?
+HMDA_LAR,hmda,f5534f859597,negative,How many co-applicants report a third race?
+HMDA_LAR,hmda,f5534f859597,negative,How many co-applicants report a fourth race?
+HMDA_LAR,hmda,f5534f859597,negative,How many co-applicants report a fifth race?
+HMDA_LAR,hmda,f5534f859597,negative,What is the applicant's primary reported race?
+HMDA_LAR,hmda,b3b8d446cbac,positive,How many co-applicants report a third race?
+HMDA_LAR,hmda,b3b8d446cbac,positive,Which third-position co-applicant race codes are observed?
+HMDA_LAR,hmda,b3b8d446cbac,positive,Are third-race co-applicant entries concentrated geographically?
+HMDA_LAR,hmda,b3b8d446cbac,positive,Do these applications differ in loan type or loan amount?
+HMDA_LAR,hmda,b3b8d446cbac,negative,What is the co-applicant's primary reported race?
+HMDA_LAR,hmda,b3b8d446cbac,negative,How many co-applicants report a second race?
+HMDA_LAR,hmda,b3b8d446cbac,negative,How many co-applicants report a fourth race?
+HMDA_LAR,hmda,b3b8d446cbac,negative,How many co-applicants report a fifth race?
+HMDA_LAR,hmda,b3b8d446cbac,negative,What is the applicant's primary reported race?
+HMDA_LAR,hmda,b7b34e6b8fd4,positive,How many co-applicants report a fourth race?
+HMDA_LAR,hmda,b7b34e6b8fd4,positive,Which fourth-position co-applicant race codes occur?
+HMDA_LAR,hmda,b7b34e6b8fd4,positive,Are fourth-race entries concentrated among certain lenders?
+HMDA_LAR,hmda,b7b34e6b8fd4,positive,Do applications with four co-applicant races have different approval rates?
+HMDA_LAR,hmda,b7b34e6b8fd4,negative,What is the co-applicant's primary reported race?
+HMDA_LAR,hmda,b7b34e6b8fd4,negative,How many co-applicants report a second race?
+HMDA_LAR,hmda,b7b34e6b8fd4,negative,How many co-applicants report a third race?
+HMDA_LAR,hmda,b7b34e6b8fd4,negative,How many co-applicants report a fifth race?
+HMDA_LAR,hmda,b7b34e6b8fd4,negative,What is the applicant's primary reported race?
+HMDA_LAR,hmda,d66f2023647e,positive,How many co-applicants report a fifth race?
+HMDA_LAR,hmda,d66f2023647e,positive,Which institutions report the most fifth-race co-applicant entries?
+HMDA_LAR,hmda,d66f2023647e,negative,What is the co-applicant's primary reported race?
+HMDA_LAR,hmda,d66f2023647e,negative,How many co-applicants report a second race?
+HMDA_LAR,hmda,d66f2023647e,negative,How many co-applicants report a third race?
+HMDA_LAR,hmda,d66f2023647e,negative,How many co-applicants report a fourth race?
+HMDA_LAR,hmda,d66f2023647e,negative,What is the applicant's primary reported race?
+HMDA_LAR,hmda,70b4044526dc,positive,How often was applicant race recorded through visual observation or surname?
+HMDA_LAR,hmda,70b4044526dc,positive,What share of applicant race data was self-reported?
+HMDA_LAR,hmda,70b4044526dc,positive,Which lenders have the highest use of inferred race?
+HMDA_LAR,hmda,70b4044526dc,positive,Does inferred race reporting vary across neighborhoods?
+HMDA_LAR,hmda,70b4044526dc,positive,Has visual-observation race reporting declined over time?
+HMDA_LAR,hmda,70b4044526dc,positive,Do approval rates differ between self-reported and inferred-race records?
+HMDA_LAR,hmda,70b4044526dc,negative,What race did the applicant report?
+HMDA_LAR,hmda,70b4044526dc,negative,Was the co-applicant's race inferred?
+HMDA_LAR,hmda,70b4044526dc,negative,Was the applicant's ethnicity inferred?
+HMDA_LAR,hmda,70b4044526dc,negative,Was the applicant's sex inferred?
+HMDA_LAR,hmda,70b4044526dc,negative,How was the application submitted?
+HMDA_LAR,hmda,898650e98cb3,positive,How often was co-applicant race recorded through visual observation or surname?
+HMDA_LAR,hmda,898650e98cb3,positive,What share of co-applicant race data was self-reported?
+HMDA_LAR,hmda,898650e98cb3,positive,Which lenders use inferred co-applicant race most often?
+HMDA_LAR,hmda,898650e98cb3,positive,Does inferred co-applicant race vary geographically?
+HMDA_LAR,hmda,898650e98cb3,positive,Are joint-application race comparisons affected by inferred data?
+HMDA_LAR,hmda,898650e98cb3,positive,Has inferred co-applicant race reporting changed over time?
+HMDA_LAR,hmda,898650e98cb3,negative,What race did the co-applicant report?
+HMDA_LAR,hmda,898650e98cb3,negative,Was the applicant's race inferred?
+HMDA_LAR,hmda,898650e98cb3,negative,Was the co-applicant's ethnicity inferred?
+HMDA_LAR,hmda,898650e98cb3,negative,Was the co-applicant's sex inferred?
+HMDA_LAR,hmda,898650e98cb3,negative,How was the application submitted?
+HMDA_LAR,hmda,6057363dc2e9,positive,"What is the count and share of female, male, joint, and sex-not-provided primary applicants?"
+HMDA_LAR,hmda,6057363dc2e9,positive,Which sex category has the highest origination rate?
+HMDA_LAR,hmda,6057363dc2e9,positive,Which sex category has the highest denial rate?
+HMDA_LAR,hmda,6057363dc2e9,positive,How often are women applying for home-purchase mortgages?
+HMDA_LAR,hmda,6057363dc2e9,positive,Are solo female applicants approved at the same rate as solo male applicants?
+HMDA_LAR,hmda,6057363dc2e9,positive,Which tracts have the highest share of female applicants?
+HMDA_LAR,hmda,6057363dc2e9,positive,Do female applicants receive smaller median loan amounts?
+HMDA_LAR,hmda,6057363dc2e9,positive,Are interest rates or loan costs higher for female applicants?
+HMDA_LAR,hmda,6057363dc2e9,positive,Has female participation in mortgage applications increased or decreased over time?
+HMDA_LAR,hmda,6057363dc2e9,negative,What is the sex distribution of co-applicants?
+HMDA_LAR,hmda,6057363dc2e9,negative,Was applicant sex inferred rather than self-reported?
+HMDA_LAR,hmda,6057363dc2e9,negative,Which applicant age groups apply most often?
+HMDA_LAR,hmda,6057363dc2e9,negative,What is the applicant's primary reported race?
+HMDA_LAR,hmda,6057363dc2e9,negative,What is the applicant's primary reported ethnicity?
+HMDA_LAR,hmda,33fe39c2609a,positive,"How many applications include a female, male, or other-reported-sex co-applicant?"
+HMDA_LAR,hmda,33fe39c2609a,positive,What share of joint applications include a female co-applicant?
+HMDA_LAR,hmda,33fe39c2609a,positive,Do applications with female co-applicants have higher origination rates?
+HMDA_LAR,hmda,33fe39c2609a,positive,How do outcomes differ between solo and joint applications by sex?
+HMDA_LAR,hmda,33fe39c2609a,positive,Which applicant/co-applicant sex combinations are most common?
+HMDA_LAR,hmda,33fe39c2609a,positive,Does co-applicant sex affect typical loan amount or income?
+HMDA_LAR,hmda,33fe39c2609a,positive,Has female co-applicant participation changed over time?
+HMDA_LAR,hmda,33fe39c2609a,negative,What is the sex distribution of primary applicants?
+HMDA_LAR,hmda,33fe39c2609a,negative,Was co-applicant sex inferred rather than self-reported?
+HMDA_LAR,hmda,33fe39c2609a,negative,Which co-applicant age groups appear most often?
+HMDA_LAR,hmda,33fe39c2609a,negative,What is the co-applicant's primary reported race?
+HMDA_LAR,hmda,33fe39c2609a,negative,What is the co-applicant's primary reported ethnicity?
+HMDA_LAR,hmda,b61238fc21a5,positive,How often was applicant sex recorded through visual observation or surname?
+HMDA_LAR,hmda,b61238fc21a5,positive,What share of applicant sex data was self-reported?
+HMDA_LAR,hmda,b61238fc21a5,positive,Which lenders rely most heavily on inferred applicant sex?
+HMDA_LAR,hmda,b61238fc21a5,positive,Does inferred sex reporting vary by application channel?
+HMDA_LAR,hmda,b61238fc21a5,positive,Has non-self-reported sex data declined over time?
+HMDA_LAR,hmda,b61238fc21a5,positive,Should sex-based disparity results include a data-quality caveat?
+HMDA_LAR,hmda,b61238fc21a5,negative,What sex did the applicant report?
+HMDA_LAR,hmda,b61238fc21a5,negative,Was the co-applicant's sex inferred?
+HMDA_LAR,hmda,b61238fc21a5,negative,Was the applicant's race inferred?
+HMDA_LAR,hmda,b61238fc21a5,negative,Was the applicant's ethnicity inferred?
+HMDA_LAR,hmda,b61238fc21a5,negative,How was the application submitted?
+HMDA_LAR,hmda,a84a97248373,positive,How often was co-applicant sex recorded through visual observation or surname?
+HMDA_LAR,hmda,a84a97248373,positive,What share of co-applicant sex data was self-reported?
+HMDA_LAR,hmda,a84a97248373,positive,Which lenders report the most inferred co-applicant sex?
+HMDA_LAR,hmda,a84a97248373,positive,Does inferred co-applicant sex vary by geography?
+HMDA_LAR,hmda,a84a97248373,positive,Are joint-application sex comparisons affected by inferred data?
+HMDA_LAR,hmda,a84a97248373,positive,Has inferred co-applicant sex reporting changed over time?
+HMDA_LAR,hmda,a84a97248373,negative,What sex did the co-applicant report?
+HMDA_LAR,hmda,a84a97248373,negative,Was the applicant's sex inferred?
+HMDA_LAR,hmda,a84a97248373,negative,Was the co-applicant's race inferred?
+HMDA_LAR,hmda,a84a97248373,negative,Was the co-applicant's ethnicity inferred?
+HMDA_LAR,hmda,a84a97248373,negative,How was the application submitted?
+HMDA_LAR,hmda,78651f637517,positive,Which applicant age group applies for mortgages most often?
+HMDA_LAR,hmda,78651f637517,positive,Which age group has the highest origination rate?
+HMDA_LAR,hmda,78651f637517,positive,Which age group has the highest denial rate?
+HMDA_LAR,hmda,78651f637517,positive,How often are applicants under 35 seeking home-purchase loans?
+HMDA_LAR,hmda,78651f637517,positive,Are younger applicants more likely to use FHA financing?
+HMDA_LAR,hmda,78651f637517,positive,Do older applicants receive smaller or larger median loan amounts?
+HMDA_LAR,hmda,78651f637517,positive,Which age groups face the highest interest rates?
+HMDA_LAR,hmda,78651f637517,positive,How does application volume by age vary across tracts?
+HMDA_LAR,hmda,78651f637517,positive,Has the age profile of mortgage applicants shifted over time?
+HMDA_LAR,hmda,78651f637517,negative,What share of applicants are age 62 or older?
+HMDA_LAR,hmda,78651f637517,negative,Which co-applicant age groups appear most often?
+HMDA_LAR,hmda,78651f637517,negative,What is the applicant's reported sex?
+HMDA_LAR,hmda,78651f637517,negative,How much income do applicants report?
+HMDA_LAR,hmda,78651f637517,negative,Which mortgage types do younger applicants use?
+HMDA_LAR,hmda,9f25cfa73bcb,positive,How many applicants age 62 or older applied for mortgages?
+HMDA_LAR,hmda,9f25cfa73bcb,positive,What share of all applicants are age 62 or older?
+HMDA_LAR,hmda,9f25cfa73bcb,positive,What is the origination rate for applicants age 62 or older?
+HMDA_LAR,hmda,9f25cfa73bcb,positive,What is the denial rate for applicants age 62 or older?
+HMDA_LAR,hmda,9f25cfa73bcb,positive,Are older applicants more likely to seek reverse mortgages?
+HMDA_LAR,hmda,9f25cfa73bcb,positive,Which tracts have the highest senior applicant share?
+HMDA_LAR,hmda,9f25cfa73bcb,positive,Do older applicants face different denial reasons?
+HMDA_LAR,hmda,9f25cfa73bcb,positive,Is there evidence of unmet aging-in-place financing demand?
+HMDA_LAR,hmda,9f25cfa73bcb,negative,Which applicant age groups apply most often?
+HMDA_LAR,hmda,9f25cfa73bcb,negative,What share of co-applicants are age 62 or older?
+HMDA_LAR,hmda,9f25cfa73bcb,negative,How common are reverse mortgages?
+HMDA_LAR,hmda,9f25cfa73bcb,negative,Why are older applicants denied?
+HMDA_LAR,hmda,9f25cfa73bcb,negative,What share of senior applications are originated?
+HMDA_LAR,hmda,ea54d753ffea,positive,What age groups are most common among co-applicants?
+HMDA_LAR,hmda,ea54d753ffea,positive,Do applications with older co-applicants have higher approval rates?
+HMDA_LAR,hmda,ea54d753ffea,positive,How often do younger primary applicants apply with older co-applicants?
+HMDA_LAR,hmda,ea54d753ffea,positive,Are co-applicants concentrated in particular age groups?
+HMDA_LAR,hmda,ea54d753ffea,positive,How does co-applicant age relate to loan amount?
+HMDA_LAR,hmda,ea54d753ffea,positive,Does co-applicant age affect the likelihood of FHA or VA usage?
+HMDA_LAR,hmda,ea54d753ffea,positive,Has the age profile of co-applicants changed over time?
+HMDA_LAR,hmda,ea54d753ffea,negative,What share of co-applicants are age 62 or older?
+HMDA_LAR,hmda,ea54d753ffea,negative,Which applicant age groups apply most often?
+HMDA_LAR,hmda,ea54d753ffea,negative,What is the co-applicant's reported sex?
+HMDA_LAR,hmda,ea54d753ffea,negative,How much income do applicants report?
+HMDA_LAR,hmda,ea54d753ffea,negative,Which mortgage types do joint applicants use?
+HMDA_LAR,hmda,eacd8320dd45,positive,How many applications include a co-applicant age 62 or older?
+HMDA_LAR,hmda,eacd8320dd45,positive,What share of joint applications include a senior co-applicant?
+HMDA_LAR,hmda,eacd8320dd45,positive,Do applications with senior co-applicants have different origination rates?
+HMDA_LAR,hmda,eacd8320dd45,positive,Are senior co-applicants common in reverse-mortgage records?
+HMDA_LAR,hmda,eacd8320dd45,positive,Which geographies have the highest senior co-applicant participation?
+HMDA_LAR,hmda,eacd8320dd45,positive,Do senior co-applicant applications have different denial reasons?
+HMDA_LAR,hmda,eacd8320dd45,negative,Which co-applicant age groups appear most often?
+HMDA_LAR,hmda,eacd8320dd45,negative,What share of applicants are age 62 or older?
+HMDA_LAR,hmda,eacd8320dd45,negative,How common are reverse mortgages?
+HMDA_LAR,hmda,eacd8320dd45,negative,Why are applications with senior co-applicants denied?
+HMDA_LAR,hmda,eacd8320dd45,negative,What share of joint applications are originated?
+HMDA_LAR,hmda,c1aa5d4f3f72,positive,What is the average and median mortgage applicant income?
+HMDA_LAR,hmda,c1aa5d4f3f72,positive,What share of mortgage applicants fall into lower-income bands?
+HMDA_LAR,hmda,c1aa5d4f3f72,positive,Which income group has the highest denial rate?
+HMDA_LAR,hmda,c1aa5d4f3f72,positive,Which income group has the highest origination rate?
+HMDA_LAR,hmda,c1aa5d4f3f72,positive,Are home prices and loan amounts outpacing applicant income?
+HMDA_LAR,hmda,c1aa5d4f3f72,positive,How does applicant income differ across racial and ethnic groups?
+HMDA_LAR,hmda,c1aa5d4f3f72,positive,Which tracts have the lowest median applicant income?
+HMDA_LAR,hmda,c1aa5d4f3f72,positive,Do lower-income applicants rely more heavily on FHA or USDA loans?
+HMDA_LAR,hmda,c1aa5d4f3f72,positive,How much has the loan-to-income ratio increased?
+HMDA_LAR,hmda,c1aa5d4f3f72,positive,Why are lower-income applicants struggling to buy homes?
+HMDA_LAR,hmda,c1aa5d4f3f72,positive,What share of applicants are below 80% of area median income?
+HMDA_LAR,hmda,c1aa5d4f3f72,positive,Has the income profile of successful borrowers changed over time?
+HMDA_LAR,hmda,c1aa5d4f3f72,negative,What is the typical mortgage loan amount?
+HMDA_LAR,hmda,c1aa5d4f3f72,negative,Which debt-to-income categories are most common?
+HMDA_LAR,hmda,c1aa5d4f3f72,negative,What is the typical financed property value?
+HMDA_LAR,hmda,c1aa5d4f3f72,negative,What is the combined loan-to-value ratio?
+HMDA_LAR,hmda,c1aa5d4f3f72,negative,What interest rate do borrowers receive?
+HMDA_LAR,hmda,8eed9dc7bccb,positive,Who purchases originated loans from lenders?
+HMDA_LAR,hmda,8eed9dc7bccb,positive,"What share of originated loans are sold to Fannie Mae, Freddie Mac, Ginnie Mae, or private purchasers?"
+HMDA_LAR,hmda,8eed9dc7bccb,positive,Which purchaser types acquire the most FHA or VA loans?
+HMDA_LAR,hmda,8eed9dc7bccb,positive,Are loans in lower-income tracts less likely to reach the secondary market?
+HMDA_LAR,hmda,8eed9dc7bccb,positive,Which lenders retain the largest share of loans in portfolio?
+HMDA_LAR,hmda,8eed9dc7bccb,positive,Does purchaser type differ by race or income?
+HMDA_LAR,hmda,8eed9dc7bccb,positive,How has the purchaser mix changed over time?
+HMDA_LAR,hmda,8eed9dc7bccb,positive,Are small-dollar mortgages less likely to be sold?
+HMDA_LAR,hmda,8eed9dc7bccb,positive,Which purchaser types acquire the most manufactured-home loans?
+HMDA_LAR,hmda,8eed9dc7bccb,negative,Which lenders originate the loans?
+HMDA_LAR,hmda,8eed9dc7bccb,negative,Was the loan initially payable to the reporting institution?
+HMDA_LAR,hmda,8eed9dc7bccb,negative,What mortgage type was originated?
+HMDA_LAR,hmda,8eed9dc7bccb,negative,Is the loan a reverse mortgage?
+HMDA_LAR,hmda,8eed9dc7bccb,negative,Is the loan an open-end line of credit?
+HMDA_LAR,hmda,a42bfdec9fe9,positive,What share of originated loans have a reported rate spread?
+HMDA_LAR,hmda,a42bfdec9fe9,positive,Which racial group has the highest average rate spread?
+HMDA_LAR,hmda,a42bfdec9fe9,positive,Which income group has the highest average rate spread?
+HMDA_LAR,hmda,a42bfdec9fe9,positive,Are higher-priced loans concentrated in particular tracts?
+HMDA_LAR,hmda,a42bfdec9fe9,positive,Has higher-priced lending increased over time?
+HMDA_LAR,hmda,a42bfdec9fe9,positive,Does rate spread differ by loan type or lien status?
+HMDA_LAR,hmda,a42bfdec9fe9,positive,Which lenders report the highest average rate spreads?
+HMDA_LAR,hmda,a42bfdec9fe9,positive,Are small-dollar loans more likely to be higher priced?
+HMDA_LAR,hmda,a42bfdec9fe9,positive,Is there a pricing gap after separating loan purpose and year?
+HMDA_LAR,hmda,a42bfdec9fe9,negative,What is the mortgage interest rate?
+HMDA_LAR,hmda,a42bfdec9fe9,negative,Is the loan classified as high-cost under HOEPA?
+HMDA_LAR,hmda,a42bfdec9fe9,negative,What are the total loan costs?
+HMDA_LAR,hmda,a42bfdec9fe9,negative,What are the total points and fees?
+HMDA_LAR,hmda,a42bfdec9fe9,negative,Does the loan have a first or subordinate lien?
+HMDA_LAR,hmda,8404254921fa,positive,How many high-cost HOEPA loans were reported?
+HMDA_LAR,hmda,8404254921fa,positive,What share of applicable loans are high-cost under HOEPA?
+HMDA_LAR,hmda,8404254921fa,positive,Are HOEPA loans concentrated in specific tracts?
+HMDA_LAR,hmda,8404254921fa,positive,Which demographic groups receive HOEPA loans most often?
+HMDA_LAR,hmda,8404254921fa,positive,Which lenders originate the most HOEPA loans?
+HMDA_LAR,hmda,8404254921fa,positive,Has high-cost lending increased or declined?
+HMDA_LAR,hmda,8404254921fa,positive,Are HOEPA loans concentrated among small-dollar mortgages?
+HMDA_LAR,hmda,8404254921fa,positive,Is there a local consumer-protection concern related to high-cost loans?
+HMDA_LAR,hmda,8404254921fa,negative,What is the reported rate spread?
+HMDA_LAR,hmda,8404254921fa,negative,What is the mortgage interest rate?
+HMDA_LAR,hmda,8404254921fa,negative,What are the total loan costs?
+HMDA_LAR,hmda,8404254921fa,negative,What are the total points and fees?
+HMDA_LAR,hmda,8404254921fa,negative,Does the loan have a first or subordinate lien?
+HMDA_LAR,hmda,cc5a562c7591,positive,What share of loans are first liens versus subordinate liens?
+HMDA_LAR,hmda,cc5a562c7591,positive,Are subordinate-lien loans more common in particular tracts?
+HMDA_LAR,hmda,cc5a562c7591,positive,How do origination rates differ by lien status?
+HMDA_LAR,hmda,cc5a562c7591,positive,Are residents increasingly borrowing against home equity?
+HMDA_LAR,hmda,cc5a562c7591,positive,Does lien status differ by loan purpose?
+HMDA_LAR,hmda,cc5a562c7591,positive,Which demographic groups use subordinate liens most often?
+HMDA_LAR,hmda,cc5a562c7591,positive,Are subordinate-lien loans more expensive?
+HMDA_LAR,hmda,cc5a562c7591,positive,Has the lien-status mix changed over time?
+HMDA_LAR,hmda,cc5a562c7591,negative,Is the mortgage an open-end line of credit?
+HMDA_LAR,hmda,cc5a562c7591,negative,What is the loan purpose?
+HMDA_LAR,hmda,cc5a562c7591,negative,What mortgage type is it?
+HMDA_LAR,hmda,cc5a562c7591,negative,How long is the prepayment penalty term?
+HMDA_LAR,hmda,cc5a562c7591,negative,Is the loan high-cost under HOEPA?
+HMDA_LAR,hmda,1673e60668b4,positive,Which credit-scoring models are most commonly used for primary applicants?
+HMDA_LAR,hmda,1673e60668b4,positive,Do lenders use different applicant scoring models across loan types?
+HMDA_LAR,hmda,1673e60668b4,positive,Does applicant scoring-model usage vary by geography?
+HMDA_LAR,hmda,1673e60668b4,positive,Are origination rates different across scoring models?
+HMDA_LAR,hmda,1673e60668b4,positive,Which scoring models are used most often for FHA or VA applications?
+HMDA_LAR,hmda,1673e60668b4,positive,Has scoring-model usage changed over time?
+HMDA_LAR,hmda,1673e60668b4,positive,Could scoring-model differences affect how approval disparities are interpreted?
+HMDA_LAR,hmda,1673e60668b4,negative,Which credit-scoring model was used for the co-applicant?
+HMDA_LAR,hmda,1673e60668b4,negative,Which primary underwriting system reviewed the application?
+HMDA_LAR,hmda,1673e60668b4,negative,Was a second underwriting system reported?
+HMDA_LAR,hmda,1673e60668b4,negative,Which debt-to-income category applies?
+HMDA_LAR,hmda,1673e60668b4,negative,What was the primary reason for denial?
+HMDA_LAR,hmda,393da35e854a,positive,Which credit-scoring models are most commonly used for co-applicants?
+HMDA_LAR,hmda,393da35e854a,positive,Do co-applicant scoring models vary by lender?
+HMDA_LAR,hmda,393da35e854a,positive,Does co-applicant scoring-model usage differ by loan type?
+HMDA_LAR,hmda,393da35e854a,positive,Are joint-application outcomes different across co-applicant scoring models?
+HMDA_LAR,hmda,393da35e854a,positive,Which models are most common in high-income versus lower-income applications?
+HMDA_LAR,hmda,393da35e854a,positive,Has co-applicant scoring-model usage changed over time?
+HMDA_LAR,hmda,393da35e854a,negative,Which credit-scoring model was used for the applicant?
+HMDA_LAR,hmda,393da35e854a,negative,Which primary underwriting system reviewed the application?
+HMDA_LAR,hmda,393da35e854a,negative,Was a second underwriting system reported?
+HMDA_LAR,hmda,393da35e854a,negative,Which debt-to-income category applies?
+HMDA_LAR,hmda,393da35e854a,negative,What was the primary reason for denial?
+HMDA_LAR,hmda,2742b6bb64c3,positive,What is the primary reason mortgage applications are denied?
+HMDA_LAR,hmda,2742b6bb64c3,positive,Which denial reason appears most often in the first denial-reason field?
+HMDA_LAR,hmda,2742b6bb64c3,positive,What share of denials primarily cite debt-to-income ratio?
+HMDA_LAR,hmda,2742b6bb64c3,positive,What share of denials primarily cite credit history?
+HMDA_LAR,hmda,2742b6bb64c3,positive,Which demographic group most often receives each primary denial reason?
+HMDA_LAR,hmda,2742b6bb64c3,positive,Does the primary denial reason differ by loan purpose?
+HMDA_LAR,hmda,2742b6bb64c3,positive,Which lenders most often cite insufficient cash as the primary reason?
+HMDA_LAR,hmda,2742b6bb64c3,positive,Has the leading primary denial reason changed over time?
+HMDA_LAR,hmda,2742b6bb64c3,negative,How often was a second denial reason reported?
+HMDA_LAR,hmda,2742b6bb64c3,negative,How often was a third denial reason reported?
+HMDA_LAR,hmda,2742b6bb64c3,negative,How often was a fourth denial reason reported?
+HMDA_LAR,hmda,2742b6bb64c3,negative,Which debt-to-income categories are most common?
+HMDA_LAR,hmda,2742b6bb64c3,negative,What share of applications were denied?
+HMDA_LAR,hmda,89e7494377a9,positive,How often is a second denial reason reported?
+HMDA_LAR,hmda,89e7494377a9,positive,Which secondary denial reasons are most common?
+HMDA_LAR,hmda,89e7494377a9,positive,How much additional explanation is captured by the second denial-reason field?
+HMDA_LAR,hmda,89e7494377a9,positive,Would denial-barrier analysis change if only the first reason were used?
+HMDA_LAR,hmda,89e7494377a9,positive,Which lenders report secondary denial reasons most frequently?
+HMDA_LAR,hmda,89e7494377a9,positive,"Do secondary reasons differ by race, income, or loan type?"
+HMDA_LAR,hmda,89e7494377a9,positive,Has use of a second denial reason changed over time?
+HMDA_LAR,hmda,89e7494377a9,negative,What was the primary reason for denial?
+HMDA_LAR,hmda,89e7494377a9,negative,How often was a third denial reason reported?
+HMDA_LAR,hmda,89e7494377a9,negative,How often was a fourth denial reason reported?
+HMDA_LAR,hmda,89e7494377a9,negative,Which debt-to-income categories are most common?
+HMDA_LAR,hmda,89e7494377a9,negative,What share of applications were denied?
+HMDA_LAR,hmda,2afbdd23cfd9,positive,How often is a third denial reason reported?
+HMDA_LAR,hmda,2afbdd23cfd9,positive,Which third-position denial reasons occur most often?
+HMDA_LAR,hmda,2afbdd23cfd9,positive,How many denied applications have three distinct reported barriers?
+HMDA_LAR,hmda,2afbdd23cfd9,positive,Which applicant groups are most likely to receive a third denial reason?
+HMDA_LAR,hmda,2afbdd23cfd9,positive,Does the third denial reason reveal barriers not shown in the first two fields?
+HMDA_LAR,hmda,2afbdd23cfd9,positive,Which lenders report the most third denial reasons?
+HMDA_LAR,hmda,2afbdd23cfd9,negative,What was the primary reason for denial?
+HMDA_LAR,hmda,2afbdd23cfd9,negative,How often was a second denial reason reported?
+HMDA_LAR,hmda,2afbdd23cfd9,negative,How often was a fourth denial reason reported?
+HMDA_LAR,hmda,2afbdd23cfd9,negative,Which debt-to-income categories are most common?
+HMDA_LAR,hmda,2afbdd23cfd9,negative,What share of applications were denied?
+HMDA_LAR,hmda,3a492be9c21a,positive,How often is a fourth denial reason reported?
+HMDA_LAR,hmda,3a492be9c21a,positive,Which fourth-position denial reasons occur?
+HMDA_LAR,hmda,3a492be9c21a,positive,How many denials involve four reported barriers?
+HMDA_LAR,hmda,3a492be9c21a,positive,Does the fourth field materially change the ranking of denial causes?
+HMDA_LAR,hmda,3a492be9c21a,positive,Which applicant groups are most likely to have four reasons reported?
+HMDA_LAR,hmda,3a492be9c21a,positive,Is the fourth denial-reason field frequent enough to affect program targeting?
+HMDA_LAR,hmda,3a492be9c21a,negative,What was the primary reason for denial?
+HMDA_LAR,hmda,3a492be9c21a,negative,How often was a second denial reason reported?
+HMDA_LAR,hmda,3a492be9c21a,negative,How often was a third denial reason reported?
+HMDA_LAR,hmda,3a492be9c21a,negative,Which debt-to-income categories are most common?
+HMDA_LAR,hmda,3a492be9c21a,negative,What share of applications were denied?
+HMDA_LAR,hmda,e7f210fa70b9,positive,What are the average and median total loan costs?
+HMDA_LAR,hmda,e7f210fa70b9,positive,Are total loan costs higher for small-dollar mortgages?
+HMDA_LAR,hmda,e7f210fa70b9,positive,What share of loan amount do total costs represent?
+HMDA_LAR,hmda,e7f210fa70b9,positive,Which demographic groups face the highest loan-cost burden?
+HMDA_LAR,hmda,e7f210fa70b9,positive,Which lenders report the highest median total costs?
+HMDA_LAR,hmda,e7f210fa70b9,positive,Do FHA borrowers pay different total costs from conventional borrowers?
+HMDA_LAR,hmda,e7f210fa70b9,positive,Are total costs higher in lower-income tracts?
+HMDA_LAR,hmda,e7f210fa70b9,positive,How have total loan costs changed over time?
+HMDA_LAR,hmda,e7f210fa70b9,positive,Do higher lender credits offset higher total costs?
+HMDA_LAR,hmda,e7f210fa70b9,negative,What are the total points and fees?
+HMDA_LAR,hmda,e7f210fa70b9,negative,What are the origination charges?
+HMDA_LAR,hmda,e7f210fa70b9,negative,How much did borrowers pay in discount points?
+HMDA_LAR,hmda,e7f210fa70b9,negative,How much did borrowers receive in lender credits?
+HMDA_LAR,hmda,e7f210fa70b9,negative,What mortgage interest rate did borrowers receive?
+HMDA_LAR,hmda,f799f0e54a15,positive,What are the average and median total points and fees?
+HMDA_LAR,hmda,f799f0e54a15,positive,What share of the loan amount do points and fees represent?
+HMDA_LAR,hmda,f799f0e54a15,positive,Are points and fees higher for smaller loans?
+HMDA_LAR,hmda,f799f0e54a15,positive,Which demographic groups pay the highest points and fees?
+HMDA_LAR,hmda,f799f0e54a15,positive,Which lenders report the highest points-and-fees burden?
+HMDA_LAR,hmda,f799f0e54a15,positive,Do points and fees differ by loan type?
+HMDA_LAR,hmda,f799f0e54a15,positive,How have points and fees changed over time?
+HMDA_LAR,hmda,f799f0e54a15,negative,What are the total loan costs?
+HMDA_LAR,hmda,f799f0e54a15,negative,What are the origination charges?
+HMDA_LAR,hmda,f799f0e54a15,negative,How much did borrowers pay in discount points?
+HMDA_LAR,hmda,f799f0e54a15,negative,How much did borrowers receive in lender credits?
+HMDA_LAR,hmda,f799f0e54a15,negative,What mortgage interest rate did borrowers receive?
+HMDA_LAR,hmda,4d7dd3a169e2,positive,What are the average and median origination charges?
+HMDA_LAR,hmda,4d7dd3a169e2,positive,Are origination charges disproportionately high for small-dollar loans?
+HMDA_LAR,hmda,4d7dd3a169e2,positive,Which lenders charge the highest origination fees?
+HMDA_LAR,hmda,4d7dd3a169e2,positive,Do origination charges differ by race or income?
+HMDA_LAR,hmda,4d7dd3a169e2,positive,Are origination charges higher for FHA loans?
+HMDA_LAR,hmda,4d7dd3a169e2,positive,How have origination charges changed over time?
+HMDA_LAR,hmda,4d7dd3a169e2,positive,Which tracts have the highest median origination charges?
+HMDA_LAR,hmda,4d7dd3a169e2,negative,What are the total loan costs?
+HMDA_LAR,hmda,4d7dd3a169e2,negative,What are the total points and fees?
+HMDA_LAR,hmda,4d7dd3a169e2,negative,How much did borrowers pay in discount points?
+HMDA_LAR,hmda,4d7dd3a169e2,negative,How much did borrowers receive in lender credits?
+HMDA_LAR,hmda,4d7dd3a169e2,negative,What mortgage interest rate did borrowers receive?
+HMDA_LAR,hmda,2c84edb574c9,positive,How often do borrowers pay discount points?
+HMDA_LAR,hmda,2c84edb574c9,positive,What is the average and median amount of discount points?
+HMDA_LAR,hmda,2c84edb574c9,positive,Who is most likely to pay discount points?
+HMDA_LAR,hmda,2c84edb574c9,positive,Do discount points correspond with lower interest rates?
+HMDA_LAR,hmda,2c84edb574c9,positive,Are discount points more common for higher-income borrowers?
+HMDA_LAR,hmda,2c84edb574c9,positive,Which lenders report the most discount-point usage?
+HMDA_LAR,hmda,2c84edb574c9,positive,Has discount-point usage increased over time?
+HMDA_LAR,hmda,2c84edb574c9,negative,What are the total loan costs?
+HMDA_LAR,hmda,2c84edb574c9,negative,What are the total points and fees?
+HMDA_LAR,hmda,2c84edb574c9,negative,What are the origination charges?
+HMDA_LAR,hmda,2c84edb574c9,negative,How much did borrowers receive in lender credits?
+HMDA_LAR,hmda,2c84edb574c9,negative,What mortgage interest rate did borrowers receive?
+HMDA_LAR,hmda,3029d1b121d9,positive,How often do borrowers receive lender credits?
+HMDA_LAR,hmda,3029d1b121d9,positive,What is the average and median lender-credit amount?
+HMDA_LAR,hmda,3029d1b121d9,positive,Which lenders provide credits most frequently?
+HMDA_LAR,hmda,3029d1b121d9,positive,Do lender credits differ by race or income?
+HMDA_LAR,hmda,3029d1b121d9,positive,Are lender credits more common on higher-interest-rate loans?
+HMDA_LAR,hmda,3029d1b121d9,positive,Do small-dollar borrowers receive fewer lender credits?
+HMDA_LAR,hmda,3029d1b121d9,positive,Has lender-credit usage changed over time?
+HMDA_LAR,hmda,3029d1b121d9,negative,What are the total loan costs?
+HMDA_LAR,hmda,3029d1b121d9,negative,What are the total points and fees?
+HMDA_LAR,hmda,3029d1b121d9,negative,What are the origination charges?
+HMDA_LAR,hmda,3029d1b121d9,negative,How much did borrowers pay in discount points?
+HMDA_LAR,hmda,3029d1b121d9,negative,What mortgage interest rate did borrowers receive?
+HMDA_LAR,hmda,d88bbc368393,positive,What is the average and median mortgage interest rate?
+HMDA_LAR,hmda,d88bbc368393,positive,Which racial group has the highest average interest rate?
+HMDA_LAR,hmda,d88bbc368393,positive,Which income group has the highest average interest rate?
+HMDA_LAR,hmda,d88bbc368393,positive,Are interest rates higher in lower-income tracts?
+HMDA_LAR,hmda,d88bbc368393,positive,How have mortgage rates changed over the last few years?
+HMDA_LAR,hmda,d88bbc368393,positive,Do FHA borrowers pay higher rates than conventional borrowers?
+HMDA_LAR,hmda,d88bbc368393,positive,Are small-dollar loans associated with higher rates?
+HMDA_LAR,hmda,d88bbc368393,positive,Which lenders report the lowest and highest median rates?
+HMDA_LAR,hmda,d88bbc368393,positive,"Is there a pricing gap after separating loan type, purpose, and year?"
+HMDA_LAR,hmda,d88bbc368393,positive,How do rates differ between manufactured and site-built homes?
+HMDA_LAR,hmda,d88bbc368393,negative,What are the total loan costs?
+HMDA_LAR,hmda,d88bbc368393,negative,What are the total points and fees?
+HMDA_LAR,hmda,d88bbc368393,negative,What are the origination charges?
+HMDA_LAR,hmda,d88bbc368393,negative,How much did borrowers pay in discount points?
+HMDA_LAR,hmda,d88bbc368393,negative,How much did borrowers receive in lender credits?
+HMDA_LAR,hmda,ee7ca4d9b211,positive,How many loans include a prepayment penalty?
+HMDA_LAR,hmda,ee7ca4d9b211,positive,What share of applicable loans have prepayment penalties?
+HMDA_LAR,hmda,ee7ca4d9b211,positive,Which lenders report prepayment penalties most often?
+HMDA_LAR,hmda,ee7ca4d9b211,positive,Are prepayment penalties concentrated among certain borrowers?
+HMDA_LAR,hmda,ee7ca4d9b211,positive,Do prepayment-penalty loans have higher interest rates?
+HMDA_LAR,hmda,ee7ca4d9b211,positive,Has the use of prepayment penalties changed over time?
+HMDA_LAR,hmda,ee7ca4d9b211,negative,What is the full loan term?
+HMDA_LAR,hmda,ee7ca4d9b211,negative,How long is the introductory rate period?
+HMDA_LAR,hmda,ee7ca4d9b211,negative,Does the loan include a balloon payment?
+HMDA_LAR,hmda,ee7ca4d9b211,negative,Does the loan allow interest-only payments?
+HMDA_LAR,hmda,ee7ca4d9b211,negative,What mortgage interest rate did borrowers receive?
+HMDA_LAR,hmda,4ed7ab361ad9,positive,What debt-to-income categories are most common?
+HMDA_LAR,hmda,4ed7ab361ad9,positive,Which DTI category has the highest denial rate?
+HMDA_LAR,hmda,4ed7ab361ad9,positive,What share of applicants fall into high-DTI categories?
+HMDA_LAR,hmda,4ed7ab361ad9,positive,Is DTI the leading reported reason for denial?
+HMDA_LAR,hmda,4ed7ab361ad9,positive,Are lower-income applicants more likely to have high DTI?
+HMDA_LAR,hmda,4ed7ab361ad9,positive,Do DTI distributions differ across racial groups?
+HMDA_LAR,hmda,4ed7ab361ad9,positive,Which tracts have the highest share of high-DTI applicants?
+HMDA_LAR,hmda,4ed7ab361ad9,positive,How does DTI differ between originated and denied applications?
+HMDA_LAR,hmda,4ed7ab361ad9,positive,Has the high-DTI applicant share changed over time?
+HMDA_LAR,hmda,4ed7ab361ad9,negative,How much income do applicants report?
+HMDA_LAR,hmda,4ed7ab361ad9,negative,What is the combined loan-to-value ratio?
+HMDA_LAR,hmda,4ed7ab361ad9,negative,What was the primary reason for denial?
+HMDA_LAR,hmda,4ed7ab361ad9,negative,What is the mortgage loan amount?
+HMDA_LAR,hmda,4ed7ab361ad9,negative,What is the financed property value?
+HMDA_LAR,hmda,e1a04c1d4b4f,positive,What is the average and median combined loan-to-value ratio?
+HMDA_LAR,hmda,e1a04c1d4b4f,positive,What share of originated loans have high CLTV?
+HMDA_LAR,hmda,e1a04c1d4b4f,positive,Which racial or income groups receive the highest-CLTV loans?
+HMDA_LAR,hmda,e1a04c1d4b4f,positive,Do high-CLTV applicants have lower origination rates?
+HMDA_LAR,hmda,e1a04c1d4b4f,positive,Which tracts have the greatest concentration of high-CLTV lending?
+HMDA_LAR,hmda,e1a04c1d4b4f,positive,Are FHA loans associated with higher CLTV?
+HMDA_LAR,hmda,e1a04c1d4b4f,positive,How has the CLTV distribution changed over time?
+HMDA_LAR,hmda,e1a04c1d4b4f,positive,Do manufactured-home loans have different CLTV patterns?
+HMDA_LAR,hmda,e1a04c1d4b4f,positive,Is high CLTV contributing to denial outcomes?
+HMDA_LAR,hmda,e1a04c1d4b4f,negative,What debt-to-income category applies?
+HMDA_LAR,hmda,e1a04c1d4b4f,negative,What is the financed property value?
+HMDA_LAR,hmda,e1a04c1d4b4f,negative,What is the mortgage loan amount?
+HMDA_LAR,hmda,e1a04c1d4b4f,negative,How much income do applicants report?
+HMDA_LAR,hmda,e1a04c1d4b4f,negative,Does the loan have a first or subordinate lien?
+HMDA_LAR,hmda,4eec442a1ff5,positive,What loan terms are most common?
+HMDA_LAR,hmda,4eec442a1ff5,positive,What share of originated loans have 30-year terms?
+HMDA_LAR,hmda,4eec442a1ff5,positive,Do loan terms differ by loan type or purpose?
+HMDA_LAR,hmda,4eec442a1ff5,positive,Are shorter loan terms associated with lower interest rates?
+HMDA_LAR,hmda,4eec442a1ff5,positive,Which borrower groups receive longer loan terms?
+HMDA_LAR,hmda,4eec442a1ff5,positive,Do manufactured-home loans have different terms?
+HMDA_LAR,hmda,4eec442a1ff5,positive,How has the loan-term mix changed over time?
+HMDA_LAR,hmda,4eec442a1ff5,negative,How long is the introductory rate period?
+HMDA_LAR,hmda,4eec442a1ff5,negative,How long is the prepayment penalty term?
+HMDA_LAR,hmda,4eec442a1ff5,negative,What mortgage interest rate did borrowers receive?
+HMDA_LAR,hmda,4eec442a1ff5,negative,Does the loan include a balloon payment?
+HMDA_LAR,hmda,4eec442a1ff5,negative,Does the loan allow interest-only payments?
+HMDA_LAR,hmda,61eb3ce43bc8,positive,How common are loans with introductory rate periods?
+HMDA_LAR,hmda,61eb3ce43bc8,positive,What is the typical introductory-rate duration?
+HMDA_LAR,hmda,61eb3ce43bc8,positive,Are introductory-rate loans concentrated in particular tracts?
+HMDA_LAR,hmda,61eb3ce43bc8,positive,Which borrower groups receive these products most often?
+HMDA_LAR,hmda,61eb3ce43bc8,positive,Do introductory-rate loans have different initial interest rates?
+HMDA_LAR,hmda,61eb3ce43bc8,positive,Which lenders originate the most introductory-rate products?
+HMDA_LAR,hmda,61eb3ce43bc8,positive,Has the use of introductory-rate loans increased over time?
+HMDA_LAR,hmda,61eb3ce43bc8,negative,What is the full loan term?
+HMDA_LAR,hmda,61eb3ce43bc8,negative,How long is the prepayment penalty term?
+HMDA_LAR,hmda,61eb3ce43bc8,negative,What mortgage interest rate did borrowers receive?
+HMDA_LAR,hmda,61eb3ce43bc8,negative,Does the loan include a balloon payment?
+HMDA_LAR,hmda,61eb3ce43bc8,negative,Does the loan allow interest-only payments?
+HMDA_LAR,hmda,e16419341663,positive,How many loans include balloon payments?
+HMDA_LAR,hmda,e16419341663,positive,What share of applicable loans have balloon-payment features?
+HMDA_LAR,hmda,e16419341663,positive,Which lenders originate the most balloon-payment loans?
+HMDA_LAR,hmda,e16419341663,positive,Are balloon loans concentrated in certain tracts?
+HMDA_LAR,hmda,e16419341663,positive,Which demographic groups receive balloon loans most often?
+HMDA_LAR,hmda,e16419341663,positive,Do balloon-payment loans have higher interest rates?
+HMDA_LAR,hmda,e16419341663,positive,Has balloon-payment lending increased over time?
+HMDA_LAR,hmda,e16419341663,negative,Does the loan allow interest-only payments?
+HMDA_LAR,hmda,e16419341663,negative,Does the loan include negative amortization?
+HMDA_LAR,hmda,e16419341663,negative,Does the loan include other non-amortizing features?
+HMDA_LAR,hmda,e16419341663,negative,How long is the prepayment penalty term?
+HMDA_LAR,hmda,e16419341663,negative,How long is the introductory rate period?
+HMDA_LAR,hmda,22e92cdc26a1,positive,How many loans include interest-only payments?
+HMDA_LAR,hmda,22e92cdc26a1,positive,What share of applicable loans are interest-only?
+HMDA_LAR,hmda,22e92cdc26a1,positive,Which lenders originate the most interest-only loans?
+HMDA_LAR,hmda,22e92cdc26a1,positive,Are interest-only loans concentrated in high-income tracts?
+HMDA_LAR,hmda,22e92cdc26a1,positive,Which borrower groups receive interest-only products most often?
+HMDA_LAR,hmda,22e92cdc26a1,positive,Do interest-only loans have larger loan amounts?
+HMDA_LAR,hmda,22e92cdc26a1,positive,Has interest-only lending increased over time?
+HMDA_LAR,hmda,22e92cdc26a1,negative,Does the loan include a balloon payment?
+HMDA_LAR,hmda,22e92cdc26a1,negative,Does the loan include negative amortization?
+HMDA_LAR,hmda,22e92cdc26a1,negative,Does the loan include other non-amortizing features?
+HMDA_LAR,hmda,22e92cdc26a1,negative,How long is the prepayment penalty term?
+HMDA_LAR,hmda,22e92cdc26a1,negative,How long is the introductory rate period?
+HMDA_LAR,hmda,3650925856a5,positive,How many loans include negative amortization?
+HMDA_LAR,hmda,3650925856a5,positive,What share of applicable loans have negative-amortization features?
+HMDA_LAR,hmda,3650925856a5,positive,Which lenders report negative-amortization loans?
+HMDA_LAR,hmda,3650925856a5,positive,Are these loans concentrated in particular tracts?
+HMDA_LAR,hmda,3650925856a5,positive,Which borrower groups receive negative-amortization products?
+HMDA_LAR,hmda,3650925856a5,positive,Do these loans have higher rates or costs?
+HMDA_LAR,hmda,3650925856a5,positive,Has negative-amortization lending changed over time?
+HMDA_LAR,hmda,3650925856a5,negative,Does the loan include a balloon payment?
+HMDA_LAR,hmda,3650925856a5,negative,Does the loan allow interest-only payments?
+HMDA_LAR,hmda,3650925856a5,negative,Does the loan include other non-amortizing features?
+HMDA_LAR,hmda,3650925856a5,negative,How long is the prepayment penalty term?
+HMDA_LAR,hmda,3650925856a5,negative,How long is the introductory rate period?
+HMDA_LAR,hmda,777f47bff0f7,positive,How many loans include other non-amortizing features?
+HMDA_LAR,hmda,777f47bff0f7,positive,What share of applicable loans include non-standard repayment features?
+HMDA_LAR,hmda,777f47bff0f7,positive,Which lenders originate these products most often?
+HMDA_LAR,hmda,777f47bff0f7,positive,Are non-amortizing loans concentrated geographically?
+HMDA_LAR,hmda,777f47bff0f7,positive,Which borrower groups receive them most often?
+HMDA_LAR,hmda,777f47bff0f7,positive,Do loans with other non-amortizing features carry higher rates or borrower costs?
+HMDA_LAR,hmda,777f47bff0f7,positive,Has use of non-amortizing features changed over time?
+HMDA_LAR,hmda,777f47bff0f7,negative,Does the loan include a balloon payment?
+HMDA_LAR,hmda,777f47bff0f7,negative,Does the loan allow interest-only payments?
+HMDA_LAR,hmda,777f47bff0f7,negative,Does the loan include negative amortization?
+HMDA_LAR,hmda,777f47bff0f7,negative,How long is the prepayment penalty term?
+HMDA_LAR,hmda,777f47bff0f7,negative,How long is the introductory rate period?
+HMDA_LAR,hmda,7eab4d0bb654,positive,What is the average and median financed property value?
+HMDA_LAR,hmda,7eab4d0bb654,positive,Are financed property values outpacing applicant income?
+HMDA_LAR,hmda,7eab4d0bb654,positive,Which tracts have the highest and lowest property values?
+HMDA_LAR,hmda,7eab4d0bb654,positive,How does property value differ by borrower race or income?
+HMDA_LAR,hmda,7eab4d0bb654,positive,What is the property-value-to-income ratio?
+HMDA_LAR,hmda,7eab4d0bb654,positive,How has median property value changed over time?
+HMDA_LAR,hmda,7eab4d0bb654,positive,Are Black applicants purchasing lower-valued properties than White applicants?
+HMDA_LAR,hmda,7eab4d0bb654,positive,Do FHA-financed properties have lower values?
+HMDA_LAR,hmda,7eab4d0bb654,positive,How large is the gap between property value and loan amount?
+HMDA_LAR,hmda,7eab4d0bb654,positive,What is the affordability gap for applicants?
+HMDA_LAR,hmda,7eab4d0bb654,negative,What is the mortgage loan amount?
+HMDA_LAR,hmda,7eab4d0bb654,negative,How much income do applicants report?
+HMDA_LAR,hmda,7eab4d0bb654,negative,What is the combined loan-to-value ratio?
+HMDA_LAR,hmda,7eab4d0bb654,negative,How many total units are in the property?
+HMDA_LAR,hmda,7eab4d0bb654,negative,How many affordable multifamily units are included?
+HMDA_LAR,hmda,93c2c724f354,positive,What share of manufactured-home loans are secured by both the home and land?
+HMDA_LAR,hmda,93c2c724f354,positive,What share are secured by the home only?
+HMDA_LAR,hmda,93c2c724f354,positive,Do home-only applications have lower origination rates?
+HMDA_LAR,hmda,93c2c724f354,positive,Which counties have the highest home-only financing share?
+HMDA_LAR,hmda,93c2c724f354,positive,How do interest rates differ by secured-property type?
+HMDA_LAR,hmda,93c2c724f354,positive,How do loan amounts differ between home-and-land and home-only financing?
+HMDA_LAR,hmda,93c2c724f354,positive,Which lenders specialize in each manufactured-home property type?
+HMDA_LAR,hmda,93c2c724f354,positive,Does secured-property type affect application denial reasons?
+HMDA_LAR,hmda,93c2c724f354,negative,Does the borrower own or lease the manufactured-home land?
+HMDA_LAR,hmda,93c2c724f354,negative,Is the property site-built or manufactured?
+HMDA_LAR,hmda,93c2c724f354,negative,How many total units are in the property?
+HMDA_LAR,hmda,93c2c724f354,negative,Is the property a primary residence or investment?
+HMDA_LAR,hmda,93c2c724f354,negative,Is this a reverse mortgage?
+HMDA_LAR,hmda,481a6f48168a,positive,What share of manufactured-home applicants own the land?
+HMDA_LAR,hmda,481a6f48168a,positive,What share lease the land or have another land interest?
+HMDA_LAR,hmda,481a6f48168a,positive,Are leased-land applications denied more often?
+HMDA_LAR,hmda,481a6f48168a,positive,Which counties have the highest concentration of leased-land manufactured housing?
+HMDA_LAR,hmda,481a6f48168a,positive,How do rates and loan costs differ by land-interest type?
+HMDA_LAR,hmda,481a6f48168a,positive,Which lenders finance leased-land properties most often?
+HMDA_LAR,hmda,481a6f48168a,positive,Does land interest affect loan amount or CLTV?
+HMDA_LAR,hmda,481a6f48168a,positive,How is land tenure contributing to financing barriers?
+HMDA_LAR,hmda,481a6f48168a,negative,"Is the manufactured-home loan secured by the home, land, or both?"
+HMDA_LAR,hmda,481a6f48168a,negative,Is the property site-built or manufactured?
+HMDA_LAR,hmda,481a6f48168a,negative,How many total units are in the property?
+HMDA_LAR,hmda,481a6f48168a,negative,Is the property a primary residence or investment?
+HMDA_LAR,hmda,481a6f48168a,negative,Is this a reverse mortgage?
+HMDA_LAR,hmda,fcb673efeb0f,positive,"What share of financed properties are one-unit, two-to-four-unit, or multifamily?"
+HMDA_LAR,hmda,fcb673efeb0f,positive,How many financed properties contain five or more units?
+HMDA_LAR,hmda,fcb673efeb0f,positive,Which tracts receive the most multifamily lending?
+HMDA_LAR,hmda,fcb673efeb0f,positive,Do origination rates differ by unit count?
+HMDA_LAR,hmda,fcb673efeb0f,positive,How do loan amounts differ by property size?
+HMDA_LAR,hmda,fcb673efeb0f,positive,Which lenders finance the most multifamily properties?
+HMDA_LAR,hmda,fcb673efeb0f,positive,Has multifamily lending increased over time?
+HMDA_LAR,hmda,fcb673efeb0f,positive,Are small multifamily properties receiving more or less credit?
+HMDA_LAR,hmda,fcb673efeb0f,negative,How many affordable units are included in multifamily properties?
+HMDA_LAR,hmda,fcb673efeb0f,negative,Is the property site-built or manufactured?
+HMDA_LAR,hmda,fcb673efeb0f,negative,Is the property a principal residence or investment?
+HMDA_LAR,hmda,fcb673efeb0f,negative,What is the financed property value?
+HMDA_LAR,hmda,fcb673efeb0f,negative,Is the manufactured-home loan secured by the home and land?
+HMDA_LAR,hmda,eea5df9bc082,positive,How many affordable units are associated with financed multifamily properties?
+HMDA_LAR,hmda,eea5df9bc082,positive,What share of units in financed multifamily properties are affordable?
+HMDA_LAR,hmda,eea5df9bc082,positive,Which tracts receive the most financing tied to affordable units?
+HMDA_LAR,hmda,eea5df9bc082,positive,Has affordable multifamily financing increased or declined?
+HMDA_LAR,hmda,eea5df9bc082,positive,Which lenders finance the most affordable units?
+HMDA_LAR,hmda,eea5df9bc082,positive,Are distressed or low-income neighborhoods receiving a fair share of affordable-housing financing?
+HMDA_LAR,hmda,eea5df9bc082,positive,How does affordable-unit financing compare across counties?
+HMDA_LAR,hmda,eea5df9bc082,positive,Are larger multifamily projects providing a higher affordable-unit share?
+HMDA_LAR,hmda,eea5df9bc082,negative,How many total units are in financed properties?
+HMDA_LAR,hmda,eea5df9bc082,negative,What is the financed property value?
+HMDA_LAR,hmda,eea5df9bc082,negative,What is the mortgage loan amount?
+HMDA_LAR,hmda,eea5df9bc082,negative,Is the property site-built or manufactured?
+HMDA_LAR,hmda,eea5df9bc082,negative,Is the manufactured-home loan secured by the home and land?
+HMDA_LAR,hmda,8ec2405296c3,positive,How are mortgage applications submitted?
+HMDA_LAR,hmda,8ec2405296c3,positive,Do origination rates differ by submission channel?
+HMDA_LAR,hmda,8ec2405296c3,positive,"Are certain demographic groups more likely to apply online, by mail, or through other channels?"
+HMDA_LAR,hmda,8ec2405296c3,positive,Are incomplete applications more common through particular channels?
+HMDA_LAR,hmda,8ec2405296c3,positive,Are withdrawals more common through particular channels?
+HMDA_LAR,hmda,8ec2405296c3,positive,Which lenders receive the most applications through indirect channels?
+HMDA_LAR,hmda,8ec2405296c3,positive,Has online application usage increased over time?
+HMDA_LAR,hmda,8ec2405296c3,positive,Could digital-access barriers be affecting mortgage access?
+HMDA_LAR,hmda,8ec2405296c3,negative,Was the loan initially payable to the reporting institution?
+HMDA_LAR,hmda,8ec2405296c3,negative,Did the applicant request preapproval?
+HMDA_LAR,hmda,8ec2405296c3,negative,Which primary underwriting system reviewed the application?
+HMDA_LAR,hmda,8ec2405296c3,negative,Which lender received the application?
+HMDA_LAR,hmda,8ec2405296c3,negative,What action was taken on the application?
+HMDA_LAR,hmda,b0610b4bd742,positive,What share of loans were initially payable to the reporting institution?
+HMDA_LAR,hmda,b0610b4bd742,positive,How much lending appears to be brokered or table-funded?
+HMDA_LAR,hmda,b0610b4bd742,positive,Do origination rates differ by whether the loan was initially payable to the institution?
+HMDA_LAR,hmda,b0610b4bd742,positive,Do pricing outcomes differ by origination structure?
+HMDA_LAR,hmda,b0610b4bd742,positive,Which lenders rely most heavily on third-party origination channels?
+HMDA_LAR,hmda,b0610b4bd742,positive,How does the origination structure differ across neighborhoods?
+HMDA_LAR,hmda,b0610b4bd742,positive,Has third-party origination increased over time?
+HMDA_LAR,hmda,b0610b4bd742,negative,How was the application submitted?
+HMDA_LAR,hmda,b0610b4bd742,negative,Who purchased the originated loan?
+HMDA_LAR,hmda,b0610b4bd742,negative,Which lender received the application?
+HMDA_LAR,hmda,b0610b4bd742,negative,Which primary underwriting system reviewed the application?
+HMDA_LAR,hmda,b0610b4bd742,negative,What action was taken on the application?
+HMDA_LAR,hmda,9f06e5f03163,positive,Which automated underwriting system is reported first most often?
+HMDA_LAR,hmda,9f06e5f03163,positive,"What share of applications use Desktop Underwriter, Loan Product Advisor, TOTAL, GUS, or another primary AUS?"
+HMDA_LAR,hmda,9f06e5f03163,positive,Do origination rates differ by the primary AUS?
+HMDA_LAR,hmda,9f06e5f03163,positive,Which lenders rely most heavily on each primary AUS?
+HMDA_LAR,hmda,9f06e5f03163,positive,Does primary AUS usage differ by loan type?
+HMDA_LAR,hmda,9f06e5f03163,positive,Has the primary underwriting-system mix changed over time?
+HMDA_LAR,hmda,9f06e5f03163,positive,Are rural loans more likely to use [AUS type] as the primary system?
+HMDA_LAR,hmda,9f06e5f03163,negative,Was a second automated underwriting system reported?
+HMDA_LAR,hmda,9f06e5f03163,negative,Was a third automated underwriting system reported?
+HMDA_LAR,hmda,9f06e5f03163,negative,Was a fourth automated underwriting system reported?
+HMDA_LAR,hmda,9f06e5f03163,negative,Was a fifth automated underwriting system reported?
+HMDA_LAR,hmda,9f06e5f03163,negative,Which applicant credit-scoring model was used?
+HMDA_LAR,hmda,91deea31a103,positive,How often is a second automated underwriting system reported?
+HMDA_LAR,hmda,91deea31a103,positive,Which secondary AUS combinations are most common?
+HMDA_LAR,hmda,91deea31a103,positive,Do applications using multiple AUS platforms have different outcomes?
+HMDA_LAR,hmda,91deea31a103,positive,Which lenders report a second AUS most frequently?
+HMDA_LAR,hmda,91deea31a103,positive,Does second-system usage differ by loan type?
+HMDA_LAR,hmda,91deea31a103,negative,Which primary automated underwriting system was used?
+HMDA_LAR,hmda,91deea31a103,negative,Was a third automated underwriting system reported?
+HMDA_LAR,hmda,91deea31a103,negative,Was a fourth automated underwriting system reported?
+HMDA_LAR,hmda,91deea31a103,negative,Was a fifth automated underwriting system reported?
+HMDA_LAR,hmda,91deea31a103,negative,Which applicant credit-scoring model was used?
+HMDA_LAR,hmda,82e7ae1f8358,positive,How often is a third automated underwriting system reported?
+HMDA_LAR,hmda,82e7ae1f8358,positive,Which third-position AUS codes occur most often?
+HMDA_LAR,hmda,82e7ae1f8358,positive,Are applications with three AUS entries more likely to be complex or jointly underwritten?
+HMDA_LAR,hmda,82e7ae1f8358,positive,Do these applications have different origination rates?
+HMDA_LAR,hmda,82e7ae1f8358,positive,Which lenders report the most third AUS entries?
+HMDA_LAR,hmda,82e7ae1f8358,negative,Which primary automated underwriting system was used?
+HMDA_LAR,hmda,82e7ae1f8358,negative,Was a second automated underwriting system reported?
+HMDA_LAR,hmda,82e7ae1f8358,negative,Was a fourth automated underwriting system reported?
+HMDA_LAR,hmda,82e7ae1f8358,negative,Was a fifth automated underwriting system reported?
+HMDA_LAR,hmda,82e7ae1f8358,negative,Which applicant credit-scoring model was used?
+HMDA_LAR,hmda,7.64129E+11,positive,How often is a fourth automated underwriting system reported?
+HMDA_LAR,hmda,7.64129E+11,positive,Which fourth-position AUS codes occur?
+HMDA_LAR,hmda,7.64129E+11,positive,Are four-system applications concentrated among particular lenders?
+HMDA_LAR,hmda,7.64129E+11,positive,Do these applications have distinct loan types or outcomes?
+HMDA_LAR,hmda,7.64129E+11,negative,Which primary automated underwriting system was used?
+HMDA_LAR,hmda,7.64129E+11,negative,Was a second automated underwriting system reported?
+HMDA_LAR,hmda,7.64129E+11,negative,Was a third automated underwriting system reported?
+HMDA_LAR,hmda,7.64129E+11,negative,Was a fifth automated underwriting system reported?
+HMDA_LAR,hmda,7.64129E+11,negative,Which applicant credit-scoring model was used?
+HMDA_LAR,hmda,f986c06a51ee,positive,How often is a fifth automated underwriting system reported?
+HMDA_LAR,hmda,f986c06a51ee,positive,Which fifth-position AUS codes occur?
+HMDA_LAR,hmda,f986c06a51ee,positive,How many system-usage matches would be missed without this field?
+HMDA_LAR,hmda,f986c06a51ee,positive,Are fifth-AUS records concentrated among certain institutions?
+HMDA_LAR,hmda,f986c06a51ee,negative,Which primary automated underwriting system was used?
+HMDA_LAR,hmda,f986c06a51ee,negative,Was a second automated underwriting system reported?
+HMDA_LAR,hmda,f986c06a51ee,negative,Was a third automated underwriting system reported?
+HMDA_LAR,hmda,f986c06a51ee,negative,Was a fourth automated underwriting system reported?
+HMDA_LAR,hmda,f986c06a51ee,negative,Which applicant credit-scoring model was used?
+HMDA_LAR,hmda,4097354d84be,positive,How many reverse-mortgage applications were reported?
+HMDA_LAR,hmda,4097354d84be,positive,How many reverse mortgages were originated?
+HMDA_LAR,hmda,4097354d84be,positive,What is the reverse-mortgage origination rate?
+HMDA_LAR,hmda,4097354d84be,positive,Which tracts have the most reverse-mortgage activity?
+HMDA_LAR,hmda,4097354d84be,positive,Which lenders originate the most reverse mortgages?
+HMDA_LAR,hmda,4097354d84be,positive,Are applicants age 62 or older able to access reverse mortgages?
+HMDA_LAR,hmda,4097354d84be,positive,What reasons are cited when reverse-mortgage applications are denied?
+HMDA_LAR,hmda,4097354d84be,positive,Has reverse-mortgage activity changed over time?
+HMDA_LAR,hmda,4097354d84be,positive,Is there unmet demand for aging-in-place financing?
+HMDA_LAR,hmda,4097354d84be,negative,Is the loan an open-end line of credit?
+HMDA_LAR,hmda,4097354d84be,negative,Is the loan for a business or commercial purpose?
+HMDA_LAR,hmda,4097354d84be,negative,Is the applicant age 62 or older?
+HMDA_LAR,hmda,4097354d84be,negative,Is the property a principal residence or investment?
+HMDA_LAR,hmda,4097354d84be,negative,What is the loan purpose?
+HMDA_LAR,hmda,df285ddfe146,positive,What share of mortgage activity consists of open-end lines of credit or HELOCs?
+HMDA_LAR,hmda,df285ddfe146,positive,How many HELOC applications were originated in my community?
+HMDA_LAR,hmda,df285ddfe146,positive,Has HELOC usage increased over time?
+HMDA_LAR,hmda,df285ddfe146,positive,Which [region or tract in geography] use open-end credit most often?
+HMDA_LAR,hmda,df285ddfe146,positive,Do HELOC origination rates differ by race or income and how?
+HMDA_LAR,hmda,df285ddfe146,positive,Which lenders originate the most HELOCs?
+HMDA_LAR,hmda,df285ddfe146,positive,What is the primary use for HELOCs (home improvement or other purposes)?
+HMDA_LAR,hmda,df285ddfe146,positive,Are residents increasingly relying on home equity for financial needs?
+HMDA_LAR,hmda,df285ddfe146,negative,Is the loan a reverse mortgage?
+HMDA_LAR,hmda,df285ddfe146,negative,Is the loan for a business or commercial purpose?
+HMDA_LAR,hmda,df285ddfe146,negative,Does the loan have a first or subordinate lien?
+HMDA_LAR,hmda,df285ddfe146,negative,What is the loan purpose?
+HMDA_LAR,hmda,df285ddfe146,negative,Is the property a principal residence or investment?
+HMDA_LAR,hmda,14045a0bf7f8,positive,What share of reported transactions are business or commercial purpose?
+HMDA_LAR,hmda,14045a0bf7f8,positive,How much do consumer mortgage metrics change after commercial-purpose records are excluded?
+HMDA_LAR,hmda,14045a0bf7f8,positive,Which lenders report the most commercial-purpose transactions?
+HMDA_LAR,hmda,14045a0bf7f8,positive,Which locations have the highest commercial-purpose share?
+HMDA_LAR,hmda,14045a0bf7f8,positive,Do origination rates differ between consumer and commercial-purpose records?
+HMDA_LAR,hmda,14045a0bf7f8,positive,How does the loan-purpose mix differ for commercial-purpose transactions?
+HMDA_LAR,hmda,14045a0bf7f8,positive,Are commercial-purpose records concentrated in multifamily lending?
+HMDA_LAR,hmda,14045a0bf7f8,negative,Is the loan a reverse mortgage?
+HMDA_LAR,hmda,14045a0bf7f8,negative,Is the loan an open-end line of credit?
+HMDA_LAR,hmda,14045a0bf7f8,negative,What is the loan purpose?
+HMDA_LAR,hmda,14045a0bf7f8,negative,Is the property a principal residence or investment?
+HMDA_LAR,hmda,14045a0bf7f8,negative,Does the loan have a first or subordinate lien?
