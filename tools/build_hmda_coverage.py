@@ -10,7 +10,7 @@ of you guessing/typing the year range by hand.
 Usage:
     python -m tools.build_hmda_coverage \
         --gcs-glob "gs://<your-bucket>/variable_tree/table_id=hmda/year=*/variable=*/part-*.parquet" \
-        --table-id HMDA_LAR \
+        --table-id hmda \
         --dataset hmda \
         --geo-level tract \
         --out-csv data/staging/hmda/hmda_coverage.csv
@@ -61,7 +61,7 @@ def main() -> int:
     ap.add_argument("--gcs-glob", required=True,
                      help="Glob URI over the HMDA parquet partitions, e.g. "
                           "gs://bucket/variable_tree/table_id=hmda/year=*/variable=*/part-*.parquet")
-    ap.add_argument("--table-id", default="HMDA_LAR")
+    ap.add_argument("--table-id", default="hmda")
     ap.add_argument("--dataset", default="hmda")
     ap.add_argument("--geo-level", default="tract",
                      help="Fixed geo_level for every coverage row (this connector is tract-only).")
