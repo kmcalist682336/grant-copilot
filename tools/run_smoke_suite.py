@@ -13,6 +13,7 @@ exhausted``, etc.), the runner sleeps 5 minutes and retries up to
 Usage:
     python -m tools.run_smoke_suite
     python -m tools.run_smoke_suite --fresh   # ignore prior progress
+    python -m tools.run_smoke_suite --hmda-routing
 """
 from __future__ import annotations
 
@@ -84,6 +85,16 @@ QUERIES: list[tuple[int, str, str]] = [
     (48, "L10 scope gate", "How many jet skis are in Northeast Atlanta?"),
     (49, "L10 exclusion", "I'm writing a grant for more school buses in Atlanta excluding the Buckhead area."),
     (50, "L10 relative geo", "What's the poverty rate near the Atlanta Beltline?"),
+]
+
+# Dataset-integration smoke checks intentionally use the shared router's
+# ordinary ``route`` method, not ``route_dataset``. They test whether HMDA
+# cards can surface alongside Census cards in the combined FAISS index.
+HMDA_ROUTING_QUERIES: list[str] = [
+    "What is the current mortgage denial rate?",
+    "Which lenders receive the most mortgage applications?",
+    "What is the average mortgage interest rate?",
+    "Has the racial approval gap widened or narrowed over time?",
 ]
 
 
@@ -170,6 +181,142 @@ def _bootstrap_clients(config: dict):
         "semantic_router": router, "frame_registry": frame_registry,
         "peer_retriever": peer_retriever, "universe_picker": universe_picker,
     }
+
+
+def run_hmda_routing_smoke(*, top_k: int = 100) -> bool:
+    """Check shared-index HMDA retrieval and coverage-year propagation.
+
+    This is Step 6 of the dataset runbook: no orchestration, API fetch, or
+    aggregation. A check passes only when the normal combined-index router
+    surfaces at least one HMDA variable target and every surfaced target's
+    ``years_available`` exactly matches successful coverage for its table.
+    """
+    from collections import Counter
+    from scripts.chatbot.auth_check import check_auth
+    from scripts.chatbot.semantic_router import (
+        RouterConfig,
+        SemanticRouter,
+        VertexEmbedder,
+    )
+
+    with (REPO_ROOT / "config" / "chatbot.yaml").open() as handle:
+        config = yaml.safe_load(handle)
+    metadata_path = REPO_ROOT / config["paths"]["metadata_db"]
+    index_path = REPO_ROOT / "data" / "metadata" / "embeddings.faiss"
+    auth = check_auth(verbose=False)
+    router = SemanticRouter(
+        index_path,
+        metadata_path,
+        VertexEmbedder(
+            project=auth["project_id"],
+            location=auth.get("location", "us-central1"),
+        ),
+        config=RouterConfig(),
+    )
+
+    with sqlite3.connect(metadata_path) as db:
+        coverage_rows = db.execute(
+            "SELECT table_id, year FROM coverage "
+            "WHERE dataset = 'hmda' AND status = 'success' "
+            "ORDER BY table_id, year"
+        ).fetchall()
+        hmda_card_ids = {
+            int(row[0]) for row in db.execute(
+                "SELECT rowid FROM cards WHERE target_dataset = 'hmda'"
+            )
+        }
+    import faiss
+    indexed_ids = set(faiss.vector_to_array(router.index.id_map).tolist())
+    indexed_hmda_ids = hmda_card_ids & indexed_ids
+    expected_years: dict[str, list[int]] = {}
+    for table_id, year in coverage_rows:
+        expected_years.setdefault(table_id, []).append(int(year))
+
+    checks: list[dict] = []
+    try:
+        for query in HMDA_ROUTING_QUERIES:
+            result = router.route(query, top_k=top_k)
+            hmda_targets = [
+                target for target in result.top_variables
+                if target.target_dataset == "hmda"
+                and target.target_variable_id is not None
+            ]
+            target_checks = []
+            for target in hmda_targets:
+                expected = sorted(set(
+                    expected_years.get(target.target_table_id, [])
+                ))
+                actual = sorted(set(target.years_available or []))
+                target_checks.append({
+                    "table_id": target.target_table_id,
+                    "variable_id": target.target_variable_id,
+                    "score": round(target.aggregate_score, 4),
+                    "years_available": actual,
+                    "expected_years": expected,
+                    "years_match": bool(expected) and actual == expected,
+                })
+            dataset_counts = Counter(
+                target.target_dataset for target in result.top_variables
+            )
+            passed = bool(target_checks) and all(
+                target["years_match"] for target in target_checks
+            )
+            checks.append({
+                "query": query,
+                "passed": passed,
+                "hmda_variable_hits": len(target_checks),
+                "top_variable_datasets": dict(dataset_counts),
+                "targets": target_checks,
+            })
+    finally:
+        router.metadata_db.close()
+
+    report = {
+        "dataset": "hmda",
+        "router_method": "route",
+        "dataset_specific_routing_used": False,
+        "top_k": top_k,
+        "hmda_cards_total": len(hmda_card_ids),
+        "hmda_cards_in_live_faiss": len(indexed_hmda_ids),
+        "hmda_index_complete": indexed_hmda_ids == hmda_card_ids,
+        "coverage_years_by_table": expected_years,
+        "passed": (
+            indexed_hmda_ids == hmda_card_ids
+            and all(check["passed"] for check in checks)
+        ),
+        "checks": checks,
+    }
+    report_path = REPO_ROOT / "reports" / "hmda_routing_smoke.json"
+    report_path.parent.mkdir(exist_ok=True)
+    report_path.write_text(json.dumps(report, indent=2), encoding="utf-8")
+
+    print("\nHMDA shared-router smoke")
+    print(
+        "Live FAISS HMDA IDs: "
+        f"{len(indexed_hmda_ids)}/{len(hmda_card_ids)} "
+        f"({'complete' if indexed_hmda_ids == hmda_card_ids else 'INCOMPLETE'})"
+    )
+    print(f"Coverage years: {expected_years}")
+    for check in checks:
+        status = "PASS" if check["passed"] else "FAIL"
+        print(
+            f"  {status}: {check['query']} "
+            f"(HMDA variable hits={check['hmda_variable_hits']})"
+        )
+        if not check["passed"]:
+            print(
+                "    top variable datasets: "
+                f"{check['top_variable_datasets']}"
+            )
+        for target in check["targets"][:5]:
+            print(
+                f"    {target['variable_id']} "
+                f"years={target['years_available']} "
+                f"expected={target['expected_years']} "
+                f"match={target['years_match']}"
+            )
+    print(f"Report: {report_path}")
+    return report["passed"]
 
 
 def _serialize_response(query_id, level, query, resp, duration_s, dump_folder):
@@ -380,6 +527,19 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--fresh", action="store_true",
                     help="Ignore prior progress and re-run every query")
+    ap.add_argument(
+        "--hmda-routing",
+        action="store_true",
+        help=(
+            "Run only the HMDA shared-router and coverage-years smoke checks."
+        ),
+    )
+    ap.add_argument(
+        "--hmda-top-k",
+        type=int,
+        default=100,
+        help="Shared-router variable target depth for --hmda-routing.",
+    )
     args = ap.parse_args()
 
     logging.basicConfig(
@@ -390,7 +550,10 @@ def main():
     logging.getLogger("google").setLevel(logging.WARNING)
     logging.getLogger("google_genai").setLevel(logging.WARNING)
 
+    if args.hmda_routing:
+        return 0 if run_hmda_routing_smoke(top_k=args.hmda_top_k) else 1
     run_suite(fresh=args.fresh)
+    return 0
 
 
 if __name__ == "__main__":
