@@ -1,0 +1,13 @@
+# The data layer is bind-mounted, never baked in (~8 GB).
+data/
+derived_data/
+reports/
+
+.git/
+.venv/
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.env
+*.log

@@ -1,0 +1,77 @@
+# grant-copilot — one command to run the app.
+#
+#   docker compose up --build
+#   open http://localhost:8000
+#
+# Three mounts, each for a specific reason:
+#
+#   .  ->  /app        The repo, live. The prompt lab WRITES to
+#                      prompts/v1/synthesizer.yaml and
+#                      config/presentation.yaml, so these must be host
+#                      files or every edit dies with the container. It
+#                      also means editing Python doesn't need a rebuild.
+#
+#   ./data -> /app/data  Covered by the mount above, called out because
+#                      it's the ~8 GB hydrated data layer. Hydrate it on
+#                      the HOST first:
+#                        python -m scripts.setup.hydrate_data_artifacts
+#                      Baking it into the image would make every code
+#                      change a multi-GB rebuild.
+#
+#   ~/.config/gcloud -> read-only  Application Default Credentials, so
+#                      Vertex works inside the container without copying
+#                      a key file anywhere. Run
+#                        gcloud auth application-default login
+#                      on the host once.
+
+services:
+  app:
+    build: .
+    image: grant-copilot:latest
+
+    # Run as the host user so files the app writes (prompt edits, the
+    # SQLite caches under data/runtime/) stay owned by you rather than
+    # root.
+    #
+    # Deliberately NOT named UID/GID: bash marks UID readonly, so
+    # `UID=$(id -u) docker compose up` fails with "readonly variable".
+    # Override in .env or inline if your ids aren't 1000:
+    #   APP_UID=$(id -u) APP_GID=$(id -g) docker compose up
+    user: "${APP_UID:-1000}:${APP_GID:-1000}"
+
+    ports:
+      - "${PORT:-8000}:8000"
+
+    volumes:
+      - .:/app
+      - ${HOME}/.config/gcloud:/home/app/.config/gcloud:ro
+
+    environment:
+      # ADC lives in the mounted gcloud config.
+      - CLOUDSDK_CONFIG=/home/app/.config/gcloud
+      - GOOGLE_APPLICATION_CREDENTIALS=/home/app/.config/gcloud/application_default_credentials.json
+      # Read from .env below; listed so they're visible at a glance.
+      - GCP_PROJECT_ID
+      - GCP_LOCATION
+      - CENSUS_API_KEY
+      - HF_TOKEN
+
+    # Optional so `docker compose config` and a first build work before
+    # you've made one. The app still needs the credentials in it —
+    # `cp .env.example .env` and fill it in (see the README).
+    env_file:
+      - path: .env
+        required: false
+
+    # The FAISS index takes a while to load. Don't report healthy until
+    # /readyz says the artifacts are actually up.
+    healthcheck:
+      test: ["CMD", "python", "-c",
+             "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8000/readyz', timeout=5).status==200 else 1)"]
+      interval: 15s
+      timeout: 10s
+      retries: 20
+      start_period: 180s
+
+    stdin_open: true
+    tty: true

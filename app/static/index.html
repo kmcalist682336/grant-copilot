@@ -1,0 +1,571 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>grant-copilot — prompt lab</title>
+<style>
+  :root {
+    --bg: #ffffff; --fg: #1a1a1a; --dim: #6b7280; --line: #e5e7eb;
+    --panel: #f9fafb; --accent: #1d4ed8; --ok: #047857;
+    --warn: #b45309; --err: #b91c1c; --mono: ui-monospace, SFMono-Regular,
+    Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0f1115; --fg: #e6e6e6; --dim: #9ca3af; --line: #262b36;
+      --panel: #161a22; --accent: #60a5fa; --ok: #34d399;
+      --warn: #fbbf24; --err: #f87171;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--fg);
+    font: 15px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif;
+  }
+  header {
+    padding: 10px 16px; border-bottom: 1px solid var(--line);
+    display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  }
+  header h1 { font-size: 15px; margin: 0; font-weight: 600; }
+  #status { font-size: 12.5px; color: var(--dim); }
+  .layout { display: flex; height: calc(100vh - 47px); }
+  .left { flex: 1 1 58%; overflow-y: auto; padding: 16px; min-width: 0; }
+  .right {
+    flex: 1 1 42%; overflow-y: auto; padding: 16px;
+    border-left: 1px solid var(--line); background: var(--panel);
+    min-width: 0;
+  }
+  @media (max-width: 950px) {
+    .layout { flex-direction: column; height: auto; }
+    .right { border-left: none; border-top: 1px solid var(--line); }
+  }
+  textarea, input[type=text] {
+    width: 100%; background: var(--bg); color: var(--fg);
+    border: 1px solid var(--line); border-radius: 6px; padding: 9px 11px;
+    font-family: inherit; font-size: 14px;
+  }
+  textarea.code { font-family: var(--mono); font-size: 12.5px; line-height: 1.5; }
+  button {
+    background: var(--accent); color: #fff; border: 0; border-radius: 6px;
+    padding: 8px 14px; font-size: 13.5px; cursor: pointer; font-weight: 500;
+  }
+  button.secondary {
+    background: transparent; color: var(--fg); border: 1px solid var(--line);
+  }
+  button:disabled { opacity: .45; cursor: not-allowed; }
+  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .mt { margin-top: 12px; }
+  h2 {
+    font-size: 12px; text-transform: uppercase; letter-spacing: .07em;
+    color: var(--dim); margin: 22px 0 8px; font-weight: 600;
+  }
+  h2:first-child { margin-top: 0; }
+  .card {
+    border: 1px solid var(--line); border-radius: 8px; padding: 13px;
+    margin-bottom: 10px; background: var(--bg);
+  }
+  .prose { font-size: 15.5px; white-space: pre-wrap; }
+  ul { margin: 0; padding-left: 20px; }
+  li { margin: 3px 0; }
+  .lint { border-left: 3px solid var(--dim); padding: 8px 11px; margin-bottom: 7px;
+          border-radius: 0 6px 6px 0; background: var(--panel); font-size: 13.5px; }
+  .lint.error { border-left-color: var(--err); }
+  .lint.warning { border-left-color: var(--warn); }
+  .lint.info { border-left-color: var(--dim); }
+  .lint .rule { font-family: var(--mono); font-size: 11.5px; color: var(--dim); }
+  .lint .detail { color: var(--dim); font-size: 12.5px; margin-top: 3px; }
+  table { border-collapse: collapse; width: 100%; font-size: 12.5px; }
+  th, td { text-align: left; padding: 5px 8px; border-bottom: 1px solid var(--line); }
+  th { color: var(--dim); font-weight: 600; }
+  .num { text-align: right; font-family: var(--mono); }
+  pre {
+    background: var(--panel); border: 1px solid var(--line); border-radius: 6px;
+    padding: 10px; overflow-x: auto; font-size: 11.5px; font-family: var(--mono);
+    max-height: 340px; white-space: pre-wrap; word-break: break-word;
+  }
+  .tabs { display: flex; gap: 3px; border-bottom: 1px solid var(--line);
+          margin-bottom: 13px; flex-wrap: wrap; }
+  .tab {
+    padding: 7px 13px; cursor: pointer; font-size: 13.5px; border: 0;
+    background: transparent; color: var(--dim); border-bottom: 2px solid transparent;
+  }
+  .tab.active { color: var(--fg); border-bottom-color: var(--accent); font-weight: 500; }
+  .hide { display: none !important; }
+  .dim { color: var(--dim); }
+  .small { font-size: 12.5px; }
+  .banner {
+    padding: 9px 12px; border-radius: 6px; margin-bottom: 12px; font-size: 13.5px;
+    border: 1px solid var(--warn); color: var(--warn);
+  }
+  .banner.err { border-color: var(--err); color: var(--err); }
+  .cost { font-family: var(--mono); font-size: 12px; color: var(--dim); }
+  .stage { font-size: 13px; color: var(--dim); font-family: var(--mono); }
+  .citation { font-size: 12.5px; margin: 3px 0; }
+  .citation code { font-family: var(--mono); color: var(--accent); }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>grant-copilot</h1>
+  <span id="status">connecting…</span>
+</header>
+
+<div class="layout">
+  <!-- ============ LEFT: chat ============ -->
+  <div class="left">
+    <textarea id="query" rows="2"
+      placeholder="Ask about Census data — e.g. median household income in Buckhead"></textarea>
+    <div class="row mt">
+      <button id="ask">Ask</button>
+      <button id="resynth" class="secondary" disabled
+        title="Re-run only the synthesizer against the same numbers (~3s)">
+        Re-synthesize</button>
+      <button id="rerender" class="secondary" disabled
+        title="Re-apply presentation config only (instant, free)">
+        Re-render</button>
+      <span id="progress" class="stage"></span>
+    </div>
+
+    <div id="banner" class="banner hide"></div>
+    <div id="output"></div>
+  </div>
+
+  <!-- ============ RIGHT: lab ============ -->
+  <div class="right">
+    <div class="tabs">
+      <button class="tab active" data-pane="upstream">Upstream</button>
+      <button class="tab" data-pane="prompt">Prompt</button>
+      <button class="tab" data-pane="presentation">Presentation</button>
+      <button class="tab" data-pane="trace">Trace</button>
+      <button class="tab" data-pane="variants">Variants</button>
+    </div>
+
+    <!-- Upstream inventory -->
+    <div id="pane-upstream">
+      <div class="small dim">
+        Everything the pipeline produced for this query, and whether it
+        reached the synthesizer. Toggle one under <code>bundle.send</code>
+        in Presentation; branch on any of it in
+        <code>app/postprocess.py</code>.
+      </div>
+      <div id="upstream-body" class="mt dim small">Ask something first.</div>
+    </div>
+
+    <!-- Prompt -->
+    <div id="pane-prompt" class="hide">
+      <div class="small dim">
+        Layer 2 — how the model is told to write. Hot-reloaded; changes
+        apply on the next Ask or Re-synthesize.
+        <span id="prompt-path" class="cost"></span>
+      </div>
+      <textarea id="prompt-text" class="code mt" rows="26"></textarea>
+      <div class="row mt">
+        <button id="prompt-save">Save prompt</button>
+        <button id="prompt-try" class="secondary"
+          title="Re-synthesize with this draft without saving">Try without saving</button>
+        <button id="prompt-reload" class="secondary">Reload</button>
+        <span id="prompt-msg" class="small dim"></span>
+      </div>
+    </div>
+
+    <!-- Presentation -->
+    <div id="pane-presentation" class="hide">
+      <div class="small dim">
+        Layers 1, 3 and 4 — what the model is shown, deterministic
+        cleanup, and which sections render. Saving then Re-render costs
+        nothing.
+      </div>
+      <textarea id="pres-text" class="code mt" rows="26"></textarea>
+      <div class="row mt">
+        <button id="pres-save">Save config</button>
+        <button id="pres-reload" class="secondary">Reload</button>
+        <span id="pres-msg" class="small dim"></span>
+      </div>
+    </div>
+
+    <!-- Trace -->
+    <div id="pane-trace" class="hide">
+      <div class="small dim">
+        Exactly what the synthesizer LLM was sent and what it returned.
+        Not a reconstruction — captured at the call site.
+      </div>
+      <div id="trace-body" class="mt dim small">Ask something first.</div>
+    </div>
+
+    <!-- Variants -->
+    <div id="pane-variants" class="hide">
+      <div class="small dim">
+        Named prompt experiments in <code>prompts/variants/</code>. Save
+        one before a big edit so you can get back to what worked.
+      </div>
+      <div class="row mt">
+        <input type="text" id="variant-name" placeholder="variant name" style="flex:1">
+        <button id="variant-save">Save current</button>
+      </div>
+      <div id="variant-list" class="mt small dim">none yet</div>
+    </div>
+  </div>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+let currentRunId = null;
+let busy = false;
+
+// ---------- helpers ----------
+function esc(s) {
+  return String(s ?? "").replace(/[&<>"']/g, c => (
+    {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]
+  ));
+}
+function fmtNum(v) {
+  if (v === null || v === undefined) return "—";
+  if (typeof v !== "number") return esc(v);
+  if (Math.abs(v) >= 1000) return v.toLocaleString(undefined, {maximumFractionDigits: 0});
+  return String(Math.round(v * 1000) / 1000);
+}
+function banner(msg, isError) {
+  const b = $("banner");
+  if (!msg) { b.classList.add("hide"); return; }
+  b.textContent = msg;
+  b.className = "banner" + (isError ? " err" : "");
+}
+function setBusy(state, label) {
+  busy = state;
+  $("ask").disabled = state;
+  $("resynth").disabled = state || !currentRunId;
+  $("rerender").disabled = state || !currentRunId;
+  $("prompt-try").disabled = state || !currentRunId;
+  $("progress").textContent = label || "";
+}
+
+// ---------- rendering ----------
+function render(r) {
+  currentRunId = r.run_id || null;
+  banner(r.config_warning || r.error, !!r.error);
+
+  const out = [];
+
+  if (r.lints && r.lints.length) {
+    out.push('<h2>Output checks</h2>');
+    for (const l of r.lints) {
+      out.push(`<div class="lint ${esc(l.severity)}">
+        <span class="rule">${esc(l.rule)}</span><br>${esc(l.message)}
+        ${l.detail ? `<div class="detail">${esc(l.detail)}</div>` : ""}
+      </div>`);
+    }
+  }
+
+  if (r.prose) {
+    out.push('<h2>Answer</h2>');
+    out.push(`<div class="card prose">${esc(r.prose)}</div>`);
+  }
+
+  if (r.key_findings && r.key_findings.length) {
+    out.push('<h2>Key findings</h2><div class="card"><ul>');
+    for (const k of r.key_findings) out.push(`<li>${esc(k)}</li>`);
+    out.push('</ul></div>');
+  }
+
+  if (r.caveats && r.caveats.length) {
+    out.push('<h2>Caveats</h2><div class="card"><ul>');
+    for (const c of r.caveats) out.push(`<li>${esc(c)}</li>`);
+    out.push('</ul></div>');
+  }
+
+  if (r.citations && r.citations.length) {
+    out.push('<h2>Sources</h2><div class="card">');
+    for (const c of r.citations) {
+      out.push(`<div class="citation"><code>${esc(c.dataset)}/${esc(c.year ?? "")}/${esc(c.table_id)}</code>
+        ${c.title ? " — " + esc(c.title) : ""}</div>`);
+    }
+    out.push('</div>');
+  }
+
+  if (r.values && r.values.length) {
+    out.push('<h2>Retrieved values</h2><div class="card"><table>');
+    out.push('<tr><th>Geography</th><th>Concept</th><th>Year</th>' +
+             '<th class="num">Value</th><th class="num">Ratio</th></tr>');
+    for (const v of r.values) {
+      out.push(`<tr><td>${esc(v.geo)}</td><td>${esc(v.concept)}</td>
+        <td>${esc(v.year ?? "")}</td>
+        <td class="num">${fmtNum(v.value)}</td>
+        <td class="num">${v.ratio === null || v.ratio === undefined
+          ? "—" : (v.ratio * 100).toFixed(1) + "%"}</td></tr>`);
+    }
+    out.push('</table></div>');
+  }
+
+  if (r.peer_groups && r.peer_groups.length) {
+    out.push('<h2>Peer comparisons</h2>');
+    for (const g of r.peer_groups) {
+      out.push(`<div class="card"><b>${esc(g.axis)}</b>
+        <div class="small dim">${esc(g.axis_description)}</div><ul>`);
+      for (const p of g.peers) {
+        out.push(`<li>${esc(p.geo_name)}
+          <span class="dim small">${esc(p.match_explanation)}</span></li>`);
+      }
+      out.push('</ul></div>');
+    }
+  }
+
+  if (r.followups && r.followups.length) {
+    out.push('<h2>Try next</h2><div class="card"><ul>');
+    for (const f of r.followups) out.push(`<li>${esc(f.question)}</li>`);
+    out.push('</ul></div>');
+  }
+
+  if (r.metrics) {
+    const m = r.metrics;
+    out.push(`<h2>Run</h2><div class="cost">
+      total ${m.total_s.toFixed(1)}s · synth ${m.synthesize_s.toFixed(1)}s ·
+      ${m.llm_calls} LLM calls · $${m.llm_cost_usd.toFixed(4)} ·
+      ${m.census_calls_total} Census calls (${m.census_cache_hits} cached,
+      ${m.census_failures} failed)</div>`);
+  }
+
+  if (!r.prose && !r.error) {
+    out.push('<div class="card dim">No answer was produced. ' +
+             'Check the retrieved values and the trace.</div>');
+  }
+
+  $("output").innerHTML = out.join("\n");
+  renderTrace(r.trace);
+  renderUpstream(r.upstream);
+  setBusy(false, "");
+}
+
+function renderUpstream(items) {
+  const el = $("upstream-body");
+  if (!items || !items.length) {
+    el.innerHTML = '<span class="dim">No inventory. Enable ' +
+      'sections.upstream in presentation.yaml.</span>';
+    return;
+  }
+  const sent = items.filter(i => i.sent).length;
+  const rows = items.map(i => {
+    const badge = !i.sendable
+      ? '<span class="dim">structural</span>'
+      : (i.sent ? '<b style="color:var(--ok)">sent</b>'
+                : '<span class="dim">available</span>');
+    const warn = i.known ? "" :
+      ' <span style="color:var(--warn)">unregistered</span>';
+    return `<div class="card" style="padding:9px 11px">
+      <div class="row" style="justify-content:space-between">
+        <code style="font-size:12.5px">${esc(i.key)}</code>
+        <span class="small">${badge}${warn}</span>
+      </div>
+      <div class="small dim" style="margin:3px 0">${esc(i.description)}</div>
+      <div class="cost">${esc(i.type)}${i.count !== null && i.count !== undefined
+        ? " · " + i.count + " item(s)" : ""}</div>
+      <pre style="max-height:120px;margin-top:6px">${esc(i.preview)}</pre>
+    </div>`;
+  }).join("");
+  el.innerHTML =
+    `<div class="small dim" style="margin-bottom:8px">
+       ${items.length} artifact(s) available · ${sent} sent to the model
+     </div>${rows}`;
+}
+
+function renderTrace(t) {
+  if (!t) {
+    $("trace-body").innerHTML =
+      '<span class="dim">No trace. Enable sections.trace in presentation.yaml.</span>';
+    return;
+  }
+  let payload = t.user_payload;
+  try { payload = JSON.stringify(JSON.parse(payload), null, 2); } catch (e) {}
+
+  const others = (t.calls || []).filter(c => !/synthesis/i.test(c.node));
+  const otherHtml = others.length ? `
+    <h2>Other LLM calls this turn (${others.length})</h2>
+    ${others.map(c => `<details style="margin-bottom:6px">
+      <summary class="small"><code>${esc(c.node)}</code>
+        <span class="dim">${c.seconds}s${c.error ? " — failed" : ""}</span></summary>
+      <pre>${esc(c.system_prompt || "")}</pre>
+      <pre>${esc(c.user_text || "")}</pre>
+      <pre>${esc(JSON.stringify(c.response, null, 2))}</pre>
+    </details>`).join("")}` : "";
+
+  $("trace-body").innerHTML = `
+    <h2>Layer 1 — bundle options in effect</h2>
+    <pre>${esc(JSON.stringify(t.bundle_options, null, 2))}</pre>
+    <h2>Synthesizer — system prompt sent</h2>
+    <pre>${esc(t.system_prompt)}</pre>
+    <h2>Synthesizer — payload sent</h2>
+    <pre>${esc(payload)}</pre>
+    <h2>Synthesizer — raw response</h2>
+    <pre>${esc(JSON.stringify(t.raw_response, null, 2))}</pre>
+    ${otherHtml}`;
+}
+
+// ---------- actions ----------
+async function ask() {
+  const q = $("query").value.trim();
+  if (!q || busy) return;
+  banner(null);
+  $("output").innerHTML = "";
+  setBusy(true, "starting…");
+
+  const es = new EventSource("/chat/stream?q=" + encodeURIComponent(q));
+  es.onmessage = (ev) => {
+    const msg = JSON.parse(ev.data);
+    if (msg.type === "stage") {
+      $("progress").textContent = msg.stage + (msg.detail ? " · " + msg.detail : "");
+    } else if (msg.type === "result") {
+      es.close();
+      render(msg.response);
+    } else if (msg.type === "error") {
+      es.close();
+      banner(msg.error, true);
+      setBusy(false, "");
+    }
+  };
+  es.onerror = () => {
+    es.close();
+    if (busy) { banner("Connection lost.", true); setBusy(false, ""); }
+  };
+}
+
+async function post(url, body) {
+  const r = await fetch(url, {
+    method: "POST",
+    headers: {"Content-Type": "application/json"},
+    body: JSON.stringify(body),
+  });
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(data.detail || r.statusText);
+  return data;
+}
+
+async function resynth(draftPrompt) {
+  if (!currentRunId || busy) return;
+  setBusy(true, "re-synthesizing…");
+  try {
+    const body = {run_id: currentRunId};
+    if (draftPrompt !== undefined) body.system_prompt = draftPrompt;
+    render(await post("/resynthesize", body));
+  } catch (e) { banner(e.message, true); setBusy(false, ""); }
+}
+
+async function rerender() {
+  if (!currentRunId || busy) return;
+  setBusy(true, "re-rendering…");
+  try {
+    render(await post("/rerender", {run_id: currentRunId}));
+  } catch (e) { banner(e.message, true); setBusy(false, ""); }
+}
+
+// ---------- config panes ----------
+async function loadPrompt() {
+  const r = await (await fetch("/api/prompt")).json();
+  $("prompt-text").value = r.text;
+  $("prompt-path").textContent = r.path;
+}
+async function savePrompt() {
+  try {
+    await fetch("/api/prompt", {
+      method: "PUT", headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({text: $("prompt-text").value}),
+    });
+    $("prompt-msg").textContent = "saved — applies on next run";
+    setTimeout(() => $("prompt-msg").textContent = "", 2500);
+  } catch (e) { $("prompt-msg").textContent = e.message; }
+}
+async function loadPres() {
+  const r = await (await fetch("/api/presentation")).json();
+  $("pres-text").value = r.text;
+  if (r.error) $("pres-msg").textContent = r.error;
+}
+async function savePres() {
+  const r = await fetch("/api/presentation", {
+    method: "PUT", headers: {"Content-Type": "application/json"},
+    body: JSON.stringify({text: $("pres-text").value}),
+  });
+  const data = await r.json().catch(() => ({}));
+  if (!r.ok) { $("pres-msg").textContent = data.detail || "save failed"; return; }
+  $("pres-msg").textContent = "saved";
+  setTimeout(() => $("pres-msg").textContent = "", 2500);
+  if (currentRunId) rerender();
+}
+
+async function loadVariants() {
+  const r = await (await fetch("/api/variants")).json();
+  const list = $("variant-list");
+  if (!r.variants.length) { list.innerHTML = "none yet"; return; }
+  list.innerHTML = r.variants.map(n => `
+    <div class="row" style="margin:5px 0">
+      <span style="flex:1">${esc(n)}</span>
+      <button class="secondary" data-load="${esc(n)}">Load</button>
+      <button class="secondary" data-del="${esc(n)}">Delete</button>
+    </div>`).join("");
+  list.querySelectorAll("[data-load]").forEach(b => b.onclick = async () => {
+    const v = await (await fetch("/api/variants/" + b.dataset.load)).json();
+    $("prompt-text").value = v.system_prompt;
+    document.querySelector('.tab[data-pane="prompt"]').click();
+  });
+  list.querySelectorAll("[data-del]").forEach(b => b.onclick = async () => {
+    await fetch("/api/variants/" + b.dataset.del, {method: "DELETE"});
+    loadVariants();
+  });
+}
+
+// ---------- wiring ----------
+$("ask").onclick = ask;
+$("resynth").onclick = () => resynth();
+$("rerender").onclick = rerender;
+$("prompt-save").onclick = savePrompt;
+$("prompt-reload").onclick = loadPrompt;
+$("prompt-try").onclick = () => resynth($("prompt-text").value);
+$("pres-save").onclick = savePres;
+$("pres-reload").onclick = loadPres;
+$("variant-save").onclick = async () => {
+  const name = $("variant-name").value.trim();
+  if (!name) return;
+  await post("/api/variants", {name, system_prompt: $("prompt-text").value});
+  $("variant-name").value = "";
+  loadVariants();
+};
+
+$("query").addEventListener("keydown", (e) => {
+  if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) ask();
+});
+
+document.querySelectorAll(".tab").forEach(tab => {
+  tab.onclick = () => {
+    document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+    tab.classList.add("active");
+    for (const p of ["upstream", "prompt", "presentation", "trace", "variants"]) {
+      $("pane-" + p).classList.toggle("hide", p !== tab.dataset.pane);
+    }
+  };
+});
+
+// ---------- boot ----------
+(async function poll() {
+  try {
+    const r = await fetch("/readyz");
+    const d = await r.json();
+    if (r.ok) {
+      const warn = d.artifacts.filter(a => !a.ok && !a.required);
+      $("status").textContent =
+        `ready in ${d.load_seconds}s` +
+        (warn.length ? ` · ${warn.length} optional artifact(s) unavailable` : "");
+      $("status").title = d.artifacts
+        .map(a => `${a.ok ? "✓" : "✗"} ${a.name}: ${a.detail}`).join("\n");
+      $("ask").disabled = false;
+      return;
+    }
+    $("status").textContent = "loading artifacts…";
+  } catch (e) {
+    $("status").textContent = "waiting for server…";
+  }
+  setTimeout(poll, 2000);
+})();
+
+loadPrompt(); loadPres(); loadVariants();
+</script>
+</body>
+</html>

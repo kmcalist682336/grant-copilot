@@ -57,6 +57,30 @@ Two system-level dependencies (SpatiaLite + SWIG) are needed
 packages first, `faiss-cpu` and/or `mod_spatialite` imports will
 fail — those failures are the most common fresh-install papercuts.
 
+### Docker (recommended)
+
+The image ships SpatiaLite and SWIG already installed, which skips
+those papercuts entirely.  You still need the credentials in
+[Credentials setup](#credentials-setup) and the artifacts from
+[Hydrate the data layer](#hydrate-the-data-layer) — both live on
+the **host** and are mounted into the container.
+
+```bash
+docker compose up --build
+# then open http://localhost:8000
+```
+
+The repo is bind-mounted rather than baked into the image, so
+editing prompts or Python takes effect without a rebuild.  That
+matters more than convenience: the web app writes to
+`prompts/v1/synthesizer.yaml` and `config/presentation.yaml`, and
+a baked-in copy would lose every edit when the container
+restarted.  The ~8 GB data layer is mounted too, never copied in.
+
+See [docs/APP.md](docs/APP.md) for what the web app does.
+
+If you'd rather install natively, continue below.
+
 ### System packages
 
 **macOS (Homebrew)**
@@ -327,6 +351,36 @@ the preceding "Hydrate the data layer" section.
 ---
 
 ## Run it
+
+### Web app (recommended)
+
+```bash
+docker compose up            # or: python run_app.py
+# http://localhost:8000
+```
+
+A browser UI over the same pipeline, plus the tools for changing
+how answers read:
+
+- **Upstream** — every artifact the pipeline produced for this
+  query and whether it reached the synthesizer.  Turn one off
+  instead of telling the model to ignore it.
+- **Prompt** — the synthesizer prompt, hot-reloaded, with
+  "try without saving" and named variants.
+- **Trace** — the exact prompt and payload every LLM node was
+  sent, and what it returned.
+- **Output checks** — flags numbers in the prose that don't trace
+  back to a retrieved value.
+
+Three buttons with very different costs: **Re-render** (instant,
+free), **Re-synthesize** (~3 s, re-runs only the write-up against
+the same numbers), **Ask** (full pipeline).
+
+Startup takes about a minute — almost all of it the 4.4 GB FAISS
+index.  `python run_app.py --no-router` skips it for a fast boot
+with worse concept routing.
+
+Full guide: [docs/APP.md](docs/APP.md).
 
 ### Interactive REPL
 

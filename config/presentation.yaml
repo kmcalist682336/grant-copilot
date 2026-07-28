@@ -1,0 +1,105 @@
+# Presentation config — everything about WHAT THE USER SEES.
+#
+# Hot-reloaded: re-read on every query and every "Re-render", so saving
+# takes effect immediately with no restart. Nothing here can change which
+# numbers get fetched — only what is shown to the model and to the user.
+#
+# The four layers, in the order they run:
+#
+#   bundle.send   what the synthesizer LLM is shown         (layer 1)
+#   prompts/v1/synthesizer.yaml — how it's told to write    (layer 2)
+#   formatting + lints — deterministic cleanup after        (layer 3)
+#   sections      what the frontend renders                 (layer 4)
+#
+# Rule of thumb: if you're about to add "DO NOT mention X" to the system
+# prompt, turn X off under `bundle.send` instead. A model cannot mention
+# what it was never shown.
+
+# ---------------------------------------------------------------------
+# LAYER 1 — which upstream artifacts reach the synthesizer
+# ---------------------------------------------------------------------
+# Keys here are synthesis-bundle keys. The Upstream panel in the app
+# lists every key available for the last query, whether it's currently
+# being sent, and a preview — so you can see what you're choosing between
+# instead of guessing.
+#
+# Anything not listed uses its registered default (see BUNDLE_SPECS in
+# scripts/chatbot/synthesizer.py). A key with no registration at all —
+# an artifact a new dataset added — is OFF until switched on here, so new
+# pipeline work never silently changes answers or per-query cost.
+bundle:
+  send:
+    # The pipeline computes peer geographies for grant narratives, but the
+    # UI renders them in their own section. Historically this was fought
+    # with ~15 lines of "DO NOT name any peer geography" in the system
+    # prompt. Turning the artifact off makes those lines unnecessary.
+    peer_contexts: false
+
+    # Which tier resolved each concept, plus routing notes. Switch on to
+    # let the prompt hedge when routing confidence was low.
+    concept_resolutions: false
+
+    query: true
+    intent: true
+    aggregated_values: true
+    fetch_failures: true
+    frame: true
+    magnitude_framings: true
+    anomaly_flags: true
+    followups: true
+
+  # Cap on how many retrieved values reach the model. Long trend or
+  # multi-geo queries can crowd out the instructions. null = no cap.
+  # When it truncates, the payload tells the model how many rows were
+  # dropped so it can't claim coverage it never saw.
+  max_values_sent: null
+
+# ---------------------------------------------------------------------
+# LAYER 3 — deterministic cleanup, applied after the LLM returns
+# ---------------------------------------------------------------------
+formatting:
+  normalize_whitespace: true
+  strip_markdown_fences: true
+  prose_max_words: null       # backstop; truncates on a sentence boundary
+  max_key_findings: 6
+  max_caveats: 5
+
+# Lints never modify the answer — they surface warnings in the UI so you
+# can see when the model misbehaved.
+lints:
+  # Extract every number in the prose and check it against the values the
+  # pipeline actually retrieved. Because citations are derived from the
+  # plan rather than the model, a number that traces to nothing was
+  # invented. A real hallucination check, not a heuristic.
+  forbid_unsourced_numbers: true
+
+  # ACS vintages differ; an undated figure is ambiguous to a reviewer.
+  require_year_mentioned: true
+
+  # Catches peer-name leakage when bundle.send.peer_contexts is true.
+  forbid_peer_names: true
+
+  # Advisory only.
+  prose_word_range: [60, 320]
+
+# ---------------------------------------------------------------------
+# LAYER 4 — what the frontend renders
+# ---------------------------------------------------------------------
+sections:
+  prose: true
+  key_findings: true
+  caveats: true
+  citations: true
+  peer_contexts: true
+  followups: true
+  anomaly_flags: true
+  values_table: true
+
+  # The upstream inventory: every bundle key, sent or not, with previews.
+  upstream: true
+
+  # Exact system prompt, exact payload, raw response — plus every other
+  # LLM node's call. On by default.
+  trace: true
+
+  metrics: true
