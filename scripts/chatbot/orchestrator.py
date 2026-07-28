@@ -109,7 +109,7 @@ from scripts.chatbot.planner import (
     ConceptResolution, PlanResult, data_level_for, plan_query,
 )
 from scripts.chatbot.synthesizer import (
-    SynthesisError, SynthesizedAnswer, synthesize_answer,
+    SynthesisError, SynthesizedAnswer, build_synthesis_bundle, synthesize,
 )
 
 logger = logging.getLogger(__name__)
@@ -355,6 +355,8 @@ async def answer_query(
     universe_picker: Optional[object] = None,
     ask_user: Optional[Any] = None,
     progress_cb: Optional[ProgressCb] = None,
+    synth_system_prompt: Optional[str] = None,
+    synth_options: Optional[dict] = None,
 ) -> QueryResponse:
     """End-to-end pipeline for one user query.
 
@@ -930,16 +932,27 @@ async def answer_query(
     answer: Optional[SynthesizedAnswer] = None
     err: Optional[str] = None
     try:
-        answer = synthesize_answer(
-            query, intent, plan, aggregated, llm,
-            temperature=config.get("vertex_ai", {}).get(
-                "synth_temperature", 0.2,
-            ),
+        # Everything the synthesizer might use is collected into one
+        # bundle, then handed over. New upstream artifacts become new
+        # keys here rather than new parameters threaded through every
+        # caller — see build_synthesis_bundle for the rationale.
+        synthesis_bundle = build_synthesis_bundle(
+            query, intent, plan, aggregated,
+            resolved_geos=resolved,
             frame=frame,
             magnitude_framings=magnitude_framings,
             anomaly_flags=anomaly_flags,
             followups=followups,
             peer_contexts=peer_contexts,
+            concept_resolutions=getattr(plan, "concept_resolutions", None),
+        )
+        answer = synthesize(
+            synthesis_bundle, llm,
+            temperature=config.get("vertex_ai", {}).get(
+                "synth_temperature", 0.2,
+            ),
+            system_prompt=synth_system_prompt,
+            options=synth_options,
         )
     except SynthesisError as e:
         err = f"synthesis failed: {e}"

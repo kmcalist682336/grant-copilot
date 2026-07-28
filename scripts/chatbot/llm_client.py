@@ -47,6 +47,12 @@ FLASH_PRICE_CACHED_INPUT_PER_M = 0.0375   # 75% discount on cache hits
 FLASH_PRICE_OUTPUT_PER_M = 0.60
 
 
+# Transparent wrappers that forward to an LLMClient without being the
+# real caller. Without this, a proxy sitting between a node and this
+# client would collect the attribution for every call in the pipeline.
+_CALL_SITE_TRANSPARENT_MODULES = frozenset({"app.recording_llm"})
+
+
 def _guess_caller_module() -> str:
     """Walk the stack to find the first frame outside this module —
     that's the node (extractor / grant_frame_matcher / synthesizer /
@@ -59,6 +65,8 @@ def _guess_caller_module() -> str:
                 continue
             name = mod.__name__
             if name == __name__:
+                continue
+            if name in _CALL_SITE_TRANSPARENT_MODULES:
                 continue
             if name.startswith("scripts.chatbot."):
                 return name.split(".")[-1]

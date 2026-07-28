@@ -29,8 +29,11 @@ from __future__ import annotations
 
 import json
 import logging
-from typing import Any, Optional
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Any, Callable, Optional
 
+import yaml
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from scripts.chatbot.aggregator import AggregatedResult, AggregatedValue
@@ -279,7 +282,7 @@ def _format_value(v: AggregatedValue) -> dict[str, Any]:
     return out
 
 
-_SYSTEM_PROMPT = """\
+_BUILTIN_SYSTEM_PROMPT = """\
 You are a US Census data synthesizer. Given a user query, a structured
 aggregated dataset, and optional Phase 4 realism-agent outputs
 (magnitude framings, anomaly flags, followups, and the matched
@@ -393,97 +396,357 @@ grant-frame queries can go to 300.
 """
 
 
-def _build_user_payload(
+# config/chatbot.yaml has always declared paths.synthesizer_prompt as this
+# file. The constant above is the fallback when it's missing or broken —
+# the pipeline must never fail to answer because someone saved bad YAML.
+SYNTHESIZER_PROMPT_PATH = (
+    Path(__file__).resolve().parents[2] / "prompts" / "v1" / "synthesizer.yaml"
+)
+
+
+def load_system_prompt(path: Optional[Path] = None) -> str:
+    """Return the synthesizer system prompt, read fresh from disk.
+
+    Re-read on every call so an edit takes effect on the next synthesis
+    with no process restart — that's what makes the app's prompt-
+    iteration loop work.
+    """
+    p = path or SYNTHESIZER_PROMPT_PATH
+    try:
+        doc = yaml.safe_load(p.read_text())
+        text = (doc or {}).get("system")
+        if not isinstance(text, str) or not text.strip():
+            raise ValueError("missing or empty 'system' key")
+        return text
+    except FileNotFoundError:
+        return _BUILTIN_SYSTEM_PROMPT
+    except Exception as e:
+        logger.warning(
+            "synthesizer prompt at %s is unusable (%s); using the built-in "
+            "prompt", p, e,
+        )
+        return _BUILTIN_SYSTEM_PROMPT
+
+
+# ---------------------------------------------------------------------------
+# The synthesis bundle
+# ---------------------------------------------------------------------------
+#
+# Everything the synthesizer might use is collected into one dict by
+# ``build_synthesis_bundle``. ``synthesize`` takes that dict and nothing
+# else. The point of the split is that upstream dependencies change often
+# (a new dataset adds artifacts; a new node adds context) while the
+# write-up step changes for entirely different reasons. Keeping them on
+# opposite sides of a dict means:
+#
+#   * adding an upstream artifact is adding a key — no signature change,
+#     no caller change, and it shows up in the app's inventory panel
+#     automatically;
+#   * changing how answers read means editing ``synthesize`` and the
+#     prompt, with one well-known input to reason about.
+#
+# A key with no BUNDLE_SPECS entry still works: it is inspectable and
+# renderable, just not sent to the model unless explicitly enabled. New
+# artifacts therefore never silently change what the LLM sees (or what a
+# turn costs) — someone has to opt in.
+
+
+def _attr(obj: Any, name: str, default: Any = None) -> Any:
+    """Attribute-or-key access, so bundle entries may be Pydantic models
+    or plain dicts interchangeably."""
+    if obj is None:
+        return default
+    if isinstance(obj, dict):
+        return obj.get(name, default)
+    return getattr(obj, name, default)
+
+
+def _dump(obj: Any) -> Any:
+    """Best-effort JSON-able rendering of an arbitrary bundle value."""
+    if obj is None or isinstance(obj, (str, int, float, bool)):
+        return obj
+    if hasattr(obj, "model_dump"):
+        return obj.model_dump()
+    if isinstance(obj, dict):
+        return {k: _dump(v) for k, v in obj.items()}
+    if isinstance(obj, (list, tuple)):
+        return [_dump(v) for v in obj]
+    return str(obj)
+
+
+@dataclass(frozen=True)
+class BundleSpec:
+    """How one bundle key is described, and how it reaches the LLM."""
+
+    description: str
+    default_send: bool
+    # (value, bundle, options) -> dict merged into the LLM payload.
+    render: Callable[[Any, dict, dict], dict]
+    # False for structural entries used by code (citations, lints) but
+    # never sent to the model.
+    sendable: bool = True
+
+
+def _render_query(v, b, o):
+    return {"user_query": v}
+
+
+def _render_intent(v, b, o):
+    return {"intent_summary": {
+        "intent_type": _attr(v, "intent_type"),
+        "comparison_implied": _attr(v, "comparison_implied"),
+        "national_comparison_implied": _attr(
+            v, "national_comparison_implied",
+        ),
+        "temporal_intent": _attr(v, "temporal_intent"),
+        "explicit_years": _attr(v, "years", []),
+    }}
+
+
+def _render_values(v, b, o):
+    values = list(v or [])
+    cap = o.get("max_values_sent")
+    out: dict[str, Any] = {}
+    if isinstance(cap, int) and cap > 0 and len(values) > cap:
+        # Tell the model it was capped rather than letting it assume it
+        # saw everything and write a false "across all geographies".
+        out["values_truncated"] = len(values) - cap
+        values = values[:cap]
+    out["aggregated_values"] = [_format_value(x) for x in values]
+    return out
+
+
+def _render_failures(v, b, o):
+    return {"fetch_failures": list(v or [])}
+
+
+def _render_frame(v, b, o):
+    return {"frame": {
+        "name": _attr(v, "name", ""),
+        "rhetorical_target": _attr(v, "rhetorical_target", ""),
+        "standard_caveats": list(_attr(v, "standard_caveats", []) or []),
+    }}
+
+
+def _render_list(payload_key: str):
+    def render(v, b, o):
+        return {payload_key: [_dump(x) for x in (v or [])]}
+    return render
+
+
+def _render_peers(v, b, o):
+    # Compacted on purpose: the LLM needs axis, scope, and concrete
+    # feature values to cite peers. Raw distance scores are omitted —
+    # they aren't narratively useful.
+    return {"peer_contexts": [
+        {
+            "axis": _attr(c, "axis", ""),
+            "axis_description": _attr(c, "axis_description", ""),
+            "pool_scope": _attr(c, "pool_scope", ""),
+            "anchor_geo_name": _attr(c, "anchor_geo_name", ""),
+            "anchor_feature_values": _attr(c, "anchor_feature_values", {}) or {},
+            "peers": [
+                {
+                    "geo_name": _attr(p, "geo_name", ""),
+                    "population": _attr(p, "population", None),
+                    "match_explanation": _attr(p, "match_explanation", ""),
+                    "feature_values": _attr(p, "feature_values", {}) or {},
+                }
+                for p in (_attr(c, "peers", []) or [])
+            ],
+        }
+        for c in (v or [])
+    ]}
+
+
+def _render_concept_resolutions(v, b, o):
+    return {"concept_resolutions": [
+        {
+            "concept": _attr(_attr(r, "concept"), "text", ""),
+            "tier": _attr(r, "tier", ""),
+            "notes": list(_attr(r, "notes", []) or []),
+        }
+        for r in (v or [])
+    ]}
+
+
+# Order matters: it's the order keys appear in the LLM payload and in the
+# inventory panel. Defaults reproduce the pre-bundle payload exactly.
+BUNDLE_SPECS: dict[str, BundleSpec] = {
+    "query": BundleSpec(
+        "The user's question, verbatim.", True, _render_query),
+    "intent": BundleSpec(
+        "Parsed intent: comparison/temporal flags and explicit years.",
+        True, _render_intent),
+    "aggregated_values": BundleSpec(
+        "The retrieved numbers. Every figure the answer may state.",
+        True, _render_values),
+    "fetch_failures": BundleSpec(
+        "Calls that failed, so the answer can flag partial data.",
+        True, _render_failures),
+    "frame": BundleSpec(
+        "Matched grant frame — sets the rhetorical target of the prose.",
+        True, _render_frame),
+    "magnitude_framings": BundleSpec(
+        "Comparator ratios vs county/MSA/state/US, plus trend labels.",
+        True, _render_list("magnitude_framings")),
+    "anomaly_flags": BundleSpec(
+        "Values far outside their comparators — headline material.",
+        True, _render_list("anomaly_flags")),
+    "followups": BundleSpec(
+        "Suggested next questions.", True, _render_list("suggested_followups")),
+    "peer_contexts": BundleSpec(
+        "Peer geographies with feature values. The UI renders these in "
+        "their own section, so sending them to the model risks duplicate "
+        "or conflicting peer talk in the prose.",
+        True, _render_peers),
+    "concept_resolutions": BundleSpec(
+        "Which tier resolved each concept, and any routing notes. Useful "
+        "for teaching the model to hedge on low-confidence routing.",
+        False, _render_concept_resolutions),
+    # Structural — used for citations and output checks, never sent.
+    "plan": BundleSpec(
+        "The query plan. Citations are derived from it deterministically.",
+        False, lambda v, b, o: {}, sendable=False),
+    "aggregated": BundleSpec(
+        "The full AggregatedResult, for citation building and lints.",
+        False, lambda v, b, o: {}, sendable=False),
+    "resolved_geos": BundleSpec(
+        "Resolved geographies with tract lists and confidence.",
+        False, lambda v, b, o: {}, sendable=False),
+}
+
+
+def build_synthesis_bundle(
     query: str,
     intent: ExtractedIntent,
+    plan: PlanResult,
     aggregated: AggregatedResult,
     *,
+    resolved_geos: Optional[list] = None,
     frame: Optional[Any] = None,
     magnitude_framings: Optional[list] = None,
     anomaly_flags: Optional[list] = None,
     followups: Optional[list] = None,
     peer_contexts: Optional[list] = None,
-) -> str:
-    """Render the user-side JSON payload the LLM sees.
+    **extra: Any,
+) -> dict[str, Any]:
+    """Collect everything the synthesizer might use into one dict.
 
-    Phase 4 extras (frame, magnitude_framings, anomaly_flags,
-    followups) and Phase 3 extras (peer_contexts) are only included
-    when non-empty so legacy callers without them see the original
-    payload shape.
+    Keys whose value is empty are omitted, so ``"peer_contexts" in
+    bundle`` is a meaningful test of "did the pipeline actually produce
+    peers for this query".
+
+    ``**extra`` accepts artifacts this function doesn't know about — a
+    new dataset can contribute context without editing this signature.
+    Unknown keys are inspectable and renderable but are not sent to the
+    model unless enabled.
     """
-    payload: dict[str, Any] = {
-        "user_query": query,
-        "intent_summary": {
-            "intent_type": intent.intent_type,
-            "comparison_implied": intent.comparison_implied,
-            "national_comparison_implied": intent.national_comparison_implied,
-            "temporal_intent": intent.temporal_intent,
-            "explicit_years": intent.years,
-        },
-        "aggregated_values": [_format_value(v) for v in aggregated.values],
-        "fetch_failures": aggregated.fetch_failures,
+    bundle: dict[str, Any] = {
+        "query": query,
+        "intent": intent,
+        "plan": plan,
+        "aggregated": aggregated,
+        "aggregated_values": list(getattr(aggregated, "values", []) or []),
+        "fetch_failures": list(getattr(aggregated, "fetch_failures", []) or []),
     }
-    if frame is not None:
-        payload["frame"] = {
-            "name": getattr(frame, "name", ""),
-            "rhetorical_target": getattr(frame, "rhetorical_target", ""),
-            "standard_caveats": list(
-                getattr(frame, "standard_caveats", []) or []
-            ),
-        }
-    if magnitude_framings:
-        payload["magnitude_framings"] = [
-            f.model_dump() if hasattr(f, "model_dump") else f
-            for f in magnitude_framings
-        ]
-    if anomaly_flags:
-        payload["anomaly_flags"] = [
-            f.model_dump() if hasattr(f, "model_dump") else f
-            for f in anomaly_flags
-        ]
-    if followups:
-        payload["suggested_followups"] = [
-            f.model_dump() if hasattr(f, "model_dump") else f
-            for f in followups
-        ]
-    if peer_contexts:
-        # Compact each peer context so the LLM sees what it needs to
-        # cite peers with concrete numbers — axis, scope, anchor's
-        # own feature values, and each peer's feature values. Raw
-        # distance scores are omitted on purpose; they're not
-        # narratively useful.
-        def _attr(obj, name, default=None):
-            if hasattr(obj, name):
-                return getattr(obj, name)
-            if isinstance(obj, dict):
-                return obj.get(name, default)
-            return default
+    optional = {
+        "resolved_geos": resolved_geos,
+        "frame": frame,
+        "magnitude_framings": magnitude_framings,
+        "anomaly_flags": anomaly_flags,
+        "followups": followups,
+        "peer_contexts": peer_contexts,
+    }
+    for key, value in optional.items():
+        if value:
+            bundle[key] = value
+    for key, value in extra.items():
+        if value:
+            bundle[key] = value
+    return bundle
 
-        payload["peer_contexts"] = [
-            {
-                "axis": _attr(c, "axis", ""),
-                "axis_description": _attr(c, "axis_description", ""),
-                "pool_scope": _attr(c, "pool_scope", ""),
-                "anchor_geo_name": _attr(c, "anchor_geo_name", ""),
-                "anchor_feature_values": _attr(
-                    c, "anchor_feature_values", {}
-                ) or {},
-                "peers": [
-                    {
-                        "geo_name": _attr(p, "geo_name", ""),
-                        "population": _attr(p, "population", None),
-                        "match_explanation": _attr(
-                            p, "match_explanation", "",
-                        ),
-                        "feature_values": _attr(
-                            p, "feature_values", {}
-                        ) or {},
-                    }
-                    for p in (_attr(c, "peers", []) or [])
-                ],
-            }
-            for c in peer_contexts
-        ]
+
+def bundle_inventory(
+    bundle: dict[str, Any],
+    options: Optional[dict] = None,
+) -> list[dict[str, Any]]:
+    """Describe every key in the bundle: what it is, whether it's being
+    sent to the model, how big it is, and a preview.
+
+    This is what the app's upstream panel renders. Keys with no spec are
+    included and marked unknown, so a newly added artifact shows up
+    without anyone updating a list.
+    """
+    opts = options or {}
+    sends = opts.get("send", {}) or {}
+    out: list[dict[str, Any]] = []
+
+    ordered = [k for k in BUNDLE_SPECS if k in bundle]
+    ordered += [k for k in bundle if k not in BUNDLE_SPECS]
+
+    for key in ordered:
+        value = bundle[key]
+        spec = BUNDLE_SPECS.get(key)
+        size = len(value) if isinstance(value, (list, tuple, dict)) else None
+        preview = _dump(value)
+        if isinstance(preview, list):
+            preview = preview[:2]
+        text = json.dumps(preview, ensure_ascii=False, default=str)
+        out.append({
+            "key": key,
+            "known": spec is not None,
+            "description": spec.description if spec else
+                           "Not registered in BUNDLE_SPECS — available to "
+                           "the pipeline but off by default.",
+            "sendable": spec.sendable if spec else True,
+            "sent": _should_send(key, spec, sends),
+            "type": type(value).__name__,
+            "count": size,
+            "preview": text[:600] + ("…" if len(text) > 600 else ""),
+        })
+    return out
+
+
+def _should_send(key: str, spec: Optional[BundleSpec], sends: dict) -> bool:
+    if spec is not None and not spec.sendable:
+        return False
+    if key in sends:
+        return bool(sends[key])
+    if spec is not None:
+        return spec.default_send
+    return False        # unknown keys are opt-in
+
+
+def render_bundle_payload(
+    bundle: dict[str, Any],
+    options: Optional[dict] = None,
+) -> str:
+    """Render the JSON payload the LLM sees from the bundle.
+
+    ``options`` may carry ``send`` (per-key overrides of the spec
+    defaults) and ``max_values_sent``. With no options the output is
+    byte-identical to the pre-bundle payload builder.
+    """
+    opts = options or {}
+    sends = opts.get("send", {}) or {}
+    payload: dict[str, Any] = {}
+
+    ordered = [k for k in BUNDLE_SPECS if k in bundle]
+    ordered += [k for k in bundle if k not in BUNDLE_SPECS]
+
+    for key in ordered:
+        spec = BUNDLE_SPECS.get(key)
+        if not _should_send(key, spec, sends):
+            continue
+        value = bundle[key]
+        try:
+            if spec is not None:
+                payload.update(spec.render(value, bundle, opts))
+            else:
+                payload[key] = _dump(value)
+        except Exception as e:                       # pragma: no cover
+            logger.warning("bundle key %r failed to render: %s", key, e)
     return json.dumps(payload, ensure_ascii=False, default=str)
 
 
@@ -491,45 +754,35 @@ def _build_user_payload(
 # Public API
 # ---------------------------------------------------------------------------
 
-def synthesize_answer(
-    query: str,
-    intent: ExtractedIntent,
-    plan: PlanResult,
-    aggregated: AggregatedResult,
+def synthesize(
+    bundle: dict[str, Any],
     llm: LLMClient,
     *,
     temperature: float = 0.2,
-    frame: Optional[Any] = None,
-    magnitude_framings: Optional[list] = None,
-    anomaly_flags: Optional[list] = None,
-    followups: Optional[list] = None,
-    peer_contexts: Optional[list] = None,
+    system_prompt: Optional[str] = None,
+    options: Optional[dict] = None,
 ) -> SynthesizedAnswer:
-    """Run the synthesizer LLM call. Returns a fully-populated
-    SynthesizedAnswer (prose + key_findings + caveats + citations).
+    """Turn a synthesis bundle into a written answer.
 
-    Citations are derived from ``plan`` deterministically — the LLM is
-    not allowed to mint them.
+    One input carries every upstream artifact, so changing how answers
+    read means editing this function and the prompt — not chasing a
+    parameter list that grows with every new pipeline stage.
 
-    Phase 4 extras (frame, magnitude_framings, anomaly_flags,
-    followups) and Phase 3 extras (peer_contexts) are optional. When
-    provided, the system prompt teaches the LLM to weave them into the
-    prose instead of inventing comparator phrasings, trend language,
-    or peer-metro claims.
+    Citations are derived from ``bundle['plan']`` deterministically; the
+    LLM is not allowed to mint them.
+
+    ``system_prompt`` overrides the on-disk prompt for one call (the
+    app's "try without saving"). ``options`` gates which bundle keys
+    reach the model; with none, the payload matches the pre-bundle
+    behavior exactly.
     """
-    user_payload = _build_user_payload(
-        query, intent, aggregated,
-        frame=frame,
-        magnitude_framings=magnitude_framings,
-        anomaly_flags=anomaly_flags,
-        followups=followups,
-        peer_contexts=peer_contexts,
-    )
+    user_payload = render_bundle_payload(bundle, options)
     schema = _SynthesisLLMOutput.model_json_schema()
+    active_prompt = system_prompt or load_system_prompt()
 
     try:
         raw = llm.extract(
-            system_prompt=_SYSTEM_PROMPT,
+            system_prompt=active_prompt,
             user_text=user_payload,
             schema=schema,
             temperature=temperature,
@@ -549,10 +802,48 @@ def synthesize_answer(
             f"synthesizer output failed validation: {e}"
         ) from e
 
-    citations = _build_citations(plan, aggregated)
+    citations = _build_citations(bundle.get("plan"), bundle.get("aggregated"))
     return SynthesizedAnswer(
         prose=out.prose,
         key_findings=out.key_findings,
         caveats=out.caveats,
         citations=citations,
+    )
+
+
+def synthesize_answer(
+    query: str,
+    intent: ExtractedIntent,
+    plan: PlanResult,
+    aggregated: AggregatedResult,
+    llm: LLMClient,
+    *,
+    temperature: float = 0.2,
+    frame: Optional[Any] = None,
+    magnitude_framings: Optional[list] = None,
+    anomaly_flags: Optional[list] = None,
+    followups: Optional[list] = None,
+    peer_contexts: Optional[list] = None,
+    **kwargs: Any,
+) -> SynthesizedAnswer:
+    """Backward-compatible wrapper over ``build_synthesis_bundle`` +
+    ``synthesize``.
+
+    Kept so existing callers and tests keep working unchanged. New code
+    should build a bundle and call ``synthesize`` directly, which is the
+    path that supports per-key send control and the app's inventory.
+    """
+    bundle = build_synthesis_bundle(
+        query, intent, plan, aggregated,
+        frame=frame,
+        magnitude_framings=magnitude_framings,
+        anomaly_flags=anomaly_flags,
+        followups=followups,
+        peer_contexts=peer_contexts,
+    )
+    return synthesize(
+        bundle, llm,
+        temperature=temperature,
+        system_prompt=kwargs.get("system_prompt"),
+        options=kwargs.get("options"),
     )
