@@ -63,8 +63,7 @@ def main() -> int:
                           "gs://bucket/variable_tree/table_id=hmda/year=*/variable=*/part-*.parquet")
     ap.add_argument("--table-id", default="hmda")
     ap.add_argument("--dataset", default="hmda")
-    ap.add_argument("--geo-level", default="tract",
-                     help="Fixed geo_level for every coverage row (this connector is tract-only).")
+    ap.add_argument("--geo-level", default="tract")
     ap.add_argument("--out-csv", type=Path, required=True)
     ap.add_argument("-v", "--verbose", action="store_true")
     args = ap.parse_args()
