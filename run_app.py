@@ -5,9 +5,11 @@
     python run_app.py --no-router     # skip the 4.4 GB FAISS load, fast boot
     python run_app.py --port 8080
 
-Credentials come from .env exactly as the REPL expects them — see the
-README's "Credentials setup" section. This launcher does not prompt for
-them; ``python -m scripts.setup.preflight`` is the tool that checks them.
+The server starts whether or not it's configured. Anything missing —
+GCP project, API keys, the data layer — is reported in the browser and
+collected there, because ``docker compose up`` has no terminal to prompt
+from. ``python -m scripts.setup.preflight`` does the same checks from a
+shell if you prefer.
 
 prompts/v1/synthesizer.yaml and config/presentation.yaml are hot-reloaded
 on every request — editing those never needs a restart.
@@ -55,14 +57,6 @@ def parse_args(argv=None) -> argparse.Namespace:
 def main(argv=None) -> int:
     args = parse_args(argv)
     _load_dotenv()
-
-    if not (REPO_ROOT / "data").exists():
-        print(
-            "\nNo data/ directory — the data layer isn't hydrated.\n"
-            "  python -m scripts.setup.hydrate_data_artifacts\n"
-            "(needs HF_TOKEN; see the README.)\n",
-            file=sys.stderr,
-        )
 
     from app import main as app_main
     app_main.BOOT_OPTIONS["no_router"] = args.no_router

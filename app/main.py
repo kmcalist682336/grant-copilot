@@ -24,7 +24,9 @@ import asyncio
 import functools
 import json
 import logging
+import os
 import queue
+import threading
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -40,6 +42,7 @@ from pydantic import BaseModel
 from app import pipeline_adapter as pa
 from app import presentation as pres_mod
 from app import promptlab
+from app import setup_state
 from app.context import AppContext, build_context
 from app.promptlab import RunStore, StoredRun, new_run_id, render_run
 from app.schemas import (
@@ -52,6 +55,8 @@ STATIC_DIR = Path(__file__).resolve().parent / "static"
 
 CTX: Optional[AppContext] = None
 STARTUP_ERROR: Optional[str] = None
+LOADING = False
+_INIT_LOCK = threading.Lock()
 RUNS = RunStore()
 
 # Set by run_app.py before uvicorn imports this module.
@@ -80,26 +85,67 @@ async def _on_pipeline_thread(fn, *args, **kwargs):
         PIPELINE_EXECUTOR, functools.partial(fn, *args, **kwargs))
 
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    global CTX, STARTUP_ERROR
+def _progress(status: str, message: str) -> None:
+    symbol = {"ok": "✓", "warn": "!", "skip": "-"}.get(status, "…")
+    print(f"  {symbol} {message}", flush=True)
 
-    def progress(status: str, message: str) -> None:
-        symbol = {"ok": "✓", "warn": "!", "skip": "-"}.get(status, "…")
-        print(f"  {symbol} {message}", flush=True)
 
-    print("\nLoading artifacts — the FAISS index is ~4.4 GB, "
-          "expect this to take a minute.\n", flush=True)
+def _initialize() -> None:
+    """Build the app context. Safe to call repeatedly; no-op once ready.
+
+    Separate from startup so the server can come up unconfigured, collect
+    what's missing through the UI, and then initialize without a restart.
+    """
+    global CTX, STARTUP_ERROR, LOADING
+    with _INIT_LOCK:
+        if CTX is not None or LOADING:
+            return
+        LOADING = True
+        STARTUP_ERROR = None
+
     try:
-        CTX = await _on_pipeline_thread(
-            build_context, progress,
+        print("\nLoading artifacts — the FAISS index is ~4.4 GB, "
+              "expect this to take a minute.\n", flush=True)
+        ctx = build_context(
+            _progress,
             no_router=BOOT_OPTIONS.get("no_router", False),
             record_llm=BOOT_OPTIONS.get("record_llm", True))
+        with _INIT_LOCK:
+            CTX = ctx
         print("\n  Ready.\n", flush=True)
     except Exception as e:
-        STARTUP_ERROR = str(e)
-        logger.exception("startup failed")
-        print(f"\n  STARTUP FAILED: {e}\n", flush=True)
+        with _INIT_LOCK:
+            STARTUP_ERROR = str(e)
+        logger.exception("initialization failed")
+        print(f"\n  NOT READY: {e}\n", flush=True)
+    finally:
+        with _INIT_LOCK:
+            LOADING = False
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Start serving immediately, configured or not.
+
+    `docker compose up` is non-interactive: a container that exits on a
+    missing env var leaves the user with a traceback and nowhere to type.
+    So we check what's missing, report it, and let the UI collect the
+    fixable parts — the server is up either way.
+    """
+    setup_state.load_dotenv()
+    rep = setup_state.report()
+
+    if rep.ready:
+        # Off the event loop so /healthz answers while the index loads.
+        asyncio.get_running_loop().run_in_executor(
+            PIPELINE_EXECUTOR, _initialize)
+    else:
+        missing = ", ".join(c.label for c in rep.blocking)
+        print(
+            f"\n  Not configured yet — missing: {missing}\n"
+            f"  Open the UI (URL above) and finish setup there.\n",
+            flush=True,
+        )
     yield
 
 
@@ -107,11 +153,26 @@ app = FastAPI(title="grant-copilot", lifespan=lifespan)
 
 
 def _require_ctx() -> AppContext:
-    if STARTUP_ERROR:
-        raise HTTPException(503, f"Startup failed: {STARTUP_ERROR}")
-    if CTX is None:
+    if CTX is not None:
+        return CTX
+    if LOADING:
         raise HTTPException(503, "Still loading artifacts — try again shortly.")
-    return CTX
+    if STARTUP_ERROR:
+        raise HTTPException(503, f"Not ready: {STARTUP_ERROR}")
+    rep = setup_state.report()
+    missing = ", ".join(c.label for c in rep.blocking) or "configuration"
+    raise HTTPException(503, f"Setup incomplete — missing: {missing}")
+
+
+def app_status() -> str:
+    """needs_setup | loading | failed | ready"""
+    if CTX is not None:
+        return "ready"
+    if LOADING:
+        return "loading"
+    if STARTUP_ERROR:
+        return "failed"
+    return "needs_setup"
 
 
 # ---------------------------------------------------------------------
@@ -182,11 +243,113 @@ def healthz() -> dict:
 
 @app.get("/readyz")
 def readyz() -> dict:
-    if STARTUP_ERROR:
-        raise HTTPException(503, {"ready": False, "error": STARTUP_ERROR})
     if CTX is None:
-        raise HTTPException(503, {"ready": False, "error": "loading"})
+        raise HTTPException(503, {"ready": False, "status": app_status(),
+                                  "error": STARTUP_ERROR or "not initialized"})
     return CTX.status_dict()
+
+
+# ---------------------------------------------------------------------
+# Setup — collect what's missing without a restart
+# ---------------------------------------------------------------------
+
+class SetupPayload(BaseModel):
+    """Values the browser may write to .env. All optional: the form
+    submits only the fields the user filled in."""
+
+    gcp_project: Optional[str] = None
+    gcp_location: Optional[str] = None
+    census_key: Optional[str] = None
+    hf_token: Optional[str] = None
+
+
+@app.get("/api/setup")
+def get_setup() -> dict:
+    """What's configured, what's missing, and how each gap is fixed.
+
+    Secrets are reported as set/not-set, never echoed back.
+    """
+    rep = setup_state.report()
+    return {
+        "status": app_status(),
+        "error": STARTUP_ERROR,
+        "in_docker": Path("/.dockerenv").exists(),
+        "hydrate": setup_state.HYDRATE.status(),
+        **rep.to_dict(),
+    }
+
+
+@app.post("/api/setup")
+def post_setup(payload: SetupPayload) -> dict:
+    """Write the supplied values to .env and re-check.
+
+    os.environ is updated too, so the values take effect in this process
+    without a restart.
+    """
+    updates: dict[str, str] = {}
+    if payload.gcp_project and payload.gcp_project.strip():
+        updates["GCP_PROJECT_ID"] = payload.gcp_project.strip()
+    if payload.gcp_location and payload.gcp_location.strip():
+        updates["GCP_LOCATION"] = payload.gcp_location.strip()
+    if payload.census_key and payload.census_key.strip():
+        updates["CENSUS_API_KEY"] = payload.census_key.strip()
+    if payload.hf_token and payload.hf_token.strip():
+        updates["HF_TOKEN"] = payload.hf_token.strip()
+
+    if updates:
+        try:
+            setup_state.write_env(updates)
+        except ValueError as e:
+            raise HTTPException(400, str(e))
+        except OSError as e:
+            raise HTTPException(
+                500,
+                f"Could not write .env: {e}. In Docker this usually means "
+                f"the repo mount isn't writable by the container user — "
+                f"set APP_UID/APP_GID to your host ids.",
+            )
+
+    rep = setup_state.report()
+    return {"saved": sorted(updates), "status": app_status(), **rep.to_dict()}
+
+
+@app.post("/api/setup/initialize")
+async def post_initialize() -> dict:
+    """Load the artifacts now that configuration is in place."""
+    if CTX is not None:
+        return {"status": "ready"}
+    if LOADING:
+        return {"status": "loading"}
+
+    rep = setup_state.report()
+    if not rep.ready:
+        raise HTTPException(
+            400,
+            "Still missing: " + ", ".join(c.label for c in rep.blocking))
+
+    asyncio.get_running_loop().run_in_executor(PIPELINE_EXECUTOR, _initialize)
+    return {"status": "loading"}
+
+
+@app.post("/api/setup/hydrate")
+def post_hydrate() -> dict:
+    """Download the ~8 GB data layer."""
+    if not os.environ.get("HF_TOKEN", "").strip():
+        raise HTTPException(
+            400, "HF_TOKEN is required to download the data layer.")
+    if not setup_state.HYDRATE.start():
+        raise HTTPException(409, "A download is already running.")
+    return {"started": True}
+
+
+@app.get("/api/setup/hydrate")
+def get_hydrate() -> dict:
+    return setup_state.HYDRATE.status()
+
+
+@app.delete("/api/setup/hydrate")
+def cancel_hydrate() -> dict:
+    return {"cancelled": setup_state.HYDRATE.cancel()}
 
 
 # ---------------------------------------------------------------------

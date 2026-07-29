@@ -60,15 +60,25 @@ fail — those failures are the most common fresh-install papercuts.
 ### Docker (recommended)
 
 The image ships SpatiaLite and SWIG already installed, which skips
-those papercuts entirely.  You still need the credentials in
-[Credentials setup](#credentials-setup) and the artifacts from
-[Hydrate the data layer](#hydrate-the-data-layer) — both live on
-the **host** and are mounted into the container.
+those papercuts entirely.
 
 ```bash
+gcloud auth application-default login   # once, on the host
 docker compose up --build
 # then open http://localhost:8000
 ```
+
+**You don't need to configure anything first.**  The app starts
+whether or not it's set up, and the browser walks you through what's
+missing — GCP project, API keys, and the data-layer download — writing
+your answers to `.env` and applying them without a restart.
+
+The one thing it can't collect for you is the `gcloud` login above:
+Application Default Credentials are a host-side artifact mounted into
+the container, so the UI detects and explains it rather than pretending
+to ask.  If you'd rather set everything up by hand first, the manual
+route is [Credentials setup](#credentials-setup) +
+[Hydrate the data layer](#hydrate-the-data-layer).
 
 The repo is bind-mounted rather than baked into the image, so
 editing prompts or Python takes effect without a rebuild.  That

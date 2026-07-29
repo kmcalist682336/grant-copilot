@@ -13,13 +13,21 @@ right-hand panel is where you change the output.
 macOS and Linux. The image has it.
 
 ```bash
-# once, on the host — the data layer is mounted, not baked in
-python -m scripts.setup.hydrate_data_artifacts     # needs HF_TOKEN
-gcloud auth application-default login
-
+gcloud auth application-default login   # once, on the host
 docker compose up --build
 # http://localhost:8000
 ```
+
+Nothing else needs configuring first. The server starts unconfigured and
+the browser collects what's missing — project id, API keys, and the
+data-layer download — writing to `.env` and applying it without a
+restart. `docker compose up` has no terminal to prompt from, so a
+container that died on a missing env var would be a dead end; this is
+why setup lives in the UI rather than in a CLI wizard.
+
+The exception is the `gcloud` login above. ADC is a host-side credential
+mounted into the container, so the setup screen detects and explains it
+instead of offering an input it couldn't honour.
 
 The repo is bind-mounted, so editing prompts, `presentation.yaml`, or
 Python takes effect without a rebuild. That's not a convenience — the
@@ -177,6 +185,9 @@ changes, that function absorbs it and the contract holds.
 | `GET /` | The UI |
 | `GET /healthz` | Process alive |
 | `GET /readyz` | Artifacts loaded, per-artifact status |
+| `GET/POST /api/setup` | What's missing; write it to `.env` |
+| `POST /api/setup/initialize` | Load artifacts once config is in place |
+| `GET/POST/DELETE /api/setup/hydrate` | Data-layer download + progress |
 | `POST /chat` | Full pipeline |
 | `GET /chat/stream?q=` | Full pipeline, SSE stage events |
 | `POST /resynthesize` | Synthesizer only, cached bundle |

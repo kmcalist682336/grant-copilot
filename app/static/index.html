@@ -112,7 +112,29 @@
   <span id="status">connecting…</span>
 </header>
 
-<div class="layout">
+<!-- Setup gate. Shown until the app has everything it needs; the rest of
+     the UI stays hidden behind it so nothing looks broken. -->
+<div id="setup" class="hide" style="max-width:720px;margin:24px auto;padding:0 16px">
+  <h2 style="margin-top:0">Finish setup</h2>
+  <div id="setup-intro" class="small dim" style="margin-bottom:14px">
+    The app is running. It needs a few things before it can answer
+    questions — everything below is saved to <code>.env</code> in the
+    repo, and takes effect without a restart.
+  </div>
+  <div id="setup-checks"></div>
+  <div class="row mt">
+    <button id="setup-save">Save &amp; continue</button>
+    <button id="setup-recheck" class="secondary">Re-check</button>
+    <span id="setup-msg" class="small dim"></span>
+  </div>
+  <div id="hydrate-box" class="hide mt">
+    <h2>Downloading the data layer</h2>
+    <pre id="hydrate-log" style="max-height:220px"></pre>
+    <button id="hydrate-cancel" class="secondary">Cancel</button>
+  </div>
+</div>
+
+<div class="layout hide" id="main-layout">
   <!-- ============ LEFT: chat ============ -->
   <div class="left">
     <textarea id="query" rows="2"
@@ -543,29 +565,150 @@ document.querySelectorAll(".tab").forEach(tab => {
   };
 });
 
+// ---------- setup ----------
+// Fields the browser can collect. `fix` on each check decides whether we
+// render an input, an instruction, or a download button — the server is
+// the authority on which is which.
+const SETUP_FIELDS = {
+  gcp_project: {name: "gcp_project", placeholder: "my-gcp-project", secret: false},
+  census_key:  {name: "census_key",  placeholder: "40-char hex key", secret: true},
+  hf_token:    {name: "hf_token",    placeholder: "hf_…", secret: true},
+};
+
+function renderSetup(d) {
+  const rows = d.checks.map(c => {
+    const mark = c.ok ? `<span style="color:var(--ok)">✓</span>`
+                      : (c.required ? `<span style="color:var(--err)">✗</span>`
+                                    : `<span style="color:var(--warn)">!</span>`);
+    let control = "";
+    const f = SETUP_FIELDS[c.key];
+    if (f && !c.ok) {
+      control = `<input type="${f.secret ? "password" : "text"}"
+        id="setup-${c.key}" placeholder="${esc(f.placeholder)}"
+        style="margin-top:6px">`;
+    } else if (f && c.ok) {
+      control = `<div class="small dim" style="margin-top:4px">
+        Already set — leave blank to keep, or type a new value:
+        <input type="${f.secret ? "password" : "text"}" id="setup-${c.key}"
+          placeholder="(unchanged)" style="margin-top:4px"></div>`;
+    }
+    if (c.key === "data_layer" && !c.ok) {
+      control = `<button id="hydrate-start" class="secondary"
+        style="margin-top:6px">Download data layer (~8 GB)</button>`;
+    }
+    return `<div class="card">
+      <div><b>${mark} ${esc(c.label)}</b>
+        ${c.required ? "" : '<span class="dim small"> (optional)</span>'}</div>
+      <div class="small dim" style="white-space:pre-wrap;margin-top:3px">${esc(c.detail)}</div>
+      ${control}
+    </div>`;
+  }).join("");
+  $("setup-checks").innerHTML = rows;
+
+  const start = $("hydrate-start");
+  if (start) start.onclick = startHydrate;
+}
+
+async function loadSetup() {
+  const d = await (await fetch("/api/setup")).json();
+  applyStatus(d);
+  return d;
+}
+
+function applyStatus(d) {
+  const st = d.status;
+  if (st === "ready") {
+    $("setup").classList.add("hide");
+    $("main-layout").classList.remove("hide");
+    return true;
+  }
+  $("setup").classList.remove("hide");
+  $("main-layout").classList.add("hide");
+  if (st === "loading") {
+    $("setup-checks").innerHTML =
+      '<div class="card">Loading artifacts — the FAISS index is ~4.4 GB, ' +
+      'this takes a minute. The page will switch over on its own.</div>';
+    $("setup-msg").textContent = "";
+  } else {
+    renderSetup(d);
+    if (st === "failed" && d.error) banner(d.error, true);
+  }
+  return false;
+}
+
+async function saveSetup() {
+  const body = {};
+  for (const key of Object.keys(SETUP_FIELDS)) {
+    const el = $("setup-" + key);
+    if (el && el.value.trim()) body[key] = el.value.trim();
+  }
+  $("setup-msg").textContent = "saving…";
+  try {
+    const d = await post("/api/setup", body);
+    $("setup-msg").textContent = d.saved.length
+      ? `saved ${d.saved.join(", ")}` : "nothing to save";
+    if (d.ready) {
+      $("setup-msg").textContent = "starting…";
+      await post("/api/setup/initialize", {});
+    }
+    applyStatus({...d, status: d.ready ? "loading" : d.status});
+  } catch (e) {
+    $("setup-msg").textContent = e.message;
+  }
+}
+
+async function startHydrate() {
+  try {
+    await post("/api/setup/hydrate", {});
+    $("hydrate-box").classList.remove("hide");
+    pollHydrate();
+  } catch (e) { $("setup-msg").textContent = e.message; }
+}
+
+async function pollHydrate() {
+  const s = await (await fetch("/api/setup/hydrate")).json();
+  $("hydrate-log").textContent = (s.lines || []).join("\n");
+  $("hydrate-log").scrollTop = $("hydrate-log").scrollHeight;
+  if (s.running) { setTimeout(pollHydrate, 1500); return; }
+  $("hydrate-cancel").textContent = s.returncode === 0 ? "Done" : "Failed";
+  loadSetup();
+}
+
+$("setup-save").onclick = saveSetup;
+$("setup-recheck").onclick = loadSetup;
+$("hydrate-cancel").onclick = async () => {
+  await fetch("/api/setup/hydrate", {method: "DELETE"});
+};
+
 // ---------- boot ----------
 (async function poll() {
   try {
-    const r = await fetch("/readyz");
-    const d = await r.json();
-    if (r.ok) {
-      const warn = d.artifacts.filter(a => !a.ok && !a.required);
-      $("status").textContent =
-        `ready in ${d.load_seconds}s` +
-        (warn.length ? ` · ${warn.length} optional artifact(s) unavailable` : "");
-      $("status").title = d.artifacts
-        .map(a => `${a.ok ? "✓" : "✗"} ${a.name}: ${a.detail}`).join("\n");
+    const d = await (await fetch("/api/setup")).json();
+    if (applyStatus(d)) {
+      const r = await fetch("/readyz");
+      if (r.ok) {
+        const z = await r.json();
+        const warn = z.artifacts.filter(a => !a.ok && !a.required);
+        $("status").textContent = `ready in ${z.load_seconds}s` +
+          (warn.length ? ` · ${warn.length} optional artifact(s) unavailable` : "");
+        $("status").title = z.artifacts
+          .map(a => `${a.ok ? "✓" : "✗"} ${a.name}: ${a.detail}`).join("\n");
+      }
       $("ask").disabled = false;
-      return;
+      loadPrompt(); loadPres(); loadVariants();
+      return;                       // ready: stop polling
     }
-    $("status").textContent = "loading artifacts…";
+    $("status").textContent =
+      d.status === "loading" ? "loading artifacts…" : "setup required";
+    if (d.hydrate && d.hydrate.running) {
+      $("hydrate-box").classList.remove("hide");
+      $("hydrate-log").textContent = (d.hydrate.lines || []).join("\n");
+    }
   } catch (e) {
     $("status").textContent = "waiting for server…";
   }
   setTimeout(poll, 2000);
 })();
-
-loadPrompt(); loadPres(); loadVariants();
 </script>
 </body>
 </html>
