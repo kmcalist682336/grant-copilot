@@ -575,7 +575,33 @@ const SETUP_FIELDS = {
   hf_token:    {name: "hf_token",    placeholder: "hf_…", secret: true},
 };
 
-function renderSetup(d) {
+// The boot loop polls every 2s. Re-rendering this form on every poll
+// destroys and recreates the <input> elements, which drops focus and
+// wipes anything half-typed or just-pasted. So: only touch the DOM when
+// the check states actually changed, and preserve what the user has in
+// flight when we do.
+let setupSignature = null;
+
+function setupStateSignature(d) {
+  return JSON.stringify(d.checks.map(c => [c.key, c.ok, c.detail]));
+}
+
+function renderSetup(d, force) {
+  const sig = setupStateSignature(d);
+  if (!force && sig === setupSignature) return;   // nothing changed
+  setupSignature = sig;
+
+  // Carry in-flight input across the rebuild.
+  const carried = {};
+  for (const key of Object.keys(SETUP_FIELDS)) {
+    const el = $("setup-" + key);
+    if (el && el.value) carried[key] = el.value;
+  }
+  const active = document.activeElement;
+  const activeId = active && active.id ? active.id : null;
+  const selStart = active && active.selectionStart;
+  const selEnd = active && active.selectionEnd;
+
   const rows = d.checks.map(c => {
     const mark = c.ok ? `<span style="color:var(--ok)">✓</span>`
                       : (c.required ? `<span style="color:var(--err)">✗</span>`
@@ -605,6 +631,19 @@ function renderSetup(d) {
   }).join("");
   $("setup-checks").innerHTML = rows;
 
+  // Restore what the user had typed, and where their cursor was.
+  for (const [key, val] of Object.entries(carried)) {
+    const el = $("setup-" + key);
+    if (el) el.value = val;
+  }
+  if (activeId) {
+    const el = document.getElementById(activeId);
+    if (el) {
+      el.focus();
+      try { el.setSelectionRange(selStart, selEnd); } catch (e) {}
+    }
+  }
+
   const start = $("hydrate-start");
   if (start) start.onclick = startHydrate;
 }
@@ -625,6 +664,10 @@ function applyStatus(d) {
   $("setup").classList.remove("hide");
   $("main-layout").classList.add("hide");
   if (st === "loading") {
+    // Replaces the form entirely, so the cached signature no longer
+    // describes what's on screen — clear it or a later needs_setup with
+    // identical checks would skip re-rendering and leave this message up.
+    setupSignature = null;
     $("setup-checks").innerHTML =
       '<div class="card">Loading artifacts — the FAISS index is ~4.4 GB, ' +
       'this takes a minute. The page will switch over on its own.</div>';
@@ -647,6 +690,13 @@ async function saveSetup() {
     const d = await post("/api/setup", body);
     $("setup-msg").textContent = d.saved.length
       ? `saved ${d.saved.join(", ")}` : "nothing to save";
+
+    // Blank the boxes we just saved, so the rebuilt form doesn't carry
+    // a token forward into a field labelled "(unchanged)".
+    for (const key of Object.keys(body)) {
+      const el = $("setup-" + key);
+      if (el) el.value = "";
+    }
     if (d.ready) {
       $("setup-msg").textContent = "starting…";
       await post("/api/setup/initialize", {});
