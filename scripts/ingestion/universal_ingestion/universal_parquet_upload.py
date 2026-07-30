@@ -1,14 +1,13 @@
 """Split a tabular source by variable and upload the Parquets to GCS.
 
-The physical object layout is:
+The default physical object layout is:
 
     <prefix>/table_id=<dataset>/year=<year>/
-        census_tract=<11-digit-geoid>/
-            variable=<stable-variable-id>/<part-name>.parquet
+        variable=<stable-variable-id>/<part-name>.parquet
 
-Every variable file contains a common record ID and one ``value`` column.
-HMDA is partitioned by census tract by default. Blank tract values are retained
-under ``census_tract=unknown`` rather than being discarded.
+Every variable file contains a common record ID, one ``value`` column, and,
+for HMDA, the normalized ``census_tract`` column. An optional tract Hive
+partition can be enabled with ``--census-tract-column``.
 The command is a dry run unless ``--execute`` is supplied.
 """
 
@@ -33,6 +32,9 @@ from scripts.ingestion.universal_ingestion.preprocess_lar import (
 
 
 _SAFE_NAME = re.compile(r"^[a-z0-9][a-z0-9_-]*$")
+DEFAULT_HMDA_UNITS = (
+    Path(__file__).parent / "config" / "hmda" / "hmda_units.json"
+)
 
 
 def sql_string(value: str) -> str:
@@ -117,8 +119,53 @@ def safe_part_name(source: Path, requested: str | None) -> str:
 def default_part_name(dataset: str, year: int, source: Path) -> str | None:
     """Return a dataset-specific default without temporary/source partitions."""
     if dataset == "hmda":
-        return f"part-hmda_lar_{year}.parquet"
+        return f"hmda_{year}.parquet"
     return None
+
+
+def load_units(path: Path | None, *, dataset: str, year: int) -> dict[str, dict[str, Any]]:
+    """Load year-appropriate canonical-unit metadata for source variables.
+
+    Units are intentionally separate from the HMDA codebook: the codebook
+    decodes categorical values, while this registry describes numeric scale
+    and presentation units.  Variables without an entry pass through
+    unchanged.
+    """
+    if path is None:
+        return {}
+    if not path.is_file():
+        raise FileNotFoundError(f"Unit registry not found: {path}")
+    with path.open(encoding="utf-8") as file:
+        document = json.load(file)
+    registry_dataset = document.get("dataset")
+    if registry_dataset not in {None, dataset}:
+        raise ValueError(
+            f"Unit registry is for {registry_dataset!r}, not {dataset!r}"
+        )
+
+    output: dict[str, dict[str, Any]] = {}
+    for source_name, raw_metadata in document.get("variables", {}).items():
+        if not isinstance(raw_metadata, dict):
+            raise ValueError(
+                f"Unit metadata for {source_name!r} must be an object"
+            )
+        start = int(raw_metadata.get("year_start", 0))
+        end = int(raw_metadata.get("year_end", 9999))
+        if not start <= year <= end:
+            continue
+        scale = float(raw_metadata.get("scale_factor", 1))
+        if scale <= 0:
+            raise ValueError(
+                f"scale_factor for {source_name!r} must be positive"
+            )
+        output[source_name] = {
+            "source_unit": str(raw_metadata.get("source_unit", "")),
+            "canonical_unit": str(raw_metadata.get("canonical_unit", "")),
+            "scale_factor": scale,
+            "year_start": start,
+            "year_end": end,
+        }
+    return output
 
 
 def merge_registry(
@@ -126,9 +173,11 @@ def merge_registry(
     *,
     dataset: str,
     variables: list[str],
+    units: dict[str, dict[str, Any]] | None = None,
 ) -> dict[str, Any]:
     """Merge newly observed variables into a durable registry document."""
-    entries: dict[str, str] = {}
+    entries: dict[str, dict[str, Any]] = {}
+    units = units or {}
     if existing:
         existing_dataset = existing.get("dataset")
         if existing_dataset not in {None, dataset}:
@@ -136,25 +185,32 @@ def merge_registry(
                 f"Remote registry is for {existing_dataset!r}, not {dataset!r}"
             )
         for entry in existing.get("variables", []):
-            entries[entry["variable_id"]] = entry["source_name"]
+            entries[entry["variable_id"]] = dict(entry)
 
     for source_name in variables:
         opaque_id = variable_id(dataset, source_name)
-        previous = entries.get(opaque_id)
+        entry = entries.get(opaque_id)
+        previous = entry.get("source_name") if entry else None
         if previous is not None and previous != source_name:
             raise ValueError(
                 f"Variable ID collision: {opaque_id} maps to "
                 f"{previous!r} and {source_name!r}"
             )
-        entries[opaque_id] = source_name
+        entry = entries.setdefault(
+            opaque_id,
+            {"variable_id": opaque_id, "source_name": source_name},
+        )
+        metadata = units.get(source_name)
+        if metadata:
+            entry.update(metadata)
 
     return {
         "dataset": dataset,
         "id_strategy": f"sha256({dataset}:<source_name>)[:12]",
         "variables": [
-            {"variable_id": opaque_id, "source_name": source_name}
-            for opaque_id, source_name in sorted(
-                entries.items(), key=lambda item: item[1]
+            entry
+            for _, entry in sorted(
+                entries.items(), key=lambda item: item[1]["source_name"]
             )
         ],
     }
@@ -169,9 +225,12 @@ def split_and_upload(
     prefix: str,
     record_id_column: str | None,
     census_tract_column: str | None,
+    geography_column: str | None,
     part_name: str | None,
     project: str | None,
     execute: bool,
+    units: dict[str, dict[str, Any]] | None = None,
+    apply_unit_conversion: bool = True,
 ) -> int:
     """Split one source into variable files and optionally upload them."""
     dataset = normalize_dataset_name(dataset)
@@ -191,10 +250,14 @@ def split_and_upload(
     try:
         described = connection.execute(f"DESCRIBE SELECT * FROM {scan}").fetchall()
         source_columns = [row[0] for row in described]
-        if record_id_column and record_id_column not in source_columns:
-            raise ValueError(
-                f"record ID column {record_id_column!r} is not in the source"
-            )
+        # ``record_id_column`` is also the desired output name when the
+        # source has no existing ID column.  This is important for raw HMDA
+        # CSVs: the decoder supplies row numbers, but does not add a source
+        # column named ``record_id``.  If the named column exists, preserve
+        # its values; otherwise generate stable IDs under the requested name.
+        source_record_id_column = (
+            record_id_column if record_id_column in source_columns else None
+        )
         if (
             census_tract_column
             and census_tract_column not in source_columns
@@ -202,8 +265,13 @@ def split_and_upload(
             raise ValueError(
                 f"census tract column {census_tract_column!r} is not in the source"
             )
+        if geography_column and geography_column not in source_columns:
+            raise ValueError(
+                f"geography column {geography_column!r} is not in the source"
+            )
         variables = [
-            column for column in source_columns if column != record_id_column
+            column for column in source_columns
+            if column != source_record_id_column
         ]
         if not variables:
             raise ValueError("Source contains no variables to upload")
@@ -250,10 +318,12 @@ def split_and_upload(
             )
         for variable in variables[:10]:
             opaque_id = variable_id(dataset, variable)
-            print(
-                f"  {variable} ({opaque_id}) -> "
+            object_suffix = (
                 f"census_tract=<geoid>/variable={opaque_id}/{parquet_name}"
+                if census_tract_column
+                else f"variable={opaque_id}/{parquet_name}"
             )
+            print(f"  {variable} ({opaque_id}) -> {object_suffix}")
         if len(variables) > 10:
             print(f"  ... and {len(variables) - 10} more variables")
         if not execute:
@@ -279,6 +349,7 @@ def split_and_upload(
             existing_registry,
             dataset=dataset,
             variables=variables,
+            units=units,
         )
 
         connection.execute(
@@ -294,9 +365,34 @@ def split_and_upload(
             temporary_root = Path(temp_dir)
             for index, variable in enumerate(variables, start=1):
                 opaque_id = variable_id(dataset, variable)
-                if record_id_column:
+                metadata = (
+                    (units or {}).get(variable, {})
+                    if apply_unit_conversion else {}
+                )
+                scale_factor = float(metadata.get("scale_factor", 1))
+                value_expression = sql_identifier(variable)
+                if scale_factor != 1:
+                    # Unit conversion is deterministic and happens before
+                    # upload. Raw CSVs and the decoder output remain intact.
+                    value_expression = (
+                        f"CAST({value_expression} AS DOUBLE) * "
+                        f"{scale_factor:g}"
+                    )
+                geography_sql = None
+                if geography_column:
+                    geography_source = sql_identifier(geography_column)
+                    geography_sql = f"CASE\n"
+                    geography_sql += (
+                        f" WHEN {geography_source} IS NULL OR "
+                        f"trim(CAST({geography_source} AS VARCHAR)) = '' OR "
+                        f"NOT regexp_full_match(trim(CAST({geography_source} AS VARCHAR)), '[0-9]{{1,11}}')\n"
+                        " THEN NULL\n"
+                        f" ELSE lpad(trim(CAST({geography_source} AS VARCHAR)), 11, '0')\n"
+                        "END"
+                    )
+                if source_record_id_column:
                     record_id_sql = (
-                        f"CAST({sql_identifier(record_id_column)} AS VARCHAR)"
+                        f"CAST({sql_identifier(source_record_id_column)} AS VARCHAR)"
                     )
                 else:
                     record_id_sql = (
@@ -313,7 +409,8 @@ def split_and_upload(
                         COPY (
                             SELECT
                                 {record_id_sql} AS {sql_identifier(output_record_id)},
-                                {sql_identifier(variable)} AS value,
+                                {value_expression} AS value,
+                                {geography_sql or 'NULL'} AS census_tract,
                                 CASE
                                     WHEN {tract} IS NULL
                                       OR trim(CAST({tract} AS VARCHAR)) = ''
@@ -356,12 +453,17 @@ def split_and_upload(
                         )
                 else:
                     local_path = temporary_root / f"{opaque_id}.parquet"
+                    geography_select = (
+                        f", {geography_sql} AS census_tract"
+                        if geography_sql else ""
+                    )
                     connection.execute(
                         f"""
                         COPY (
                             SELECT
                                 {record_id_sql} AS {sql_identifier(output_record_id)},
-                                {sql_identifier(variable)} AS value
+                                {value_expression} AS value
+                                {geography_select}
                             FROM source_rows
                         )
                         TO {sql_string(local_path.as_posix())}
@@ -410,7 +512,14 @@ def main() -> None:
     parser.add_argument(
         "--census-tract-column",
         help=(
-            "Column used for census-tract object partitions. For HMDA, "
+            "Optional column used for census-tract object partitions. "
+            "Leave unset to keep census_tract as a regular Parquet column."
+        ),
+    )
+    parser.add_argument(
+        "--geography-column",
+        help=(
+            "Geography column to retain in each variable Parquet. For HMDA, "
             "this defaults to census_tract."
         ),
     )
@@ -427,6 +536,21 @@ def main() -> None:
         "--schema", type=Path, default=DEFAULT_SCHEMA,
         help="HMDA numeric schema used when the source is a raw HMDA CSV.",
     )
+    parser.add_argument(
+        "--units-registry", type=Path,
+        help=(
+            "JSON registry of source/canonical units and scale factors. "
+            "Defaults to the HMDA registry when --dataset hmda."
+        ),
+    )
+    parser.add_argument(
+        "--values-already-canonical",
+        action="store_true",
+        help=(
+            "Do not apply scale factors because the input values are already "
+            "in canonical units. Use this when re-uploading converted Parquet."
+        ),
+    )
     parser.add_argument("--chunk-size", type=int, default=50_000)
     parser.add_argument(
         "--execute",
@@ -436,12 +560,17 @@ def main() -> None:
     args = parser.parse_args()
 
     dataset = normalize_dataset_name(args.dataset)
+    units_path = args.units_registry
+    if dataset == "hmda" and units_path is None:
+        units_path = DEFAULT_HMDA_UNITS
+    units = load_units(units_path, dataset=dataset, year=args.year)
     part_name = args.part_name or default_part_name(
         dataset, args.year, args.source,
     )
     census_tract_column = args.census_tract_column
-    if dataset == "hmda" and census_tract_column is None:
-        census_tract_column = "census_tract"
+    geography_column = args.geography_column
+    if dataset == "hmda" and geography_column is None:
+        geography_column = "census_tract"
     with prepare_source(
         dataset=dataset,
         year=args.year,
@@ -458,9 +587,12 @@ def main() -> None:
             prefix=args.prefix,
             record_id_column=args.record_id_column,
             census_tract_column=census_tract_column,
+            geography_column=geography_column,
             part_name=part_name,
             project=args.project,
             execute=args.execute,
+            units=units,
+            apply_unit_conversion=not args.values_already_canonical,
         )
 
 

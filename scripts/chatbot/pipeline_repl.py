@@ -70,6 +70,7 @@ from scripts.chatbot.models import (
 from scripts.chatbot.planner import (
     ConceptResolution, PlanResult, PlannedCall, plan_query,
 )
+from scripts.chatbot.record_planner import has_record_analysis, plan_record_query
 from scripts.chatbot.api_cache import APICache
 from scripts.chatbot.decomposition_cache import DecompositionCache
 from scripts.chatbot.orchestrator import QueryResponse, answer_query_sync
@@ -93,6 +94,30 @@ _RESET = "\033[0m"
 def _load_config() -> dict:
     with (REPO_ROOT / "config" / "chatbot.yaml").open() as f:
         return yaml.safe_load(f)
+
+
+def _build_record_caller(args: argparse.Namespace, api_cache: APICache):
+    """Build an optional DuckDB HMDA connector for the live REPL.
+
+    The shared planner remains dataset-agnostic. Supplying ``--hmda-root``
+    only adds a connector for calls whose dataset is ``hmda``; Census calls
+    continue through the normal HTTP caller.
+    """
+    if not args.hmda_root:
+        return None, None
+
+    from dotenv import load_dotenv
+    from scripts.chatbot.record_connector import build_record_caller
+
+    load_dotenv(REPO_ROOT / ".env")
+    return build_record_caller(
+        args.hmda_root,
+        api_cache,
+        record_id_column=args.hmda_record_id_column,
+        layout=args.hmda_layout,
+        file_glob=args.hmda_file_glob,
+        geography_partition=args.hmda_geography_partition,
+    )
 
 
 def _build_mock_llm() -> MockLLMClient:
@@ -213,6 +238,28 @@ def _render_extraction(intent: ExtractedIntent) -> None:
         if con.is_composite:
             bits.append(f"{_YELLOW}composite{_RESET}")
         print(f"    concepts[{k}]: " + "  ".join(bits))
+
+    if intent.analyses:
+        for i, analysis in enumerate(intent.analyses):
+            measure = analysis.measure.text if analysis.measure else "(none)"
+            bits = [
+                f"operation={analysis.operation}",
+                f"measure={measure!r}",
+            ]
+            if analysis.filters:
+                bits.append(
+                    "filters=" + str([
+                        {
+                            "dimension": f.dimension.text,
+                            "operator": f.operator,
+                            "value": f.value_text,
+                        }
+                        for f in analysis.filters
+                    ])
+                )
+            if analysis.population_context:
+                bits.append(f"population={analysis.population_context!r}")
+            print(f"    analyses[{i}]: " + "  ".join(bits))
 
     if intent.temporal_intent != "latest" or intent.years:
         ys = f" years={intent.years}" if intent.years else ""
@@ -553,7 +600,7 @@ def _wrap_indent(text: str, *, width: int, indent: str) -> list[str]:
 
 
 def _render_execute_metrics(response: QueryResponse) -> None:
-    """When --execute, show full pipeline metrics (LLM + Census + timing)."""
+    """When --execute, show full pipeline metrics by connector."""
     m = response.metrics
     print(f"\n  {_DIM}──── METRICS ────{_RESET}")
     print(
@@ -575,6 +622,12 @@ def _render_execute_metrics(response: QueryResponse) -> None:
         f"{m.census_cache_hits} cache hits, "
         f"{m.census_failures} failures{_RESET}"
     )
+    if getattr(m, "record_calls_total", 0):
+        print(
+            f"    {_DIM}Record-level: {m.record_calls_total} calls, "
+            f"{m.record_cache_hits} cache hits, "
+            f"{m.record_failures} failures{_RESET}"
+        )
     if response.error:
         print(f"    {_RED}error:{_RESET} {response.error}")
 
@@ -694,6 +747,7 @@ def _run_execute(
     peer_retriever: Optional[object] = None,
     universe_picker: Optional[object] = None,
     ask_user: Optional[object] = None,
+    record_caller: Optional[object] = None,
 ) -> tuple[Optional[dict], float, QueryResponse]:
     """Full end-to-end pipeline via the orchestrator."""
     if hasattr(llm, "reset_usage_counters"):
@@ -706,6 +760,7 @@ def _run_execute(
         semantic_router=semantic_router,
         peer_retriever=peer_retriever,
         universe_picker=universe_picker,
+        record_caller=record_caller,
         ask_user=ask_user,
         progress_cb=_progress_printer,
     )
@@ -744,6 +799,7 @@ def run_one(
     show_raw: bool = False,
     show_plan: bool = False,
     semantic_router: Optional[object] = None,
+    record_caller: Optional[object] = None,
 ) -> tuple[Optional[dict], float]:
     if hasattr(llm, "reset_usage_counters"):
         llm.reset_usage_counters()
@@ -773,10 +829,15 @@ def run_one(
     _render_geo_resolution(resolved)
     _render_concept_lookup(intent, resolved, cmap, metadata_db)
     if show_plan:
-        plan = plan_query(
-            intent, resolved, cmap, metadata_db,
-            semantic_router=semantic_router,
-        )
+        if has_record_analysis(intent) and record_caller is not None:
+            plan = plan_record_query(
+                intent, resolved, semantic_router=semantic_router,
+            )
+        else:
+            plan = plan_query(
+                intent, resolved, cmap, metadata_db,
+                semantic_router=semantic_router,
+            )
         _render_planned_calls(plan)
     latency = time.time() - t0
 
@@ -809,6 +870,12 @@ def _handle_command(cmd: str) -> Optional[bool]:
 
 def run(args: argparse.Namespace) -> int:
     config = _load_config()
+    # One-off demos can point at a backup metadata/index pair without
+    # editing the repository YAML. Defaults still come from chatbot.yaml.
+    if args.metadata_db:
+        config.setdefault("paths", {})["metadata_db"] = args.metadata_db
+    if args.embedding_index:
+        config.setdefault("paths", {})["embedding_index"] = args.embedding_index
     if args.mock_llm:
         print(f"{_DIM}LLM: MockLLMClient (gold queries only){_RESET}")
         llm = _build_mock_llm()
@@ -826,6 +893,12 @@ def run(args: argparse.Namespace) -> int:
         REPO_ROOT / config["paths"]["decomposition_cache_db"]
     )
     api_cache = APICache(REPO_ROOT / config["paths"]["api_cache_db"])
+    record_caller, record_connection = _build_record_caller(args, api_cache)
+    if record_caller is not None:
+        print(
+            f"{_DIM}HMDA connector: DuckDB via {args.hmda_root} "
+            f"(layout={args.hmda_layout}){_RESET}"
+        )
     api_key = os.environ.get(
         config.get("census_api", {}).get("api_key_env_var", "CENSUS_API_KEY")
     )
@@ -953,13 +1026,14 @@ def run(args: argparse.Namespace) -> int:
                     show_raw=args.raw, semantic_router=semantic_router,
                     peer_retriever=peer_retriever,
                     universe_picker=universe_picker,
+                    record_caller=record_caller,
                     ask_user=None,
                 )
                 return 0
             usage, latency = run_one(
                 args.query, llm, db, metadata_db, cmap, config,
                 show_raw=args.raw, show_plan=args.plan,
-                semantic_router=semantic_router,
+                semantic_router=semantic_router, record_caller=record_caller,
             )
             if usage is not None:
                 session_cost_total += estimate_cost_usd(usage)
@@ -1003,6 +1077,7 @@ def run(args: argparse.Namespace) -> int:
                     show_raw=show_raw, semantic_router=semantic_router,
                     peer_retriever=peer_retriever,
                     universe_picker=universe_picker,
+                    record_caller=record_caller,
                     ask_user=_interactive_ask_user,
                 )
                 if response.metrics.llm_cost_usd:
@@ -1012,13 +1087,15 @@ def run(args: argparse.Namespace) -> int:
             usage, latency = run_one(
                 text, llm, db, metadata_db, cmap, config,
                 show_raw=show_raw, show_plan=show_plan,
-                semantic_router=semantic_router,
+                semantic_router=semantic_router, record_caller=record_caller,
             )
             if usage is not None:
                 session_cost_total += estimate_cost_usd(usage)
             _render_metrics(latency, usage, session_cost_total,
                             no_call_reason=no_call_reason)
     finally:
+        if record_connection is not None:
+            record_connection.close()
         db.close()
         metadata_db.close()
     return 0
@@ -1042,6 +1119,53 @@ def parse_args(argv=None) -> argparse.Namespace:
     p.add_argument("--no-router", action="store_true",
                    help="Skip the semantic router; fall back to legacy "
                         "Tier 1/2/3 cascade (used for A/B comparison).")
+    p.add_argument(
+        "--metadata-db",
+        default=None,
+        help="Optional metadata SQLite path overriding chatbot.yaml.",
+    )
+    p.add_argument(
+        "--embedding-index",
+        default=None,
+        help="Optional FAISS path overriding chatbot.yaml.",
+    )
+    p.add_argument(
+        "--hmda-root",
+        default=None,
+        help=(
+            "Optional GCS/local root above table_id=hmda for record-level "
+            "HMDA calls, e.g. gs://bucket/variable_tree. Requires "
+            "GCS_HMAC_ACCESS_ID and GCS_HMAC_SECRET for GCS."
+        ),
+    )
+    p.add_argument(
+        "--hmda-layout",
+        choices=("wide_hive", "variable_tree"),
+        default="variable_tree",
+        help="DuckDB layout used by the optional HMDA connector.",
+    )
+    p.add_argument(
+        "--hmda-record-id-column",
+        default="record_id",
+        help="Shared row identity column in each HMDA variable file.",
+    )
+    p.add_argument(
+        "--hmda-geography-partition",
+        default=None,
+        help=(
+            "Optional Hive partition column when the variable tree is "
+            "partitioned by geography; leave unset when census_tract is "
+            "stored inside each Parquet file."
+        ),
+    )
+    p.add_argument(
+        "--hmda-file-glob",
+        default="*.parquet",
+        help=(
+            "Filename pattern inside each variable partition. Use "
+            "'*.parquet' for files named hmda_2023.parquet."
+        ),
+    )
     p.add_argument("-v", "--verbose", action="store_true")
     return p.parse_args(argv)
 

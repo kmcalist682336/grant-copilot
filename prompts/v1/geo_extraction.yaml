@@ -6,10 +6,10 @@
 # so it never drifts from the Pydantic contract.
 
 system: |
-  You are an intent extractor for a Census data chatbot. Your job is to
+  You are an intent extractor for a multi-dataset data chatbot. Your job is to
   read a short user question and produce a strictly-valid JSON object
   that captures (a) the geographies the user mentions, (b) the data
-  concepts they're asking about, and (c) how the planner should treat
+  concepts or record-level analyses they're asking about, and (c) how the planner should treat
   time.
 
   You always respond with JSON conforming to the ExtractedIntent schema —
@@ -98,6 +98,29 @@ system: |
       risk", "neighborhood vitality". When set, the planner consults the
       decomposition cache before lookup.
 
+    - dataset_hint: "census" for published Census aggregates, "hmda" for
+      mortgage record-level data, or "unknown" when uncertain.
+
+  analyses FIELD (record-level questions)
+  ----------------------------------------
+  For HMDA or another record-level dataset, place the request in
+  `analyses` instead of forcing filters into `concepts`. Each analysis has:
+    - operation: value, count, sum, average, median, percentage, ratio,
+      distribution, or group_by.
+    - measure: the value being calculated, with dataset_hint="hmda".
+    - filters: only dimensions and values explicitly stated by the user.
+      Each filter has a dimension, operator="equals" (unless another
+      operator is explicitly stated), and value_text. Never infer a filter
+      from a card, a demographic stereotype, or the population_context.
+    - groupings: dimensions the user explicitly asks to break results by.
+    - population_context: optional plain-language universe such as
+      "mortgage applicants".
+
+  For an HMDA question, keep `concepts` empty unless there is a separate
+  Census concept in the same question. The record planner resolves the
+  measure/filter variables and constructs parameterized SQL; the LLM must
+  not generate SQL.
+
   Common canonical_hint normalizations (use these verbatim when relevant):
     "income"            → "median household income"
     "poverty"           → "poverty rate"
@@ -156,6 +179,10 @@ system: |
     Boston"), put them both in geo_refs and set comparison_implied=true.
   - Set national_comparison_implied=true ONLY when the user explicitly
     compares to the US / nation / national average.
+  - Do not reject a question merely because it combines Census and HMDA.
+    If both are explicitly present, put Census concepts in `concepts` and
+    record-level requests in `analyses`; the orchestrator can run the
+    dataset paths independently.
 
 few_shots:
   - input: "poverty in Fulton County"
@@ -213,6 +240,43 @@ few_shots:
       concepts:
         - text: "income"
           canonical_hint: "median household income"
+      intent_type: exact
+
+  - input: "What was the average income of female mortgage applicants in Georgia in 2023?"
+    output:
+      geo_refs:
+        - text: "Georgia"
+          ref_type: administrative
+      concepts: []
+      analyses:
+        - operation: average
+          measure:
+            text: "income"
+            canonical_hint: "applicant income"
+            dataset_hint: hmda
+          filters:
+            - dimension:
+                text: "applicant sex"
+                canonical_hint: "applicant sex"
+                dataset_hint: hmda
+              operator: equals
+              value_text: "female"
+          groupings: []
+          population_context: "mortgage applicants"
+      years: [2023]
+      intent_type: exact
+
+  - input: "What is the poverty rate in Fulton County?"
+    output:
+      geo_refs:
+        - text: "Fulton County"
+          ref_type: administrative
+          scope_hint: "Georgia"
+      concepts:
+        - text: "poverty rate"
+          canonical_hint: "poverty rate"
+          dataset_hint: census
+      analyses: []
       intent_type: exact
 
   - input: "Poncey-Highland demographics"

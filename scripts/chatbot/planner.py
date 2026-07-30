@@ -219,6 +219,9 @@ class PlannedCall(BaseModel):
     )
     year: int
     role: str = "primary"
+    # Record-level plans use this deterministic operation during aggregation;
+    # Census plans keep the historical ``value`` default.
+    operation: str = "value"
     # Effective (after by_geo_level overrides) variable layout, so the
     # aggregator knows whether to take a value, ratio, or components.
     variables: ConceptVariables

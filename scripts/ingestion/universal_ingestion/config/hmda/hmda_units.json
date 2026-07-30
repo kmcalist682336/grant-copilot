@@ -1,0 +1,97 @@
+{
+  "dataset": "hmda",
+  "description": "Canonical units for numeric HMDA variables by reporting year.",
+  "variables": {
+    "income": {
+      "source_unit": "USD_thousands",
+      "canonical_unit": "USD",
+      "scale_factor": 1000,
+      "year_start": 2018,
+      "year_end": 9999
+    },
+    "loan_amount": {
+      "source_unit": "USD",
+      "canonical_unit": "USD",
+      "scale_factor": 1,
+      "year_start": 2018,
+      "year_end": 9999
+    },
+    "property_value": {
+      "source_unit": "USD",
+      "canonical_unit": "USD",
+      "scale_factor": 1,
+      "year_start": 2018,
+      "year_end": 9999
+    },
+    "total_loan_costs": {
+      "source_unit": "USD",
+      "canonical_unit": "USD",
+      "scale_factor": 1,
+      "year_start": 2018,
+      "year_end": 9999
+    },
+    "total_points_and_fees": {
+      "source_unit": "USD",
+      "canonical_unit": "USD",
+      "scale_factor": 1,
+      "year_start": 2018,
+      "year_end": 9999
+    },
+    "origination_charges": {
+      "source_unit": "USD",
+      "canonical_unit": "USD",
+      "scale_factor": 1,
+      "year_start": 2018,
+      "year_end": 9999
+    },
+    "discount_points": {
+      "source_unit": "USD",
+      "canonical_unit": "USD",
+      "scale_factor": 1,
+      "year_start": 2018,
+      "year_end": 9999
+    },
+    "lender_credits": {
+      "source_unit": "USD",
+      "canonical_unit": "USD",
+      "scale_factor": 1,
+      "year_start": 2018,
+      "year_end": 9999
+    },
+    "interest_rate": {
+      "source_unit": "percent",
+      "canonical_unit": "percent",
+      "scale_factor": 1,
+      "year_start": 2018,
+      "year_end": 9999
+    },
+    "loan_to_value_ratio": {
+      "source_unit": "percent",
+      "canonical_unit": "percent",
+      "scale_factor": 1,
+      "year_start": 2018,
+      "year_end": 9999
+    },
+    "rate_spread": {
+      "source_unit": "percentage_points",
+      "canonical_unit": "percentage_points",
+      "scale_factor": 1,
+      "year_start": 2018,
+      "year_end": 9999
+    },
+    "tract_to_msa_income_percentage": {
+      "source_unit": "percent",
+      "canonical_unit": "percent",
+      "scale_factor": 1,
+      "year_start": 2018,
+      "year_end": 9999
+    },
+    "tract_minority_population_percent": {
+      "source_unit": "percent",
+      "canonical_unit": "percent",
+      "scale_factor": 1,
+      "year_start": 2018,
+      "year_end": 9999
+    }
+  }
+}

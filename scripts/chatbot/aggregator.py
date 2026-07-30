@@ -36,6 +36,7 @@ Public API:
 from __future__ import annotations
 
 import logging
+import statistics
 from collections import defaultdict
 from typing import Any, Optional
 
@@ -180,6 +181,7 @@ def _aggregate_value_role(
     variables: ConceptVariables,
     *,
     is_tract_aggregation: bool,
+    operation: str = "value",
 ) -> tuple[Optional[float], int, Optional[str]]:
     """Return (value, rows_used, caveat) for a 'value:'-only ConceptVariables.
 
@@ -200,6 +202,19 @@ def _aggregate_value_role(
 
     if not pairs:
         return None, 0, None
+
+    # Record-level plans explicitly carry the requested operation.  Apply it
+    # here after DuckDB has performed only the safe row-level filtering; this
+    # keeps SQL deterministic and lets Census continue using its historical
+    # value/ratio behavior.
+    if operation == "count":
+        return float(len(pairs)), len(pairs), None
+    if operation == "sum":
+        return sum(v for v, _ in pairs), len(pairs), None
+    if operation == "average":
+        return sum(v for v, _ in pairs) / len(pairs), len(pairs), None
+    if operation == "median":
+        return float(statistics.median(v for v, _ in pairs)), len(pairs), None
 
     if not is_tract_aggregation or len(pairs) == 1:
         return pairs[0][0], 1, None
@@ -316,6 +331,7 @@ def aggregate_results(
         bucket = buckets.setdefault(key, {
             "rows": [],
             "variables": planned.variables,
+            "operation": getattr(planned, "operation", "value"),
             "geo": plan.resolved_geos[planned.geo_idx],
             "concept": plan.intent.concepts[planned.concept_idx],
             "is_tract_aggregation": planned.api_call.geo_level == "tract"
@@ -365,6 +381,7 @@ def aggregate_results(
             value, rows_used, caveat = _aggregate_value_role(
                 rows, variables,
                 is_tract_aggregation=b["is_tract_aggregation"],
+                operation=b.get("operation", "value"),
             )
         elif variables.numerator is not None:
             ratio, sample, rows_used = _aggregate_ratio_role(rows, variables)

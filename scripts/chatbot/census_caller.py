@@ -17,9 +17,10 @@ batch returns a mix of success + failure results.
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
-from dataclasses import dataclass
-from typing import Any, Optional
+from dataclasses import dataclass, field
+from typing import Any, Literal, Optional
 
 import httpx
 
@@ -32,6 +33,24 @@ logger = logging.getLogger(__name__)
 # Plan + result data classes
 # ---------------------------------------------------------------------------
 
+RecordFilterOperator = Literal[
+    "equals", "not_equals", "in", "not_in", "is_null", "is_not_null",
+]
+
+
+@dataclass(frozen=True)
+class RecordFilter:
+    """A data-only predicate for record-level connectors.
+
+    Census callers ignore this field. Record-level callers translate it into
+    parameterized SQL; callers must never receive SQL fragments from an LLM.
+    """
+
+    variable_id: str
+    operator: RecordFilterOperator
+    value: Any = None
+
+
 @dataclass
 class APIPlanCall:
     """One Census API call to make."""
@@ -43,11 +62,35 @@ class APIPlanCall:
     year: int
     dataset: str                    # 'acs/acs5', 'dec/pl', etc.
     ttl_seconds: int                # cache TTL for this response
+    record_filters: list[RecordFilter] = field(default_factory=list)
+    # Optional prefixes for a record-level geography column such as a
+    # two-digit state FIPS or five-digit county FIPS.  Census calls leave
+    # this empty; record callers translate it into parameterized SQL.
+    geo_prefixes: list[str] = field(default_factory=list)
 
     @property
     def cache_key(self) -> str:
         """Stable identifier for this call (used for logging)."""
-        return f"{self.dataset}/{self.year}/{self.table_id}/{self.geo_level}"
+        base = f"{self.dataset}/{self.year}/{self.table_id}/{self.geo_level}"
+        if not self.record_filters:
+            if not self.geo_prefixes:
+                return base
+            prefixes = json.dumps(sorted(self.geo_prefixes), separators=(",", ":"))
+            return f"{base}/geo_prefixes={prefixes}"
+        filters = json.dumps(
+            [
+                (flt.variable_id, flt.operator, flt.value)
+                for flt in self.record_filters
+            ],
+            sort_keys=True,
+            default=str,
+            separators=(",", ":"),
+        )
+        suffix = f"/filters={filters}"
+        if self.geo_prefixes:
+            prefixes = json.dumps(sorted(self.geo_prefixes), separators=(",", ":"))
+            suffix += f"/geo_prefixes={prefixes}"
+        return f"{base}{suffix}"
 
 
 @dataclass

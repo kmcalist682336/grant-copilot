@@ -148,6 +148,16 @@ def _render_extraction(intent: ExtractedIntent) -> None:
         if con.is_composite:
             bits.append(f"{_YELLOW}composite{_RESET}")
         print(f"    concepts[{k}]: " + "  ".join(bits))
+    for i, analysis in enumerate(intent.analyses):
+        measure = analysis.measure.text if analysis.measure else "(none)"
+        filters = [
+            f"{flt.dimension.text} {flt.operator} {flt.value_text!r}"
+            for flt in analysis.filters
+        ]
+        detail = f"operation={analysis.operation} measure={measure!r}"
+        if filters:
+            detail += f" filters={filters}"
+        print(f"    analyses[{i}]: {detail}")
     if intent.temporal_intent != "latest" or intent.years:
         years_blurb = (
             f" years={intent.years}" if intent.years else ""

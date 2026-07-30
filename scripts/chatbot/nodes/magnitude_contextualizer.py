@@ -55,7 +55,10 @@ class MagnitudeFraming(BaseModel):
     geo_display_name: str
     concept_text: str
     year: int
-    value: float
+    # ``None`` means the query ran but no usable records matched.  It must
+    # not be represented as 0.0, because zero is a real retrieved value and
+    # would invite the synthesizer to report an unsupported number.
+    value: Optional[float] = None
     value_kind: Literal["scalar", "ratio", "components"] = "scalar"
 
     # Ratios to comparator geos. None when the comparator wasn't
@@ -279,7 +282,7 @@ def _framing_for(
         geo_display_name=primary.geo.display_name,
         concept_text=primary.concept.text,
         year=primary.year,
-        value=primary_scalar if primary_scalar is not None else 0.0,
+        value=primary_scalar,
         value_kind=_value_kind(primary),   # type: ignore[arg-type]
     )
 

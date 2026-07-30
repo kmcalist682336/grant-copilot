@@ -46,6 +46,21 @@ IntentType = Literal["exact", "proximity", "comparison", "context"]
 
 TemporalIntent = Literal["latest", "change", "trend"]
 
+# Dataset routing is deliberately part of the extracted intent rather than
+# being inferred later from a table hit.  This lets the pipeline keep Census
+# concepts on the existing path while record-level datasets can be planned
+# with their own deterministic filter logic.
+DatasetHint = Literal["census", "hmda", "both", "unknown"]
+
+AnalysisOperation = Literal[
+    "value", "count", "sum", "average", "median", "percentage",
+    "ratio", "distribution", "group_by",
+]
+
+FilterOperator = Literal[
+    "equals", "not_equals", "in", "not_in", "is_null", "is_not_null",
+]
+
 Direction = Literal["n", "s", "e", "w", "ne", "nw", "se", "sw"]
 
 GeoLevel = Literal[
@@ -132,6 +147,44 @@ class ExtractedConcept(BaseModel):
             "The planner consults the decomposition cache first when set."
         ),
     )
+    dataset_hint: DatasetHint = Field(
+        default="unknown",
+        description=(
+            "Dataset family suggested by the extractor. Use 'census' for "
+            "published aggregate variables and 'hmda' for mortgage "
+            "record-level variables. 'unknown' is allowed when the "
+            "question is ambiguous."
+        ),
+    )
+
+
+class ExtractedFilter(BaseModel):
+    """A user-stated record-level condition, not a SQL fragment.
+
+    The value is kept as language until the dataset-specific planner maps it
+    to a decoded value.  Keeping this separate from ``ExtractedConcept``
+    prevents a filter such as ``female`` from being mistaken for the measure
+    being requested.
+    """
+
+    model_config = ConfigDict(extra="ignore")
+
+    dimension: ExtractedConcept
+    operator: FilterOperator = "equals"
+    value_text: Optional[str] = None
+    normalized_value_hint: Optional[str] = None
+
+
+class ExtractedAnalysis(BaseModel):
+    """A measure plus explicit filters for record-level datasets."""
+
+    model_config = ConfigDict(extra="ignore")
+
+    operation: AnalysisOperation = "value"
+    measure: Optional[ExtractedConcept] = None
+    filters: list[ExtractedFilter] = Field(default_factory=list)
+    groupings: list[ExtractedConcept] = Field(default_factory=list)
+    population_context: Optional[str] = None
 
 
 class CompoundSpec(BaseModel):
@@ -217,6 +270,15 @@ class ExtractedIntent(BaseModel):
             "Data-dimension concepts the user is asking about (e.g., "
             "median income, poverty rate, gentrification). Empty for "
             "pure-context queries like 'tell me about Buckhead'."
+        ),
+    )
+    analyses: list[ExtractedAnalysis] = Field(
+        default_factory=list,
+        description=(
+            "Structured measure/filter requests for record-level datasets. "
+            "Census questions normally use concepts instead. An analysis "
+            "must contain only filters explicitly supported by the user "
+            "question; downstream planners must never invent conditions."
         ),
     )
     temporal_intent: TemporalIntent = Field(
