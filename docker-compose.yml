@@ -48,13 +48,28 @@ services:
 
     environment:
       # ADC lives in the mounted gcloud config.
-      - CLOUDSDK_CONFIG=/home/app/.config/gcloud
-      - GOOGLE_APPLICATION_CREDENTIALS=/home/app/.config/gcloud/application_default_credentials.json
-      # Read from .env below; listed so they're visible at a glance.
-      - GCP_PROJECT_ID
-      - GCP_LOCATION
-      - CENSUS_API_KEY
-      - HF_TOKEN
+      CLOUDSDK_CONFIG: /home/app/.config/gcloud
+      GOOGLE_APPLICATION_CREDENTIALS: /home/app/.config/gcloud/application_default_credentials.json
+      # Read project/API settings from .env when supplied.
+      GCP_PROJECT_ID: ${GCP_PROJECT_ID:-}
+      GCP_LOCATION: ${GCP_LOCATION:-us-central1}
+      CENSUS_API_KEY: ${CENSUS_API_KEY:-}
+      HF_TOKEN: ${HF_TOKEN:-}
+      # HMDA storage layout is stable configuration, not a secret. These
+      # defaults let the website connect without putting paths in .env;
+      # environment values can still override them for another bucket.
+      HMDA_RECORD_ROOT: ${HMDA_RECORD_ROOT:-gs://demo-grant-bucket/record_level}
+      HMDA_RECORD_LAYOUT: ${HMDA_RECORD_LAYOUT:-variable_tree}
+      HMDA_RECORD_ID_COLUMN: ${HMDA_RECORD_ID_COLUMN:-record_id}
+      HMDA_RECORD_FILE_GLOB: ${HMDA_RECORD_FILE_GLOB:-hmda_*.parquet}
+      # The current files store census_tract inside each Parquet file, not as
+      # a folder partition. Set this only if a future upload adds a
+      # census_tract=*/ path segment.
+      HMDA_GEOGRAPHY_PARTITION: ${HMDA_GEOGRAPHY_PARTITION:-}
+      # Credentials remain optional for a public bucket and should never be
+      # committed to compose files.
+      GCS_HMAC_ACCESS_ID: ${GCS_HMAC_ACCESS_ID:-}
+      GCS_HMAC_SECRET: ${GCS_HMAC_SECRET:-}
 
     # Optional so `docker compose config` and a first build work before
     # you've made one. The app still needs the credentials in it —

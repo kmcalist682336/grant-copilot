@@ -138,6 +138,9 @@ class MetricsOut(BaseModel):
     census_calls_total: int = 0
     census_cache_hits: int = 0
     census_failures: int = 0
+    record_calls_total: int = 0
+    record_cache_hits: int = 0
+    record_failures: int = 0
 
 
 class ChatResponse(BaseModel):
@@ -360,6 +363,9 @@ def to_public(
                 census_calls_total=_attr(m, "census_calls_total", 0) or 0,
                 census_cache_hits=_attr(m, "census_cache_hits", 0) or 0,
                 census_failures=_attr(m, "census_failures", 0) or 0,
+                record_calls_total=_attr(m, "record_calls_total", 0) or 0,
+                record_cache_hits=_attr(m, "record_cache_hits", 0) or 0,
+                record_failures=_attr(m, "record_failures", 0) or 0,
             )
 
     return out

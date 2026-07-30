@@ -10,7 +10,7 @@ Agent-routing mode (Phase 1+; preferred):
                                     → list[ConceptResolution]
   4. plan_query(concept_resolutions=...)
                                     → API plan from the resolutions
-  5. CensusCaller.fetch_all         (HTTP, parallel)
+  5. Dataset connector fetch         (CensusCaller or record-level DuckDB)
   6. aggregate_results              (sum/ratio/components, tract filter)
   7. synthesize_answer              (LLM)
   8. wrap into QueryResponse
@@ -108,6 +108,9 @@ from scripts.chatbot.nodes.trend import prior_period_calls
 from scripts.chatbot.planner import (
     ConceptResolution, PlanResult, data_level_for, plan_query,
 )
+from scripts.chatbot.record_planner import (
+    has_record_analysis, plan_record_query,
+)
 from scripts.chatbot.synthesizer import (
     SynthesisError, SynthesizedAnswer, build_synthesis_bundle, synthesize,
 )
@@ -150,6 +153,9 @@ class StageMetrics(BaseModel):
     census_calls_total: int = 0
     census_cache_hits: int = 0
     census_failures: int = 0
+    record_calls_total: int = 0
+    record_cache_hits: int = 0
+    record_failures: int = 0
 
 
 class QueryResponse(BaseModel):
@@ -288,16 +294,58 @@ async def _run_fetches(
     api_key: Optional[str],
     *,
     max_concurrent: int = 20,
+    record_caller: Optional[Any] = None,
 ) -> list[FetchResult]:
-    """Issue every PlannedCall in parallel via the shared CensusCaller."""
+    """Fetch planned calls through the connector for their dataset.
+
+    Census remains the default and backward-compatible path. When a
+    record-level caller is supplied, HMDA calls are sent to it while all
+    other calls continue through ``CensusCaller``. Results are restored to
+    the planner's original order so the existing aggregator is unchanged.
+    """
     if not plan.calls:
         return []
     plans = [c.api_call for c in plan.calls]
-    async with CensusCaller(
-        api_key=api_key, cache=api_cache,
-        max_concurrent=max_concurrent,
-    ) as caller:
-        return await caller.fetch_all(plans)
+    if record_caller is None:
+        async with CensusCaller(
+            api_key=api_key, cache=api_cache,
+            max_concurrent=max_concurrent,
+        ) as caller:
+            return await caller.fetch_all(plans)
+
+    indexed = list(enumerate(plans))
+    record_items = [(idx, call) for idx, call in indexed
+                    if call.dataset == "hmda"]
+    census_items = [(idx, call) for idx, call in indexed
+                    if call.dataset != "hmda"]
+    results: list[Optional[FetchResult]] = [None] * len(plans)
+
+    async def fetch_census() -> None:
+        if not census_items:
+            return
+        async with CensusCaller(
+            api_key=api_key, cache=api_cache,
+            max_concurrent=max_concurrent,
+        ) as caller:
+            fetched = await caller.fetch_all([call for _, call in census_items])
+        for (idx, _), result in zip(census_items, fetched):
+            results[idx] = result
+
+    async def fetch_records() -> None:
+        if not record_items:
+            return
+        fetched = await record_caller.fetch_all(
+            [call for _, call in record_items]
+        )
+        for (idx, _), result in zip(record_items, fetched):
+            results[idx] = result
+
+    await asyncio.gather(fetch_census(), fetch_records())
+    # Both connector branches fill exactly the slots they own. Keep a
+    # defensive failure rather than returning an ambiguous partial list.
+    if any(result is None for result in results):  # pragma: no cover
+        raise RuntimeError("dataset connector returned an incomplete result set")
+    return [result for result in results if result is not None]
 
 
 def _decompose_pending(
@@ -357,6 +405,7 @@ async def answer_query(
     progress_cb: Optional[ProgressCb] = None,
     synth_system_prompt: Optional[str] = None,
     synth_options: Optional[dict] = None,
+    record_caller: Optional[Any] = None,
 ) -> QueryResponse:
     """End-to-end pipeline for one user query.
 
@@ -644,16 +693,67 @@ async def answer_query(
                 extra_geos.append((cg, role))
 
     # 5. Plan --------------------------------------------------------
-    _progress(progress_cb, "Planning Census API calls")
-    t0 = time.time()
-    plan = plan_query(
-        intent_for_routing, resolved, cmap, metadata_db,
-        decomp_cache=decomp_cache,
-        semantic_router=semantic_router,
-        concept_resolutions=pre_resolutions,
-        extra_geos=extra_geos or None,
-        universe_picker=universe_picker,
+    # Census concepts keep their existing planner.  Record-level analyses
+    # use a deterministic dataset planner that produces the same PlanResult
+    # contract, so the fetch/aggregate/synthesis stages remain shared.
+    record_mode = has_record_analysis(intent_for_routing)
+    _progress(
+        progress_cb,
+        "Planning record and Census requests" if record_mode
+        else "Planning Census API calls",
     )
+    t0 = time.time()
+    if record_mode and record_caller is not None:
+        record_plan = plan_record_query(
+            intent_for_routing,
+            resolved,
+            semantic_router=semantic_router,
+            geo_db=db,
+        )
+        # If the question also contains Census concepts, plan those in the
+        # original way and merge both call lists.  The appended record
+        # measures keep Census concept indexes stable.
+        if intent_for_routing.concepts:
+            census_plan = plan_query(
+                intent_for_routing, resolved, cmap, metadata_db,
+                decomp_cache=decomp_cache,
+                semantic_router=semantic_router,
+                concept_resolutions=pre_resolutions,
+                extra_geos=extra_geos or None,
+                universe_picker=universe_picker,
+            )
+            combined_intent = record_plan.intent
+            plan = PlanResult(
+                intent=combined_intent,
+                resolved_geos=resolved,
+                concept_resolutions=(
+                    census_plan.concept_resolutions
+                    + record_plan.concept_resolutions
+                ),
+                calls=census_plan.calls + record_plan.calls,
+                notes=census_plan.notes + record_plan.notes,
+            )
+        else:
+            plan = record_plan
+    elif record_mode:
+        plan = PlanResult(
+            intent=intent_for_routing,
+            resolved_geos=resolved,
+            concept_resolutions=[], calls=[],
+            notes=[
+                "record-level analysis detected, but no record connector "
+                "is configured",
+            ],
+        )
+    else:
+        plan = plan_query(
+            intent_for_routing, resolved, cmap, metadata_db,
+            decomp_cache=decomp_cache,
+            semantic_router=semantic_router,
+            concept_resolutions=pre_resolutions,
+            extra_geos=extra_geos or None,
+            universe_picker=universe_picker,
+        )
     _progress(
         progress_cb, "Plan ready",
         f"{len(plan.calls)} call(s) queued",
@@ -839,27 +939,44 @@ async def answer_query(
             metrics.plan_s += time.time() - t0
             attempt += 1
 
-    # 5. Census fetches ----------------------------------------------
+    # 5. Dataset connector fetches -----------------------------------
     _progress(
-        progress_cb, "Fetching data from Census API",
+        progress_cb, "Fetching data",
         f"{len(plan.calls)} call(s)",
     )
     t0 = time.time()
     fetch_results = await _run_fetches(
         plan, api_cache, api_key, max_concurrent=fetch_max_concurrent,
+        record_caller=record_caller,
     )
     metrics.fetch_s = time.time() - t0
-    metrics.census_calls_total = len(fetch_results)
+    metrics.census_calls_total = sum(
+        1 for r in fetch_results if r.plan.dataset != "hmda"
+    )
+    metrics.record_calls_total = sum(
+        1 for r in fetch_results if r.plan.dataset == "hmda"
+    )
     metrics.census_cache_hits = sum(
-        1 for r in fetch_results if r.cache_hit
+        1 for r in fetch_results
+        if r.plan.dataset != "hmda" and r.cache_hit
+    )
+    metrics.record_cache_hits = sum(
+        1 for r in fetch_results
+        if r.plan.dataset == "hmda" and r.cache_hit
     )
     metrics.census_failures = sum(
-        1 for r in fetch_results if not r.succeeded
+        1 for r in fetch_results
+        if r.plan.dataset != "hmda" and not r.succeeded
+    )
+    metrics.record_failures = sum(
+        1 for r in fetch_results
+        if r.plan.dataset == "hmda" and not r.succeeded
     )
     _progress(
         progress_cb, "Fetches complete",
-        f"{metrics.census_cache_hits}/{metrics.census_calls_total} cached, "
-        f"{metrics.census_failures} failed",
+        f"census={metrics.census_calls_total}, "
+        f"record={metrics.record_calls_total}, "
+        f"failures={metrics.census_failures + metrics.record_failures}",
     )
 
     # 6. Aggregation -------------------------------------------------

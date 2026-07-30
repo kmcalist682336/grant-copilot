@@ -201,6 +201,7 @@ def _run_pipeline(
         frame_registry=ctx.frame_registry,
         peer_retriever=ctx.peer_retriever,
         universe_picker=ctx.universe_picker,
+        record_caller=ctx.record_caller,
         ask_user=None,           # clarifier degrades to "proceed" over HTTP
         progress_cb=progress_cb,
         synth_options=options,

@@ -60,6 +60,8 @@ class AppContext:
     decomp_cache: Any
     api_cache: Any
     api_key: Optional[str]
+    record_caller: Any = None
+    record_connection: Any = None
     semantic_router: Any = None
     universe_picker: Any = None
     peer_retriever: Any = None
@@ -179,6 +181,40 @@ def build_context(
         "Census API key", bool(api_key),
         "set" if api_key else "missing — rate-limited to 500 calls/day"))
 
+    # Optional record-level connector. The Census-only app remains fully
+    # functional when HMDA_RECORD_ROOT is unset. Connector construction is
+    # isolated here so the orchestrator can dispatch by dataset without
+    # learning anything about GCS credentials or DuckDB setup.
+    record_caller = None
+    record_connection = None
+    hmda_root = os.environ.get("HMDA_RECORD_ROOT", "").strip()
+    if hmda_root:
+        try:
+            from scripts.chatbot.record_connector import build_record_caller
+            record_caller, record_connection = build_record_caller(
+                hmda_root,
+                api_cache,
+                record_id_column=os.environ.get(
+                    "HMDA_RECORD_ID_COLUMN", "record_id"),
+                layout=os.environ.get(
+                    "HMDA_RECORD_LAYOUT", "variable_tree"),
+                file_glob=os.environ.get(
+                    "HMDA_RECORD_FILE_GLOB", "hmda_*.parquet"),
+                geography_partition=(os.environ.get(
+                    "HMDA_GEOGRAPHY_PARTITION", "").strip() or None),
+            )
+            statuses.append(ArtifactStatus(
+                "HMDA record connector", True, hmda_root))
+            say("ok", f"HMDA DuckDB connector: {hmda_root}")
+        except Exception as e:
+            logger.warning("HMDA connector unavailable: %s", e)
+            statuses.append(ArtifactStatus(
+                "HMDA record connector", False, f"failed: {e}"))
+            say("warn", f"HMDA connector unavailable: {e}")
+    else:
+        statuses.append(ArtifactStatus(
+            "HMDA record connector", False, "not configured (optional)"))
+
     # --- Semantic router (optional, the 4.4 GB one) -----------------
     semantic_router = None
     if no_router:
@@ -261,6 +297,7 @@ def build_context(
     return AppContext(
         config=config, llm=llm, db=db, metadata_db=metadata_db, cmap=cmap,
         decomp_cache=decomp_cache, api_cache=api_cache, api_key=api_key,
+        record_caller=record_caller, record_connection=record_connection,
         semantic_router=semantic_router, universe_picker=universe_picker,
         peer_retriever=peer_retriever, frame_registry=frame_registry,
         statuses=statuses, load_seconds=elapsed,

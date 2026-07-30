@@ -832,6 +832,7 @@ def run_one(
         if has_record_analysis(intent) and record_caller is not None:
             plan = plan_record_query(
                 intent, resolved, semantic_router=semantic_router,
+                geo_db=db,
             )
         else:
             plan = plan_query(
@@ -1160,10 +1161,10 @@ def parse_args(argv=None) -> argparse.Namespace:
     )
     p.add_argument(
         "--hmda-file-glob",
-        default="*.parquet",
+        default="hmda_*.parquet",
         help=(
             "Filename pattern inside each variable partition. Use "
-            "'*.parquet' for files named hmda_2023.parquet."
+            "'hmda_*.parquet' for files named hmda_2023.parquet."
         ),
     )
     p.add_argument("-v", "--verbose", action="store_true")

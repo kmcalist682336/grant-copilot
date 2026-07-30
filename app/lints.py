@@ -84,6 +84,10 @@ def _sourced_values(aggregated: Any) -> set[float]:
     for v in getattr(aggregated, "values", []) or []:
         add(getattr(v, "value", None))
         add(getattr(v, "sample_size", None))
+        # The synthesizer may mention how many record rows contributed to an
+        # aggregate. This is deterministic provenance, not an invented
+        # measurement, so it belongs in the sourced-number set too.
+        add(getattr(v, "rows_aggregated", None))
 
         ratio = getattr(v, "ratio", None)
         if ratio is not None:

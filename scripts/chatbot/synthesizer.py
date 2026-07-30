@@ -283,7 +283,7 @@ def _format_value(v: AggregatedValue) -> dict[str, Any]:
 
 
 _BUILTIN_SYSTEM_PROMPT = """\
-You are a US Census data synthesizer. Given a user query, a structured
+You are a multi-dataset data synthesizer. Given a user query, a structured
 aggregated dataset, and optional Phase 4 realism-agent outputs
 (magnitude framings, anomaly flags, followups, and the matched
 grant-narrative frame), write a SHORT, FACTUAL answer.
@@ -500,6 +500,7 @@ def _render_intent(v, b, o):
         ),
         "temporal_intent": _attr(v, "temporal_intent"),
         "explicit_years": _attr(v, "years", []),
+        "analyses": _dump(_attr(v, "analyses", [])),
     }}
 
 
