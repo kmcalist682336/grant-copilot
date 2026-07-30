@@ -9,6 +9,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import re
+import threading
 import time
 from typing import Any, Iterable, Optional
 
@@ -50,8 +51,8 @@ class DuckDBCaller:
                 "geography_partition", geography_partition,
             )
         self.geography_partition = geography_partition
-        self._semaphore = asyncio.Semaphore(max_concurrent)
-        self._query_lock = asyncio.Lock()
+        self._semaphore = threading.Semaphore(max_concurrent)
+        self._query_lock = threading.Lock()
 
     async def __aenter__(self) -> "DuckDBCaller":
         return self
@@ -80,10 +81,7 @@ class DuckDBCaller:
             )
 
         try:
-            async with self._semaphore:
-                # DuckDB connections are not safe for overlapping queries.
-                async with self._query_lock:
-                    data = await asyncio.to_thread(self._query, plan)
+            data = await asyncio.to_thread(self._query_threadsafe, plan)
         except Exception as exc:
             return FetchResult(
                 plan=plan,
@@ -108,6 +106,13 @@ class DuckDBCaller:
     async def fetch_all(self, plans: Iterable[APIPlanCall]) -> list[FetchResult]:
         """Fetch calls concurrently and preserve their input order."""
         return await asyncio.gather(*(self.fetch(plan) for plan in plans))
+
+    def _query_threadsafe(self, plan: APIPlanCall) -> list[dict]:
+        """Run one DuckDB query without binding locks to an event loop."""
+        with self._semaphore:
+            # DuckDB connections are not safe for overlapping queries.
+            with self._query_lock:
+                return self._query(plan)
 
     def _query(self, plan: APIPlanCall) -> list[dict]:
         self._validate_partition_value("dataset", plan.dataset)

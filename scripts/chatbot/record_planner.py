@@ -10,6 +10,8 @@ explicitly requested; this module chooses variables, builds a structured
 from __future__ import annotations
 
 import logging
+import sqlite3
+from itertools import product
 from typing import Any, Optional
 
 from scripts.chatbot.census_caller import APIPlanCall, RecordFilter
@@ -39,6 +41,11 @@ _HMDA_ALIASES: dict[str, str] = {
     "race of applicant": "38ad9c360a98",
     "action taken": "906bb78b0f70",
     "mortgage application outcome": "906bb78b0f70",
+    "application status": "906bb78b0f70",
+    "loan application status": "906bb78b0f70",
+    "mortgage applications": "906bb78b0f70",
+    "loan applications": "906bb78b0f70",
+    "applications": "906bb78b0f70",
     "county": "6422e2d2aab7",
     "county code": "6422e2d2aab7",
 }
@@ -57,6 +64,22 @@ _VALUE_ALIASES: dict[str, dict[str, str]] = {
         "native hawaiian": "Native Hawaiian or Other Pacific Islander",
     },
     "action": {
+        "originated": "Loan originated",
+        "loan originated": "Loan originated",
+        "denied": "Application denied",
+        "denial": "Application denied",
+        "withdrawn": "Application withdrawn by applicant",
+        "closed for incompleteness": "File closed for incompleteness",
+    },
+    "status": {
+        "originated": "Loan originated",
+        "loan originated": "Loan originated",
+        "denied": "Application denied",
+        "denial": "Application denied",
+        "withdrawn": "Application withdrawn by applicant",
+        "closed for incompleteness": "File closed for incompleteness",
+    },
+    "outcome": {
         "originated": "Loan originated",
         "loan originated": "Loan originated",
         "denied": "Application denied",
@@ -114,11 +137,75 @@ def _decoded_value(filter_item: ExtractedFilter) -> Any:
         or filter_item.value_text
         or ""
     ).strip()
-    dim = _key(filter_item.dimension.canonical_hint or filter_item.dimension.text)
+    return _decoded_value_for_dimension(
+        filter_item.dimension,
+        raw,
+    )
+
+
+def _decoded_value_for_dimension(
+    dimension: ExtractedConcept,
+    raw: str,
+) -> str:
+    """Map a value using the decoded labels for a dimension."""
+    dim = _key(dimension.canonical_hint or dimension.text)
     for token, mapping in _VALUE_ALIASES.items():
         if token in dim:
             return mapping.get(raw.lower(), raw)
     return raw
+
+
+def _grouping_alternatives(
+    analysis: ExtractedAnalysis,
+    semantic_router: Optional[object],
+) -> tuple[list[tuple[list[RecordFilter], str]], Optional[str]]:
+    """Expand explicit grouping values into deterministic filter variants.
+
+    The current record connector already supports filters, so a comparison
+    such as Black versus White is represented as two calls rather than adding
+    an LLM-generated GROUP BY clause to DuckDB.
+    """
+    if not analysis.groupings:
+        return [([], "primary")], None
+
+    raw_values = {
+        _key(key): values
+        for key, values in analysis.grouping_values.items()
+    }
+    dimensions: list[tuple[str, ExtractedConcept, list[str]]] = []
+    for grouping in analysis.groupings:
+        keys = [
+            _key(grouping.canonical_hint),
+            _key(grouping.text),
+        ]
+        values: list[str] = []
+        for key in keys:
+            if key and raw_values.get(key):
+                values = raw_values[key]
+                break
+        if not values:
+            return [], (
+                f"grouping {grouping.text!r} has no explicit comparison "
+                "values; no grouped record calls were generated"
+            )
+        dimensions.append((keys[0] or keys[1], grouping, values))
+
+    variants: list[tuple[list[RecordFilter], str]] = []
+    value_lists = [values for _, _, values in dimensions]
+    for combination in product(*value_lists):
+        filters: list[RecordFilter] = []
+        labels: list[str] = []
+        for (_, grouping, _), raw_value in zip(dimensions, combination):
+            variable, _ = _variable_id(grouping, semantic_router)
+            decoded = _decoded_value_for_dimension(grouping, str(raw_value))
+            filters.append(RecordFilter(
+                variable_id=variable,
+                operator="equals",
+                value=decoded,
+            ))
+            labels.append(f"{grouping.text}={decoded}")
+        variants.append((filters, "group_" + ";".join(labels)))
+    return variants, None
 
 
 def _geo_prefixes(geo: ResolvedGeography) -> list[str]:
@@ -132,6 +219,45 @@ def _geo_prefixes(geo: ResolvedGeography) -> list[str]:
     # A place/MSA may not have a tract list in the gazetteer.  Do not guess
     # a prefix; the caller will query the available record set explicitly.
     return []
+
+
+def _admin_place_tract_prefixes(
+    geo: ResolvedGeography,
+    geo_db: Optional[sqlite3.Connection],
+) -> list[str]:
+    """Expand a GA admin place to tracts for record-level filtering only."""
+    if (
+        geo_db is None
+        or geo.geo_level != "place"
+        or not geo.geo_id.startswith("13")
+    ):
+        return []
+    rows = geo_db.execute(
+        """
+        SELECT t.geoid AS tract_geoid
+        FROM admin_geographies AS t
+        JOIN admin_geographies AS p
+          ON p.geoid = ?
+        WHERE t.geo_type = 'tract'
+          AND t.state_fips = p.state_fips
+          AND MbrIntersects(t.geom, p.geom)
+          AND ST_Intersects(t.geom, p.geom)
+        ORDER BY t.geoid
+        """,
+        (geo.geo_id,),
+    ).fetchall()
+    return [str(row["tract_geoid"]) for row in rows]
+
+
+def _record_geo_prefixes(
+    geo: ResolvedGeography,
+    geo_db: Optional[sqlite3.Connection],
+) -> list[str]:
+    """Return geography filters for record-level data without changing Census."""
+    prefixes = _geo_prefixes(geo)
+    if prefixes:
+        return prefixes
+    return _admin_place_tract_prefixes(geo, geo_db)
 
 
 def _record_analysis(intent: ExtractedIntent) -> list[ExtractedAnalysis]:
@@ -160,6 +286,7 @@ def plan_record_query(
     dataset: str = "hmda",
     file_glob: str = "*.parquet",
     record_id_column: str = "record_id",
+    geo_db: Optional[sqlite3.Connection] = None,
 ) -> PlanResult:
     """Build a record-level plan with parameterized filter metadata.
 
@@ -230,31 +357,41 @@ def plan_record_query(
                     value=value,
                 ))
 
+        grouping_variants, grouping_note = _grouping_alternatives(
+            analysis, semantic_router,
+        )
+        if grouping_note:
+            notes.append(grouping_note)
+            continue
+
         for year in years:
             for geo_idx, geo in enumerate(resolved_geos):
-                geo_prefixes = _geo_prefixes(geo)
-                api_call = APIPlanCall(
-                    url=f"record://{dataset}/{year}/{table_id}",
-                    table_id=table_id,
-                    variables=[measure_id],
-                    geo_level="record",
-                    geo_filter_ids=[],
-                    geo_prefixes=geo_prefixes,
-                    year=int(year),
-                    dataset=dataset,
-                    ttl_seconds=24 * 60 * 60,
-                    record_filters=list(record_filters),
-                )
-                calls.append(PlannedCall(
-                    api_call=api_call,
-                    geo_idx=geo_idx,
-                    concept_idx=concept_idx,
-                    year=int(year),
-                    role="primary",
-                    operation=analysis.operation,
-                    variables=ConceptVariables(value=measure_id),
-                    tract_filter=[],
-                ))
+                geo_prefixes = _record_geo_prefixes(geo, geo_db)
+                for grouping_filters, role in grouping_variants:
+                    api_call = APIPlanCall(
+                        url=f"record://{dataset}/{year}/{table_id}",
+                        table_id=table_id,
+                        variables=[measure_id],
+                        geo_level="record",
+                        geo_filter_ids=[],
+                        geo_prefixes=geo_prefixes,
+                        year=int(year),
+                        dataset=dataset,
+                        ttl_seconds=24 * 60 * 60,
+                        record_filters=(
+                            list(record_filters) + list(grouping_filters)
+                        ),
+                    )
+                    calls.append(PlannedCall(
+                        api_call=api_call,
+                        geo_idx=geo_idx,
+                        concept_idx=concept_idx,
+                        year=int(year),
+                        role=role,
+                        operation=analysis.operation,
+                        variables=ConceptVariables(value=measure_id),
+                        tract_filter=[],
+                    ))
 
     # Preserve the original Census concepts and append record measures so
     # concept indexes in existing Census calls remain stable in mixed plans.

@@ -190,6 +190,11 @@ def _aggregate_value_role(
     weighted mean if it looks like a median (the planner can't tell, so
     we default to mean-with-caveat for safety).
     """
+    # A record-level count counts rows after DuckDB has applied the filters.
+    # It must not attempt to parse the selected value column: categorical
+    # anchors such as action_taken are intentionally non-numeric.
+    if operation == "count":
+        return float(len(rows)), len(rows), None
     if variables.value is None:
         return None, 0, None
     var_id = variables.value
@@ -207,8 +212,6 @@ def _aggregate_value_role(
     # here after DuckDB has performed only the safe row-level filtering; this
     # keeps SQL deterministic and lets Census continue using its historical
     # value/ratio behavior.
-    if operation == "count":
-        return float(len(pairs)), len(pairs), None
     if operation == "sum":
         return sum(v for v, _ in pairs), len(pairs), None
     if operation == "average":

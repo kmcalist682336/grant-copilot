@@ -28,7 +28,7 @@ def build_record_caller(
     *,
     record_id_column: str = "record_id",
     layout: str = "variable_tree",
-    file_glob: str = "*.parquet",
+    file_glob: str = "hmda_*.parquet",
     geography_partition: Optional[str] = None,
     access_id: Optional[str] = None,
     secret: Optional[str] = None,

@@ -113,6 +113,9 @@ system: |
       operator is explicitly stated), and value_text. Never infer a filter
       from a card, a demographic stereotype, or the population_context.
     - groupings: dimensions the user explicitly asks to break results by.
+    - grouping_values: for each grouping, list only the explicit comparison
+      values named by the user. Use normalized keys matching the grouping
+      text or canonical_hint. Example: {"applicant race": ["black", "white"]}.
     - population_context: optional plain-language universe such as
       "mortgage applicants".
 
@@ -262,8 +265,40 @@ few_shots:
               operator: equals
               value_text: "female"
           groupings: []
+          grouping_values: {}
           population_context: "mortgage applicants"
       years: [2023]
+      intent_type: exact
+
+  - input: "How many black mortgage applicants had their applications denied in 2024 versus white applicants in Atlanta?"
+    output:
+      geo_refs:
+        - text: "Atlanta"
+          ref_type: administrative
+          scope_hint: "Georgia"
+      concepts: []
+      analyses:
+        - operation: count
+          measure:
+            text: "mortgage applications"
+            canonical_hint: "loan applications"
+            dataset_hint: hmda
+          filters:
+            - dimension:
+                text: "application status"
+                canonical_hint: "application status"
+                dataset_hint: hmda
+              operator: equals
+              value_text: "denied"
+          groupings:
+            - text: "applicant race"
+              canonical_hint: "applicant race"
+              dataset_hint: hmda
+          grouping_values:
+            applicant race: ["black", "white"]
+          population_context: "mortgage applicants"
+      years: [2024]
+      comparison_implied: true
       intent_type: exact
 
   - input: "What is the poverty rate in Fulton County?"

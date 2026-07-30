@@ -184,6 +184,14 @@ class ExtractedAnalysis(BaseModel):
     measure: Optional[ExtractedConcept] = None
     filters: list[ExtractedFilter] = Field(default_factory=list)
     groupings: list[ExtractedConcept] = Field(default_factory=list)
+    grouping_values: dict[str, list[str]] = Field(
+        default_factory=dict,
+        description=(
+            "Explicit comparison values for grouped record-level queries. "
+            "Keys should match a grouping's text or canonical_hint; values "
+            "are alternatives such as {'applicant race': ['black', 'white']}."
+        ),
+    )
     population_context: Optional[str] = None
 
 
