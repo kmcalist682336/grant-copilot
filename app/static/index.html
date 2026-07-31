@@ -36,6 +36,7 @@
     border-left: 1px solid var(--line); background: var(--panel);
     min-width: 0;
   }
+  .layout.dev-hidden .right { display: none; }
   @media (max-width: 950px) {
     .layout { flex-direction: column; height: auto; }
     .right { border-left: none; border-top: 1px solid var(--line); }
@@ -103,6 +104,48 @@
   .stage { font-size: 13px; color: var(--dim); font-family: var(--mono); }
   .citation { font-size: 12.5px; margin: 3px 0; }
   .citation code { font-family: var(--mono); color: var(--accent); }
+
+  /* Answer hero — the biggest, most prominent block on the page. */
+  .hero {
+    border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px;
+    margin-bottom: 12px; background: var(--bg);
+  }
+  .hero-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+  .hero-head h2 { margin: 0; }
+  .hero .prose { font-size: 17px; line-height: 1.65; }
+  .hero-findings { margin: 14px 0 0; padding-left: 20px; }
+  .hero-findings li { margin: 5px 0; font-size: 14.5px; }
+  button.copy { padding: 5px 10px; font-size: 12px; }
+
+  /* Compact source chips — confirm provenance without leaving the hero. */
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 14px;
+           padding-top: 14px; border-top: 1px solid var(--line); }
+  .chip {
+    display: inline-flex; align-items: center; gap: 6px; font-size: 12px;
+    border: 1px solid var(--line); border-radius: 999px; padding: 4px 10px;
+    background: var(--panel); color: var(--fg); max-width: 100%;
+  }
+  .chip code { font-family: var(--mono); color: var(--accent); font-size: 11.5px; }
+  .chip .chip-title { color: var(--dim); overflow: hidden; text-overflow: ellipsis;
+                       white-space: nowrap; max-width: 220px; }
+
+  /* Collapsed-by-default supplementary sections. */
+  details.collapse {
+    border: 1px solid var(--line); border-radius: 8px; margin-bottom: 10px;
+    background: var(--bg);
+  }
+  details.collapse > summary {
+    cursor: pointer; padding: 11px 13px; font-size: 12px; font-weight: 600;
+    color: var(--dim); text-transform: uppercase; letter-spacing: .06em;
+    list-style: none;
+  }
+  details.collapse > summary::-webkit-details-marker { display: none; }
+  details.collapse > summary::before { content: "▸ "; }
+  details.collapse[open] > summary::before { content: "▾ "; }
+  details.collapse > summary .count { text-transform: none; letter-spacing: 0;
+                                       font-weight: 400; }
+  details.collapse .collapse-body { padding: 0 13px 13px; }
+  details.collapse .collapse-body > .card:last-child { margin-bottom: 0; }
 </style>
 </head>
 <body>
@@ -110,6 +153,7 @@
 <header>
   <h1>grant-copilot</h1>
   <span id="status">connecting…</span>
+  <button id="toggle-dev" class="secondary" style="margin-left:auto">Workshop</button>
 </header>
 
 <!-- Setup gate. Shown until the app has everything it needs; the rest of
@@ -134,7 +178,7 @@
   </div>
 </div>
 
-<div class="layout hide" id="main-layout">
+<div class="layout hide dev-hidden" id="main-layout">
   <!-- ============ LEFT: chat ============ -->
   <div class="left">
     <textarea id="query" rows="2"
@@ -236,6 +280,21 @@ const $ = (id) => document.getElementById(id);
 let currentRunId = null;
 let busy = false;
 
+// ---------- writer / workshop toggle ----------
+// The right pane (Upstream/Prompt/Presentation/Trace/Variants) is for
+// prompt work, not for reading an answer. Default to hidden so the
+// grant writer's view is just the answer; remember the choice per browser.
+const DEV_VISIBLE_KEY = "gc-dev-visible";
+function setDevVisible(visible) {
+  $("main-layout").classList.toggle("dev-hidden", !visible);
+  $("toggle-dev").textContent = visible ? "Hide workshop" : "Workshop";
+  localStorage.setItem(DEV_VISIBLE_KEY, visible ? "1" : "0");
+}
+$("toggle-dev").onclick = () => {
+  setDevVisible($("main-layout").classList.contains("dev-hidden"));
+};
+setDevVisible(localStorage.getItem(DEV_VISIBLE_KEY) === "1");
+
 // ---------- helpers ----------
 function esc(s) {
   return String(s ?? "").replace(/[&<>"']/g, c => (
@@ -264,50 +323,54 @@ function setBusy(state, label) {
 }
 
 // ---------- rendering ----------
+function lintHtml(l) {
+  return `<div class="lint ${esc(l.severity)}">
+    <span class="rule">${esc(l.rule)}</span><br>${esc(l.message)}
+    ${l.detail ? `<div class="detail">${esc(l.detail)}</div>` : ""}
+  </div>`;
+}
+
+// A grant writer scans for three things, in order: the number, the
+// source, something to paste. Everything else here is supplementary —
+// present, but collapsed, so it doesn't compete for the first look.
 function render(r) {
   currentRunId = r.run_id || null;
   banner(r.config_warning || r.error, !!r.error);
 
   const out = [];
+  const lints = r.lints || [];
+  const errorLints = lints.filter(l => l.severity === "error");
+  const otherLints = lints.filter(l => l.severity !== "error");
 
-  if (r.lints && r.lints.length) {
-    out.push('<h2>Output checks</h2>');
-    for (const l of r.lints) {
-      out.push(`<div class="lint ${esc(l.severity)}">
-        <span class="rule">${esc(l.rule)}</span><br>${esc(l.message)}
-        ${l.detail ? `<div class="detail">${esc(l.detail)}</div>` : ""}
-      </div>`);
+  // Errors undermine trust in the answer itself, so they stay expanded
+  // and lead the page rather than hiding in a collapsed checks list.
+  for (const l of errorLints) out.push(lintHtml(l));
+
+  if (r.prose || (r.key_findings && r.key_findings.length)) {
+    out.push('<div class="hero">');
+    out.push(`<div class="hero-head"><h2>Answer</h2>
+      <button class="secondary copy" id="copy-answer">Copy</button></div>`);
+    if (r.prose) out.push(`<div class="prose">${esc(r.prose)}</div>`);
+    if (r.key_findings && r.key_findings.length) {
+      out.push('<ul class="hero-findings">');
+      for (const k of r.key_findings) out.push(`<li>${esc(k)}</li>`);
+      out.push('</ul>');
     }
-  }
-
-  if (r.prose) {
-    out.push('<h2>Answer</h2>');
-    out.push(`<div class="card prose">${esc(r.prose)}</div>`);
-  }
-
-  if (r.key_findings && r.key_findings.length) {
-    out.push('<h2>Key findings</h2><div class="card"><ul>');
-    for (const k of r.key_findings) out.push(`<li>${esc(k)}</li>`);
-    out.push('</ul></div>');
-  }
-
-  if (r.caveats && r.caveats.length) {
-    out.push('<h2>Caveats</h2><div class="card"><ul>');
-    for (const c of r.caveats) out.push(`<li>${esc(c)}</li>`);
-    out.push('</ul></div>');
-  }
-
-  if (r.citations && r.citations.length) {
-    out.push('<h2>Sources</h2><div class="card">');
-    for (const c of r.citations) {
-      out.push(`<div class="citation"><code>${esc(c.dataset)}/${esc(c.year ?? "")}/${esc(c.table_id)}</code>
-        ${c.title ? " — " + esc(c.title) : ""}</div>`);
+    if (r.citations && r.citations.length) {
+      out.push('<div class="chips">');
+      for (const c of r.citations) {
+        const label = `${esc(c.dataset)}${c.year ? "/" + esc(c.year) : ""}/${esc(c.table_id)}`;
+        const title = c.title ? esc(c.title) : "";
+        out.push(`<span class="chip" title="${title}"><code>${label}</code>
+          ${title ? `<span class="chip-title">${title}</span>` : ""}</span>`);
+      }
+      out.push('</div>');
     }
     out.push('</div>');
   }
 
   if (r.values && r.values.length) {
-    out.push('<h2>Retrieved values</h2><div class="card"><table>');
+    out.push('<h2>The numbers</h2><div class="card"><table>');
     out.push('<tr><th>Geography</th><th>Concept</th><th>Year</th>' +
              '<th class="num">Value</th><th class="num">Ratio</th></tr>');
     for (const v of r.values) {
@@ -321,7 +384,9 @@ function render(r) {
   }
 
   if (r.peer_groups && r.peer_groups.length) {
-    out.push('<h2>Peer comparisons</h2>');
+    out.push(`<details class="collapse"><summary>Peer comparisons
+      <span class="count">(${r.peer_groups.length})</span></summary>
+      <div class="collapse-body">`);
     for (const g of r.peer_groups) {
       out.push(`<div class="card"><b>${esc(g.axis)}</b>
         <div class="small dim">${esc(g.axis_description)}</div><ul>`);
@@ -331,12 +396,31 @@ function render(r) {
       }
       out.push('</ul></div>');
     }
+    out.push('</div></details>');
   }
 
   if (r.followups && r.followups.length) {
-    out.push('<h2>Try next</h2><div class="card"><ul>');
+    out.push(`<details class="collapse"><summary>Try next
+      <span class="count">(${r.followups.length})</span></summary>
+      <div class="collapse-body"><ul>`);
     for (const f of r.followups) out.push(`<li>${esc(f.question)}</li>`);
-    out.push('</ul></div>');
+    out.push('</ul></div></details>');
+  }
+
+  if (r.caveats && r.caveats.length) {
+    out.push(`<details class="collapse"><summary>Caveats
+      <span class="count">(${r.caveats.length})</span></summary>
+      <div class="collapse-body"><ul>`);
+    for (const c of r.caveats) out.push(`<li>${esc(c)}</li>`);
+    out.push('</ul></div></details>');
+  }
+
+  if (otherLints.length) {
+    out.push(`<details class="collapse"><summary>Output checks
+      <span class="count">(${otherLints.length})</span></summary>
+      <div class="collapse-body">`);
+    for (const l of otherLints) out.push(lintHtml(l));
+    out.push('</div></details>');
   }
 
   if (r.metrics) {
@@ -354,9 +438,35 @@ function render(r) {
   }
 
   $("output").innerHTML = out.join("\n");
+  const copyBtn = $("copy-answer");
+  if (copyBtn) copyBtn.onclick = () => copyAnswer(r);
   renderTrace(r.trace);
   renderUpstream(r.upstream);
   setBusy(false, "");
+}
+
+// Plain text, not HTML — this is what lands in a Word doc, not a browser.
+function copyAnswer(r) {
+  const lines = [];
+  if (r.prose) lines.push(r.prose);
+  if (r.key_findings && r.key_findings.length) {
+    lines.push("");
+    for (const k of r.key_findings) lines.push("• " + k);
+  }
+  if (r.citations && r.citations.length) {
+    lines.push("", "Sources:");
+    for (const c of r.citations) {
+      const label = `${c.dataset}${c.year ? "/" + c.year : ""}/${c.table_id}`;
+      lines.push("• " + label + (c.title ? " — " + c.title : ""));
+    }
+  }
+  navigator.clipboard.writeText(lines.join("\n")).then(() => {
+    const btn = $("copy-answer");
+    if (!btn) return;
+    const orig = btn.textContent;
+    btn.textContent = "Copied";
+    setTimeout(() => { btn.textContent = orig; }, 1500);
+  });
 }
 
 function renderUpstream(items) {
