@@ -48,6 +48,11 @@ class Frame(BaseModel):
         description="Canonical concept names the Expander adds when "
                     "this frame fires.",
     )
+    required_record_analyses: list[dict] = Field(
+        default_factory=list,
+        description="Structured record-level analyses the Expander adds "
+                    "when this frame fires. Empty for Census-only frames.",
+    )
     rhetorical_target: str = Field(
         default="",
         description="Synthesizer hint — the prose shape to target.",

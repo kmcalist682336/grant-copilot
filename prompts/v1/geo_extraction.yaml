@@ -270,6 +270,25 @@ few_shots:
       years: [2023]
       intent_type: exact
 
+  - input: "median income of mortgage applicants in atlanta georgia"
+    output:
+      geo_refs:
+        - text: "Atlanta"
+          ref_type: administrative
+          scope_hint: "Georgia"
+      concepts: []
+      analyses:
+        - operation: median
+          measure:
+            text: "income"
+            canonical_hint: "applicant income"
+            dataset_hint: hmda
+          filters: []
+          groupings: []
+          grouping_values: {}
+          population_context: "mortgage applicants"
+      intent_type: exact
+
   - input: "How many black mortgage applicants had their applications denied in 2024 versus white applicants in Atlanta?"
     output:
       geo_refs:

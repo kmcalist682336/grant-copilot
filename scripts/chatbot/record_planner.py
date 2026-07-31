@@ -380,9 +380,16 @@ def plan_record_query(
         )
 
     if not resolved_geos:
-        raise ValueError(
-            "Record queries without a geography are not yet enabled; "
-            "provide a state, county, tract, or another supported area."
+        return PlanResult(
+            intent=intent,
+            resolved_geos=resolved_geos,
+            concept_resolutions=[],
+            calls=[],
+            notes=[
+                "record-level analysis detected, but no geography was "
+                "resolved; provide a state, county, tract, city, or another "
+                "supported area",
+            ],
         )
 
     concepts = list(intent.concepts)
