@@ -20,7 +20,10 @@ from scripts.chatbot.models import (
     ExtractedAnalysis, ExtractedConcept, ExtractedIntent, ExtractedFilter,
     ResolvedGeography,
 )
-from scripts.chatbot.planner import ConceptResolution, PlanResult, PlannedCall
+from scripts.chatbot.metadata_search import find_supported_years
+from scripts.chatbot.planner import (
+    ConceptResolution, PlanResult, PlannedCall, _pick_years,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -39,6 +42,9 @@ _HMDA_ALIASES: dict[str, str] = {
     "applicant race": "38ad9c360a98",
     "applicant race 1": "38ad9c360a98",
     "race of applicant": "38ad9c360a98",
+    "applicant age": "78651f637517",
+    "age of applicant": "78651f637517",
+    "borrower age": "78651f637517",
     "action taken": "906bb78b0f70",
     "mortgage application outcome": "906bb78b0f70",
     "application status": "906bb78b0f70",
@@ -48,6 +54,9 @@ _HMDA_ALIASES: dict[str, str] = {
     "applications": "906bb78b0f70",
     "county": "6422e2d2aab7",
     "county code": "6422e2d2aab7",
+    "loan amount": "c02eb39025e6",
+    "mortgage amount": "c02eb39025e6",
+    "requested loan amount": "c02eb39025e6",
 }
 
 _VALUE_ALIASES: dict[str, dict[str, str]] = {
@@ -87,6 +96,16 @@ _VALUE_ALIASES: dict[str, dict[str, str]] = {
         "withdrawn": "Application withdrawn by applicant",
         "closed for incompleteness": "File closed for incompleteness",
     },
+    "age": {
+        "under 25": "<25",
+        "younger than 25": "<25",
+        "less than 25": "<25",
+        "25 to 34": "25-34",
+        "25-34": "25-34",
+        "25 through 34": "25-34",
+        "35 to 44": "35-44",
+        "35-44": "35-44",
+    },
 }
 
 
@@ -100,28 +119,36 @@ def _variable_id(
 ) -> tuple[str, Optional[object]]:
     """Resolve one concept to an HMDA variable ID.
 
-    Explicit aliases win for primary HMDA fields.  The semantic router is a
-    fallback for variables not yet added to the small demo alias map.
+    The card-backed semantic router is used when available, while curated
+    aliases remain guardrails for high-risk primary-vs-co-applicant fields.
     """
     candidates = [_key(concept.canonical_hint), _key(concept.text)]
-    for candidate in candidates:
-        if candidate in _HMDA_ALIASES:
-            return _HMDA_ALIASES[candidate], None
-
-    if semantic_router is None:
-        raise ValueError(
-            f"No deterministic HMDA alias for {concept.text!r} and no "
-            "semantic router was configured"
-        )
-    search_text = (concept.canonical_hint or concept.text).strip()
-    routed = semantic_router.route_dataset(
-        search_text, target_dataset="hmda", top_k=10,
+    alias_id = next(
+        (_HMDA_ALIASES[candidate] for candidate in candidates
+         if candidate in _HMDA_ALIASES),
+        None,
     )
-    for target in routed.top_variables:
-        if target.target_variable_id:
-            return target.target_variable_id, routed
+
+    routed = None
+    if semantic_router is not None:
+        search_text = (concept.canonical_hint or concept.text).strip()
+        if search_text:
+            routed = semantic_router.route_dataset(
+                search_text, target_dataset="hmda", top_k=10,
+            )
+            for target in routed.top_variables:
+                if not target.target_variable_id:
+                    continue
+                if alias_id is None or target.target_variable_id == alias_id:
+                    return target.target_variable_id, routed
+            if alias_id is not None:
+                return alias_id, routed
+
+    if alias_id is not None:
+        return alias_id, routed
     raise ValueError(
-        f"HMDA variable could not be resolved for {search_text!r}"
+        f"HMDA variable could not be resolved for "
+        f"{(concept.canonical_hint or concept.text)!r}"
     )
 
 
@@ -277,6 +304,55 @@ def has_record_analysis(intent: ExtractedIntent) -> bool:
     return bool(_record_analysis(intent))
 
 
+def _rate_concept_label(numerator_filters: list[RecordFilter]) -> Optional[str]:
+    for filter_item in numerator_filters:
+        value = str(filter_item.value or "").strip().lower()
+        if value == "application denied":
+            return "mortgage denial rate"
+        if value == "loan originated":
+            return "mortgage approval rate"
+    return None
+
+
+def _record_supported_years(
+    intent: ExtractedIntent,
+    metadata_db: Optional[sqlite3.Connection],
+    table_id: str,
+    dataset: str,
+) -> list[int]:
+    supported: list[int] = []
+    if metadata_db is not None:
+        try:
+            supported = find_supported_years(
+                metadata_db, table_id, dataset, ["tract"],
+            )
+        except Exception as exc:  # pragma: no cover
+            logger.warning(
+                "record coverage lookup failed for %s/%s: %s",
+                dataset, table_id, exc,
+            )
+    if supported:
+        return supported
+    fallback = list(range(2024, 2017, -1))
+    if intent.years:
+        oldest = min(intent.years)
+        newest = max(max(intent.years), fallback[0])
+        return list(range(newest, oldest - 1, -1))
+    return fallback
+
+
+def _pick_record_years(
+    intent: ExtractedIntent,
+    supported_years: list[int],
+) -> list[int]:
+    if not supported_years:
+        return []
+    if intent.years and intent.temporal_intent not in {"change", "trend"}:
+        wanted = sorted(set(intent.years))
+        return [year for year in wanted if year in supported_years] or wanted
+    return _pick_years(intent, supported_years)
+
+
 def plan_record_query(
     intent: ExtractedIntent,
     resolved_geos: list[ResolvedGeography],
@@ -287,6 +363,7 @@ def plan_record_query(
     file_glob: str = "*.parquet",
     record_id_column: str = "record_id",
     geo_db: Optional[sqlite3.Connection] = None,
+    metadata_db: Optional[sqlite3.Connection] = None,
 ) -> PlanResult:
     """Build a record-level plan with parameterized filter metadata.
 
@@ -312,13 +389,18 @@ def plan_record_query(
     resolutions: list[ConceptResolution] = []
     calls: list[PlannedCall] = []
     notes: list[str] = []
-    years = list(intent.years) or [2024]
+    supported_years = _record_supported_years(
+        intent, metadata_db, table_id, dataset,
+    )
+    years = _pick_record_years(intent, supported_years) or (list(intent.years) or [2024])
 
     for analysis in analyses:
         if analysis.measure is None:
             notes.append("record analysis has no measure; skipped")
             continue
-        if analysis.operation not in {"value", "count", "sum", "average", "median"}:
+        if analysis.operation not in {
+            "value", "count", "sum", "average", "median", "percentage",
+        }:
             notes.append(
                 f"operation {analysis.operation!r} needs an explicit "
                 "record aggregation recipe; no SQL was generated"
@@ -336,26 +418,45 @@ def plan_record_query(
         ))
 
         record_filters: list[RecordFilter] = []
+        numerator_filters: list[RecordFilter] = []
         for filter_item in analysis.filters:
             filter_id, _ = _variable_id(
                 filter_item.dimension, semantic_router,
             )
             if filter_item.operator in {"is_null", "is_not_null"}:
-                record_filters.append(RecordFilter(
+                record_filter = RecordFilter(
                     variable_id=filter_id,
                     operator=filter_item.operator,
-                ))
+                )
             else:
                 value = _decoded_value(filter_item)
                 if value == "":
                     raise ValueError(
                         f"Filter {filter_item.dimension.text!r} has no value"
                     )
-                record_filters.append(RecordFilter(
+                record_filter = RecordFilter(
                     variable_id=filter_id,
                     operator=filter_item.operator,
                     value=value,
-                ))
+                )
+            if analysis.operation == "percentage" and filter_id == measure_id:
+                numerator_filters.append(record_filter)
+            else:
+                record_filters.append(record_filter)
+
+        if analysis.operation == "percentage" and not numerator_filters:
+            notes.append(
+                f"percentage analysis for {measure.text!r} has no "
+                "numerator condition; skipped"
+            )
+            continue
+        if analysis.operation == "percentage":
+            label = _rate_concept_label(numerator_filters)
+            if label:
+                concepts[concept_idx] = measure.model_copy(update={
+                    "text": label,
+                    "canonical_hint": label,
+                })
 
         grouping_variants, grouping_note = _grouping_alternatives(
             analysis, semantic_router,
@@ -381,6 +482,15 @@ def plan_record_query(
                         record_filters=(
                             list(record_filters) + list(grouping_filters)
                         ),
+                        record_numerator_filters=list(numerator_filters),
+                    )
+                    variables = (
+                        ConceptVariables(
+                            numerator="__record_numerator__",
+                            denominator="__record_denominator__",
+                        )
+                        if analysis.operation == "percentage"
+                        else ConceptVariables(value=measure_id)
                     )
                     calls.append(PlannedCall(
                         api_call=api_call,
@@ -389,7 +499,7 @@ def plan_record_query(
                         year=int(year),
                         role=role,
                         operation=analysis.operation,
-                        variables=ConceptVariables(value=measure_id),
+                        variables=variables,
                         tract_filter=[],
                     ))
 

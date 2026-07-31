@@ -68,7 +68,7 @@ class DuckDBCaller:
         # stable structured key whenever filters are present.
         cache_key = (
             plan.cache_key
-            if (plan.record_filters or plan.geo_prefixes)
+            if (plan.record_filters or plan.record_numerator_filters or plan.geo_prefixes)
             else plan.url
         )
         cached = self.cache.get(cache_key)
@@ -166,14 +166,19 @@ class DuckDBCaller:
         # Preserve the original compact query when no record predicates are
         # present. This keeps the Census-compatible fetch shape and existing
         # cache/query behavior unchanged for all current callers.
-        if not plan.record_filters and not plan.geo_prefixes:
+        if not plan.record_filters and not plan.record_numerator_filters and not plan.geo_prefixes:
             return self._query_variable_tree_unfiltered(plan, record_col)
 
-        if not plan.record_filters and plan.geo_prefixes:
+        if not plan.record_filters and not plan.record_numerator_filters and plan.geo_prefixes:
             return self._query_variable_tree_geo_only(plan, record_col)
 
         filter_variables = [flt.variable_id for flt in plan.record_filters]
-        all_variables = list(dict.fromkeys([*plan.variables, *filter_variables]))
+        numerator_variables = [
+            flt.variable_id for flt in plan.record_numerator_filters
+        ]
+        all_variables = list(dict.fromkeys([
+            *plan.variables, *filter_variables, *numerator_variables,
+        ]))
         for variable in all_variables:
             self._validate_partition_value("variable_id", variable)
 
@@ -192,13 +197,22 @@ class DuckDBCaller:
             geography_select = (
                 ', MAX(CAST("census_tract" AS VARCHAR)) AS "__geo_filter"'
             )
+        numerator_conditions = []
+        numerator_params: list[Any] = []
+        if plan.record_numerator_filters:
+            numerator_conditions = self._record_filter_predicates(
+                plan.record_numerator_filters,
+            )
+            for _, condition_params in numerator_conditions:
+                numerator_params.extend(condition_params)
+
         sql = (
             "WITH pivoted AS ("
             f" SELECT {record_col}, {value_columns}{geography_select} "
             "FROM read_parquet(?, hive_partitioning=true) "
             f"WHERE variable IN ({variable_placeholders})"
         )
-        params: list[Any] = [*all_variables, path, *all_variables]
+        params: list[Any] = [*all_variables, *numerator_params, path, *all_variables]
         if plan.geo_filter_ids:
             record_placeholders = ", ".join("?" for _ in plan.geo_filter_ids)
             filter_column = self._geo_filter_column(record_col)
@@ -208,6 +222,15 @@ class DuckDBCaller:
         if plan.variables:
             sql += ", " + ", ".join(
                 self._quote_identifier(variable) for variable in plan.variables
+            )
+        if plan.record_numerator_filters:
+            numerator_clause = " AND ".join(
+                condition for condition, _ in numerator_conditions
+            ) or "FALSE"
+            sql += (
+                f', CASE WHEN {numerator_clause} '
+                'THEN 1 ELSE 0 END AS "__record_numerator__", '
+                '1 AS "__record_denominator__"'
             )
         sql += " FROM pivoted"
         conditions = self._record_filter_predicates(plan.record_filters)

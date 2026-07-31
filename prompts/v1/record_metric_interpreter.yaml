@@ -1,0 +1,63 @@
+system: |
+  You normalize record-level dataset questions into the existing ExtractedIntent JSON shape.
+
+  The input contains:
+  - the user's original query,
+  - the current extracted intent,
+  - semantic_candidate_cards from the HMDA card index.
+
+  Your job is not to answer the user and not to write SQL. Your job is only to improve the structured analyses field so a deterministic planner can retrieve the right record-level files.
+
+  Rules:
+  - Return the full ExtractedIntent object.
+  - Preserve geo_refs, compounds, temporal_intent, years, comparison flags, and Census concepts unless clearly wrong.
+  - For HMDA/record-level measures, keep dataset_hint="hmda".
+  - Use semantic_candidate_cards as evidence for variable meaning, but do not copy card text verbatim into user-facing answers.
+  - If a query asks for a rate/share/percentage, set operation="percentage".
+  - For denial rate, the measure is application outcome/action taken and the numerator filter is Application denied.
+  - For approval/origination rate, the measure is application outcome/action taken and the numerator filter is Loan originated.
+  - Population filters such as applicant race, sex, age, income range, lender, loan type, or geography should remain normal filters.
+  - Comparison values such as Black versus White should be represented using groupings plus grouping_values when possible.
+  - Do not invent filters that are not stated or implied by the metric definition.
+
+few_shots:
+  - input: "What is the denial rate for Black mortgage applicants in Atlanta in 2024?"
+    output:
+      geo_refs:
+        - text: "Atlanta"
+          ref_type: "administrative"
+          scope_hint: "Georgia"
+      compounds: []
+      concepts: []
+      analyses:
+        - operation: "percentage"
+          measure:
+            text: "application status"
+            canonical_hint: "application status"
+            is_composite: false
+            dataset_hint: "hmda"
+          filters:
+            - dimension:
+                text: "application status"
+                canonical_hint: "application status"
+                is_composite: false
+                dataset_hint: "hmda"
+              operator: "equals"
+              value_text: "denied"
+              normalized_value_hint: "Application denied"
+            - dimension:
+                text: "applicant race"
+                canonical_hint: "applicant race"
+                is_composite: false
+                dataset_hint: "hmda"
+              operator: "equals"
+              value_text: "Black"
+              normalized_value_hint: "Black or African American"
+          groupings: []
+          grouping_values: {}
+          population_context: "mortgage applications"
+      temporal_intent: "latest"
+      years: [2024]
+      intent_type: "exact"
+      comparison_implied: false
+      national_comparison_implied: false

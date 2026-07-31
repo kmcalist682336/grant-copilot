@@ -833,6 +833,7 @@ def run_one(
             plan = plan_record_query(
                 intent, resolved, semantic_router=semantic_router,
                 geo_db=db,
+                metadata_db=metadata_db,
             )
         else:
             plan = plan_query(

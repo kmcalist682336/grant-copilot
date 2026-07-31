@@ -78,7 +78,8 @@ from scripts.chatbot.frames import (
 from scripts.chatbot.geo_resolver import resolve_intent
 from scripts.chatbot.llm_client import LLMClient, estimate_cost_usd
 from scripts.chatbot.models import (
-    ExtractedConcept, ExtractedIntent, ResolvedGeography,
+    ExtractedAnalysis, ExtractedConcept, ExtractedFilter,
+    ExtractedIntent, ResolvedGeography,
 )
 from scripts.chatbot.nodes.anomaly_detector import (
     AnomalyFlag, detect_anomalies,
@@ -100,6 +101,9 @@ from scripts.chatbot.nodes.plan_reviewer import (
 from scripts.chatbot.nodes.peer_context import (
     PeerContext, get_peer_contexts,
 )
+from scripts.chatbot.nodes.record_metric_interpreter import (
+    RecordMetricInterpreterError, interpret_record_metrics,
+)
 from scripts.chatbot.nodes.peer_retriever import PeerRetriever
 from scripts.chatbot.nodes.magnitude_contextualizer import (
     MagnitudeFraming, contextualize_magnitudes,
@@ -116,6 +120,202 @@ from scripts.chatbot.synthesizer import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+def _concepts_for_frame_matching(
+    intent: ExtractedIntent,
+) -> list[ExtractedConcept]:
+    """Expose record-analysis semantics to the existing frame matcher."""
+    out = list(intent.concepts)
+    seen = {((c.canonical_hint or c.text) or "").strip().lower() for c in out}
+
+    def add(concept: Optional[ExtractedConcept]) -> None:
+        if concept is None:
+            return
+        key = ((concept.canonical_hint or concept.text) or "").strip().lower()
+        if not key or key in seen:
+            return
+        seen.add(key)
+        out.append(concept)
+
+    for analysis in intent.analyses:
+        add(analysis.measure)
+        for flt in analysis.filters:
+            add(flt.dimension)
+        for grouping in analysis.groupings:
+            add(grouping)
+    return out
+
+
+def _key(text: Optional[str]) -> str:
+    return " ".join((text or "").strip().lower().split())
+
+
+def _record_filter_key(filter_item: ExtractedFilter) -> tuple[str, str, str]:
+    dim = filter_item.dimension
+    return (
+        ((dim.canonical_hint or dim.text) or "").strip().lower(),
+        filter_item.operator,
+        str(filter_item.normalized_value_hint or filter_item.value_text or "")
+        .strip().lower(),
+    )
+
+
+def _is_ambiguous_record_filter(filter_item: ExtractedFilter) -> bool:
+    dim = _key(filter_item.dimension.canonical_hint or filter_item.dimension.text)
+    value = _key(filter_item.normalized_value_hint or filter_item.value_text)
+    return "age" in dim and value in {
+        "young", "younger", "youth", "young adult", "young adults",
+    }
+
+
+def _is_metric_defining_record_filter(filter_item: ExtractedFilter) -> bool:
+    dim = _key(filter_item.dimension.canonical_hint or filter_item.dimension.text)
+    value = _key(filter_item.normalized_value_hint or filter_item.value_text)
+    return (
+        any(token in dim for token in ("action", "status", "outcome"))
+        and any(token in value for token in (
+            "denied", "denial", "originated", "approved", "withdrawn",
+            "closed for incompleteness",
+        ))
+    )
+
+
+def _operation_for_record_text(text: str) -> str:
+    key = _key(text)
+    if any(token in key for token in ("rate", "percent", "percentage", "share")):
+        return "percentage"
+    if any(token in key for token in ("average", "mean")):
+        return "average"
+    if "median" in key:
+        return "median"
+    if any(token in key for token in ("how many", "number of", "count")):
+        return "count"
+    return "value"
+
+
+def _looks_record_level_query(text: str) -> bool:
+    key = _key(text)
+    return any(token in key for token in (
+        "hmda", "mortgage", "loan application", "loan applicant",
+        "applicant", "borrower", "denial", "approval", "originat",
+    ))
+
+
+def _concept_routes_to_hmda(
+    concept: ExtractedConcept,
+    semantic_router: Optional[object],
+) -> bool:
+    if concept.dataset_hint in {"hmda", "both"}:
+        return True
+    if concept.dataset_hint == "census":
+        return False
+    text = concept.canonical_hint or concept.text
+    if _looks_record_level_query(text):
+        return True
+    if semantic_router is None:
+        return False
+    try:
+        routed = semantic_router.route_dataset(text, target_dataset="hmda", top_k=3)
+    except Exception:
+        return False
+    candidates = [*routed.top_variables, *routed.top_tables]
+    if not candidates:
+        return False
+    top_score = max(float(getattr(c, "aggregate_score", 0.0) or 0.0)
+                    for c in candidates)
+    return top_score >= 4.0 and _looks_record_level_query(text)
+
+
+def _analysis_key(analysis: ExtractedAnalysis) -> tuple[str, str, tuple]:
+    measure = analysis.measure
+    measure_key = (((measure.canonical_hint or measure.text) if measure else "") or "").strip().lower()
+    filters = tuple(sorted(_record_filter_key(f) for f in analysis.filters))
+    return (analysis.operation, measure_key, filters)
+
+
+def _promote_record_concepts_to_analyses(
+    query: str,
+    intent: ExtractedIntent,
+    semantic_router: Optional[object],
+) -> ExtractedIntent:
+    if not intent.concepts:
+        return intent
+    kept: list[ExtractedConcept] = []
+    added: list[ExtractedAnalysis] = []
+    existing = {_analysis_key(a) for a in intent.analyses}
+    for concept in intent.concepts:
+        if not _concept_routes_to_hmda(concept, semantic_router):
+            kept.append(concept)
+            continue
+        measure = concept.model_copy(update={"dataset_hint": "hmda"})
+        analysis = ExtractedAnalysis(
+            operation=_operation_for_record_text(
+                " ".join([query, concept.canonical_hint or concept.text]),
+            ),
+            measure=measure,
+            filters=[],
+            groupings=[],
+            population_context=(
+                "mortgage applications" if _looks_record_level_query(query)
+                else None
+            ),
+        )
+        key = _analysis_key(analysis)
+        if key not in existing:
+            existing.add(key)
+            added.append(analysis)
+    if not added and len(kept) == len(intent.concepts):
+        return intent
+    return intent.model_copy(update={
+        "concepts": kept,
+        "analyses": list(intent.analyses) + added,
+    })
+
+
+def _expand_frame_record_analyses(
+    intent: ExtractedIntent,
+    frame: Optional[Frame],
+) -> list[ExtractedAnalysis]:
+    if not frame or not frame.required_record_analyses:
+        return []
+    explicit_filters: list[ExtractedFilter] = []
+    filter_keys: set[tuple[str, str, str]] = set()
+    for analysis in intent.analyses:
+        for filter_item in analysis.filters:
+            if (_is_ambiguous_record_filter(filter_item)
+                    or _is_metric_defining_record_filter(filter_item)):
+                continue
+            key = _record_filter_key(filter_item)
+            if key in filter_keys:
+                continue
+            filter_keys.add(key)
+            explicit_filters.append(filter_item)
+    existing = {_analysis_key(a) for a in intent.analyses}
+    additions: list[ExtractedAnalysis] = []
+    for raw in frame.required_record_analyses:
+        try:
+            template = ExtractedAnalysis.model_validate(raw)
+        except Exception as exc:
+            logger.warning(
+                "invalid record analysis template in frame %s: %s",
+                frame.name, exc,
+            )
+            continue
+        merged_filters = list(template.filters)
+        merged_keys = {_record_filter_key(f) for f in merged_filters}
+        for filter_item in explicit_filters:
+            key = _record_filter_key(filter_item)
+            if key not in merged_keys:
+                merged_keys.add(key)
+                merged_filters.append(filter_item)
+        expanded = template.model_copy(update={"filters": merged_filters})
+        key = _analysis_key(expanded)
+        if key in existing:
+            continue
+        existing.add(key)
+        additions.append(expanded)
+    return additions
 
 
 # ---------------------------------------------------------------------------
@@ -592,18 +792,19 @@ async def answer_query(
     # Classify the query into a curated grant-narrative frame. The
     # frame's required_additional_concepts get appended to the intent
     # before routing, so they go through the same rewriter+critic loop.
-    # Skipped in legacy (no router) mode and when no concepts were
-    # extracted (pure-context queries).
+    # Skipped in legacy (no router) mode and when there is no data concept
+    # or record analysis to anchor the frame.
     frame_match: Optional[FrameMatch] = None
     frame: Optional[Frame] = None
     intent_for_routing = intent
-    if semantic_router is not None and intent.concepts:
+    frame_match_concepts = _concepts_for_frame_matching(intent)
+    if semantic_router is not None and frame_match_concepts:
         _progress(progress_cb, "Matching grant-narrative frame")
         registry = frame_registry or load_default_frames()
         t0 = time.time()
         try:
             frame_match = match_frame(
-                query, intent.concepts, intent.geo_refs, llm,
+                query, frame_match_concepts, intent.geo_refs, llm,
                 registry=registry,
                 temperature=config.get("vertex_ai", {}).get(
                     "temperature", 0.1,
@@ -621,8 +822,7 @@ async def answer_query(
             )
         metrics.decompose_s += time.time() - t0
 
-        # Augment intent.concepts with frame-required additions, deduped
-        # against existing canonical names.
+        updates: dict[str, Any] = {}
         if frame and frame.required_additional_concepts:
             existing = {
                 ((c.canonical_hint or c.text) or "").strip().lower()
@@ -638,9 +838,40 @@ async def answer_query(
                     text=canon, canonical_hint=canon,
                 ))
             if new_concepts:
-                intent_for_routing = intent.model_copy(update={
-                    "concepts": list(intent.concepts) + new_concepts,
-                })
+                updates["concepts"] = list(intent.concepts) + new_concepts
+        new_analyses = _expand_frame_record_analyses(intent, frame)
+        if new_analyses:
+            updates["analyses"] = list(intent.analyses) + new_analyses
+        if updates:
+            intent_for_routing = intent.model_copy(update=updates)
+
+    if semantic_router is not None:
+        intent_for_routing = _promote_record_concepts_to_analyses(
+            query, intent_for_routing, semantic_router,
+        )
+
+    record_metric_notes: list[str] = []
+    if intent_for_routing.analyses:
+        _progress(progress_cb, "Interpreting record-level metric")
+        t0 = time.time()
+        try:
+            intent_for_routing, record_metric_notes = interpret_record_metrics(
+                query,
+                intent_for_routing,
+                llm,
+                frame=frame,
+                semantic_router=semantic_router,
+                temperature=config.get("vertex_ai", {}).get("temperature", 0.1),
+            )
+        except RecordMetricInterpreterError as e:
+            logger.warning(
+                "record metric interpreter failed (%s); using extracted analyses",
+                e,
+            )
+            record_metric_notes = [
+                "record metric interpreter failed; using extracted analyses",
+            ]
+        metrics.decompose_s += time.time() - t0
 
     # 4. Agent routing (rewrite → route → critique) -------------------
     # When a SemanticRouter is available, run the Phase 1 agent chain
@@ -709,6 +940,7 @@ async def answer_query(
             resolved,
             semantic_router=semantic_router,
             geo_db=db,
+            metadata_db=metadata_db,
         )
         # If the question also contains Census concepts, plan those in the
         # original way and merge both call lists.  The appended record
@@ -725,7 +957,7 @@ async def answer_query(
             combined_intent = record_plan.intent
             plan = PlanResult(
                 intent=combined_intent,
-                resolved_geos=resolved,
+                resolved_geos=census_plan.resolved_geos,
                 concept_resolutions=(
                     census_plan.concept_resolutions
                     + record_plan.concept_resolutions
@@ -758,6 +990,8 @@ async def answer_query(
         progress_cb, "Plan ready",
         f"{len(plan.calls)} call(s) queued",
     )
+    if record_metric_notes:
+        plan.notes.extend(record_metric_notes)
     metrics.plan_query_s = time.time() - t0
     metrics.plan_s = metrics.plan_query_s
 

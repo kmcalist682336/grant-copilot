@@ -98,7 +98,7 @@ def test_variable_tree_layout_pivots_variable_files(tmp_path):
     assert params == [
         "value",
         "gs://example-bucket/variable_tree/table_id=loans/year=2024/"
-        "variable=*/part-*.parquet",
+        "variable=*/*.parquet",
         "value",
         "13121",
     ]

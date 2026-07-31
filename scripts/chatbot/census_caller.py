@@ -63,6 +63,10 @@ class APIPlanCall:
     dataset: str                    # 'acs/acs5', 'dec/pl', etc.
     ttl_seconds: int                # cache TTL for this response
     record_filters: list[RecordFilter] = field(default_factory=list)
+    # Numerator-only filters for record-level percentage/rate calculations.
+    # These do not restrict the denominator population; record connectors use
+    # them to emit synthetic numerator/denominator columns for the aggregator.
+    record_numerator_filters: list[RecordFilter] = field(default_factory=list)
     # Optional prefixes for a record-level geography column such as a
     # two-digit state FIPS or five-digit county FIPS.  Census calls leave
     # this empty; record callers translate it into parameterized SQL.
@@ -72,21 +76,30 @@ class APIPlanCall:
     def cache_key(self) -> str:
         """Stable identifier for this call (used for logging)."""
         base = f"{self.dataset}/{self.year}/{self.table_id}/{self.geo_level}"
-        if not self.record_filters:
-            if not self.geo_prefixes:
-                return base
-            prefixes = json.dumps(sorted(self.geo_prefixes), separators=(",", ":"))
-            return f"{base}/geo_prefixes={prefixes}"
-        filters = json.dumps(
-            [
-                (flt.variable_id, flt.operator, flt.value)
-                for flt in self.record_filters
-            ],
-            sort_keys=True,
-            default=str,
-            separators=(",", ":"),
-        )
-        suffix = f"/filters={filters}"
+        pieces = []
+        if self.record_filters:
+            filters = json.dumps(
+                [
+                    (flt.variable_id, flt.operator, flt.value)
+                    for flt in self.record_filters
+                ],
+                sort_keys=True,
+                default=str,
+                separators=(",", ":"),
+            )
+            pieces.append(f"filters={filters}")
+        if self.record_numerator_filters:
+            numerator_filters = json.dumps(
+                [
+                    (flt.variable_id, flt.operator, flt.value)
+                    for flt in self.record_numerator_filters
+                ],
+                sort_keys=True,
+                default=str,
+                separators=(",", ":"),
+            )
+            pieces.append(f"numerator_filters={numerator_filters}")
+        suffix = "" if not pieces else "/" + "/".join(pieces)
         if self.geo_prefixes:
             prefixes = json.dumps(sorted(self.geo_prefixes), separators=(",", ":"))
             suffix += f"/geo_prefixes={prefixes}"
