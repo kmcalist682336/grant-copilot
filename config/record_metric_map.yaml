@@ -1,0 +1,242 @@
+# Curated record-level metric recipes.
+#
+# This is the HMDA/record-level counterpart to config/concept_map.yaml.
+# Census concept-map entries resolve concepts to Census API variables.
+# Record metric entries resolve concepts to deterministic record-query recipes:
+# which variable to pull, which filters form the numerator, and which filters
+# restrict the denominator population.
+
+metrics:
+  - canonical: mortgage denial rate
+    aliases:
+      - denial rate
+      - mortgage denial rate
+      - mortgage application denial rate
+      - application denial rate
+      - loan application denial rate
+      - share of applications denied
+      - percent of applications denied
+      - percentage of applications denied
+    dataset: hmda
+    table_id: hmda
+    operation: percentage
+    measure:
+      text: application status
+      canonical_hint: application status
+      variable_id: 906bb78b0f70
+    numerator_filters:
+      - variable_id: 906bb78b0f70
+        dimension: application status
+        canonical_hint: application status
+        operator: equals
+        value: Application denied
+    denominator_description: all mortgage application records matching the selected geography, year, and user-supplied filters
+    units: percent
+    notes: Denial rate is Application denied divided by all matching application records.
+
+  - canonical: mortgage approval rate
+    aliases:
+      - approval rate
+      - mortgage approval rate
+      - mortgage application approval rate
+      - loan approval rate
+      - share of applications approved
+      - percent of applications approved
+      - percentage of applications approved
+    dataset: hmda
+    table_id: hmda
+    operation: percentage
+    measure:
+      text: application status
+      canonical_hint: application status
+      variable_id: 906bb78b0f70
+    numerator_filters:
+      - variable_id: 906bb78b0f70
+        dimension: application status
+        canonical_hint: application status
+        operator: in
+        value:
+          - Loan originated
+          - Application approved but not accepted
+    denominator_description: all mortgage application records matching the selected geography, year, and user-supplied filters
+    units: percent
+    notes: Approval rate counts originated loans plus applications approved but not accepted. Use origination rate when only originated loans should count.
+
+  - canonical: mortgage origination rate
+    aliases:
+      - origination rate
+      - mortgage origination rate
+      - loan origination rate
+      - share of applications originated
+      - percent of applications originated
+      - percentage of applications originated
+    dataset: hmda
+    table_id: hmda
+    operation: percentage
+    measure:
+      text: application status
+      canonical_hint: application status
+      variable_id: 906bb78b0f70
+    numerator_filters:
+      - variable_id: 906bb78b0f70
+        dimension: application status
+        canonical_hint: application status
+        operator: equals
+        value: Loan originated
+    denominator_description: all mortgage application records matching the selected geography, year, and user-supplied filters
+    units: percent
+    notes: Origination rate is Loan originated divided by all matching application records.
+
+  - canonical: mortgage withdrawal rate
+    aliases:
+      - withdrawal rate
+      - mortgage withdrawal rate
+      - application withdrawal rate
+      - share of applications withdrawn
+      - percent of applications withdrawn
+    dataset: hmda
+    table_id: hmda
+    operation: percentage
+    measure:
+      text: application status
+      canonical_hint: application status
+      variable_id: 906bb78b0f70
+    numerator_filters:
+      - variable_id: 906bb78b0f70
+        dimension: application status
+        canonical_hint: application status
+        operator: equals
+        value: Application withdrawn by applicant
+    denominator_description: all mortgage application records matching the selected geography, year, and user-supplied filters
+    units: percent
+
+  - canonical: incomplete mortgage application rate
+    aliases:
+      - incomplete application rate
+      - file closed for incompleteness rate
+      - incompleteness rate
+      - share of applications closed for incompleteness
+    dataset: hmda
+    table_id: hmda
+    operation: percentage
+    measure:
+      text: application status
+      canonical_hint: application status
+      variable_id: 906bb78b0f70
+    numerator_filters:
+      - variable_id: 906bb78b0f70
+        dimension: application status
+        canonical_hint: application status
+        operator: equals
+        value: File closed for incompleteness
+    denominator_description: all mortgage application records matching the selected geography, year, and user-supplied filters
+    units: percent
+
+  - canonical: mortgage application count
+    aliases:
+      - mortgage applications
+      - loan applications
+      - number of mortgage applications
+      - count of mortgage applications
+      - how many mortgage applications
+      - mortgage applicant count
+      - number of mortgage applicants
+    dataset: hmda
+    table_id: hmda
+    operation: count
+    measure:
+      text: application status
+      canonical_hint: application status
+      variable_id: 906bb78b0f70
+    denominator_description: matching mortgage application records
+    units: count
+
+  - canonical: denied mortgage application count
+    aliases:
+      - denied mortgage applications
+      - denied loan applications
+      - number of denied mortgage applications
+      - count of denied mortgage applications
+      - how many mortgage applications were denied
+      - how many applicants were denied
+    dataset: hmda
+    table_id: hmda
+    operation: count
+    measure:
+      text: application status
+      canonical_hint: application status
+      variable_id: 906bb78b0f70
+    record_filters:
+      - variable_id: 906bb78b0f70
+        dimension: application status
+        canonical_hint: application status
+        operator: equals
+        value: Application denied
+    denominator_description: matching denied mortgage application records
+    units: count
+
+  - canonical: average applicant income
+    aliases:
+      - average applicant income
+      - average income of mortgage applicants
+      - mean applicant income
+      - average borrower income
+      - average mortgage applicant income
+    dataset: hmda
+    table_id: hmda
+    operation: average
+    measure:
+      text: applicant income
+      canonical_hint: applicant income
+      variable_id: c1aa5d4f3f72
+    denominator_description: matching mortgage application records with non-missing income
+    units: dollars
+
+  - canonical: median applicant income
+    aliases:
+      - median applicant income
+      - median income of mortgage applicants
+      - median borrower income
+      - median mortgage applicant income
+    dataset: hmda
+    table_id: hmda
+    operation: median
+    measure:
+      text: applicant income
+      canonical_hint: applicant income
+      variable_id: c1aa5d4f3f72
+    denominator_description: matching mortgage application records with non-missing income
+    units: dollars
+
+  - canonical: average loan amount
+    aliases:
+      - average loan amount
+      - average mortgage loan amount
+      - average requested loan amount
+      - mean loan amount
+      - mean mortgage amount
+    dataset: hmda
+    table_id: hmda
+    operation: average
+    measure:
+      text: loan amount
+      canonical_hint: loan amount
+      variable_id: c02eb39025e6
+    denominator_description: matching mortgage application records with non-missing loan amount
+    units: dollars
+
+  - canonical: median loan amount
+    aliases:
+      - median loan amount
+      - median mortgage loan amount
+      - median requested loan amount
+      - median mortgage amount
+    dataset: hmda
+    table_id: hmda
+    operation: median
+    measure:
+      text: loan amount
+      canonical_hint: loan amount
+      variable_id: c02eb39025e6
+    denominator_description: matching mortgage application records with non-missing loan amount
+    units: dollars

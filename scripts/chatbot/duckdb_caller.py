@@ -212,7 +212,7 @@ class DuckDBCaller:
             "FROM read_parquet(?, hive_partitioning=true) "
             f"WHERE variable IN ({variable_placeholders})"
         )
-        params: list[Any] = [*all_variables, *numerator_params, path, *all_variables]
+        params: list[Any] = [*all_variables, path, *all_variables]
         if plan.geo_filter_ids:
             record_placeholders = ", ".join("?" for _ in plan.geo_filter_ids)
             filter_column = self._geo_filter_column(record_col)
@@ -232,6 +232,7 @@ class DuckDBCaller:
                 'THEN 1 ELSE 0 END AS "__record_numerator__", '
                 '1 AS "__record_denominator__"'
             )
+            params.extend(numerator_params)
         sql += " FROM pivoted"
         conditions = self._record_filter_predicates(plan.record_filters)
         if conditions:

@@ -1063,6 +1063,64 @@ frames:
 
   # === DISPARITY & EQUITY FRAMES ===
 
+  - name: mortgage_lending_equity
+    description: |
+      Mortgage access, mortgage approval/denial, lending disparities,
+      and grant cases for improving mortgage outcomes for underserved
+      applicants. Combines Census context with HMDA record-level metrics.
+    triggers:
+      - "grant application to improve mortgage approval"
+      - "grant application for mortgage approval"
+      - "data-driven argument for mortgage approval"
+      - "mortgage lending equity"
+      - "mortgage access equity"
+      - "lending disparities"
+      - "underserved mortgage applicants"
+      - "improve mortgage approval rates"
+      - "improve mortgage outcomes"
+    required_additional_concepts:
+      - "racial composition"
+      - "poverty rate black"
+      - "median household income black"
+      - "median household income white"
+      - "homeownership rate"
+    required_record_analyses:
+      - operation: percentage
+        measure:
+          text: "application status"
+          canonical_hint: "application status"
+          dataset_hint: hmda
+        filters:
+          - dimension:
+              text: "application status"
+              canonical_hint: "application status"
+              dataset_hint: hmda
+            operator: equals
+            value_text: "originated"
+            normalized_value_hint: "Loan originated"
+        groupings: []
+        grouping_values: {}
+        population_context: "mortgage applications"
+      - operation: percentage
+        measure:
+          text: "application status"
+          canonical_hint: "application status"
+          dataset_hint: hmda
+        filters:
+          - dimension:
+              text: "application status"
+              canonical_hint: "application status"
+              dataset_hint: hmda
+            operator: equals
+            value_text: "denied"
+            normalized_value_hint: "Application denied"
+        groupings: []
+        grouping_values: {}
+        population_context: "mortgage applications"
+    rhetorical_target: "Mortgage-lending equity case: pair Census socioeconomic context with HMDA approval/denial metrics for the target applicant population."
+    standard_caveats:
+      - "HMDA records describe mortgage applications, not all households; applicant age, race, and sex filters may reduce sample size."
+
   - name: racial_disparity
     description: |
       Racial-disparity narrative on any outcome: education, housing,

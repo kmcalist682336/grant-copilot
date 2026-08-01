@@ -9,10 +9,11 @@ explicitly requested; this module chooses variables, builds a structured
 """
 from __future__ import annotations
 
+import json
 import logging
 import sqlite3
 from itertools import product
-from typing import Any, Optional
+from typing import Any, Optional, Union
 
 from scripts.chatbot.census_caller import APIPlanCall, RecordFilter
 from scripts.chatbot.concept_map import ConceptVariables
@@ -23,6 +24,9 @@ from scripts.chatbot.models import (
 from scripts.chatbot.metadata_search import find_supported_years
 from scripts.chatbot.planner import (
     ConceptResolution, PlanResult, PlannedCall, _pick_years,
+)
+from scripts.chatbot.record_metric_map import (
+    RecordMetricMap, load_default_record_metric_map,
 )
 
 logger = logging.getLogger(__name__)
@@ -59,7 +63,7 @@ _HMDA_ALIASES: dict[str, str] = {
     "requested loan amount": "c02eb39025e6",
 }
 
-_VALUE_ALIASES: dict[str, dict[str, str]] = {
+_VALUE_ALIASES: dict[str, dict[str, Union[str, list[str]]]] = {
     "sex": {
         "female": "Female", "woman": "Female", "women": "Female",
         "male": "Male", "man": "Male", "men": "Male",
@@ -77,6 +81,9 @@ _VALUE_ALIASES: dict[str, dict[str, str]] = {
         "loan originated": "Loan originated",
         "denied": "Application denied",
         "denial": "Application denied",
+        "approved": ["Loan originated", "Application approved but not accepted"],
+        "approval": ["Loan originated", "Application approved but not accepted"],
+        "accepted": "Application approved but not accepted",
         "withdrawn": "Application withdrawn by applicant",
         "closed for incompleteness": "File closed for incompleteness",
     },
@@ -85,6 +92,9 @@ _VALUE_ALIASES: dict[str, dict[str, str]] = {
         "loan originated": "Loan originated",
         "denied": "Application denied",
         "denial": "Application denied",
+        "approved": ["Loan originated", "Application approved but not accepted"],
+        "approval": ["Loan originated", "Application approved but not accepted"],
+        "accepted": "Application approved but not accepted",
         "withdrawn": "Application withdrawn by applicant",
         "closed for incompleteness": "File closed for incompleteness",
     },
@@ -93,6 +103,9 @@ _VALUE_ALIASES: dict[str, dict[str, str]] = {
         "loan originated": "Loan originated",
         "denied": "Application denied",
         "denial": "Application denied",
+        "approved": ["Loan originated", "Application approved but not accepted"],
+        "approval": ["Loan originated", "Application approved but not accepted"],
+        "accepted": "Application approved but not accepted",
         "withdrawn": "Application withdrawn by applicant",
         "closed for incompleteness": "File closed for incompleteness",
     },
@@ -111,6 +124,75 @@ _VALUE_ALIASES: dict[str, dict[str, str]] = {
 
 def _key(text: Optional[str]) -> str:
     return " ".join((text or "").strip().lower().split())
+
+
+def _record_filter_signature(filter_item: RecordFilter) -> tuple[str, str, str]:
+    return (
+        filter_item.variable_id,
+        filter_item.operator,
+        repr(filter_item.value),
+    )
+
+
+def _metric_recipe_for_analysis(
+    analysis: ExtractedAnalysis,
+    record_metric_map: RecordMetricMap,
+    *,
+    dataset: str,
+    table_id: str,
+):
+    if analysis.measure is None:
+        return None
+    lookup_texts: list[Optional[str]] = [
+        analysis.measure.canonical_hint,
+        analysis.measure.text,
+    ]
+    if analysis.operation == "percentage":
+        for filter_item in analysis.filters:
+            dimension_text = _key(
+                f"{filter_item.dimension.text} "
+                f"{filter_item.dimension.canonical_hint or ''}"
+            )
+            if any(
+                token in dimension_text
+                for token in {"status", "outcome", "action taken"}
+            ):
+                raw_value = (
+                    filter_item.normalized_value_hint
+                    or filter_item.value_text
+                    or ""
+                )
+                lookup_texts.extend([
+                    filter_item.value_text,
+                    filter_item.normalized_value_hint,
+                    f"{raw_value} rate",
+                    f"mortgage {raw_value} rate",
+                    f"application {raw_value} rate",
+                ])
+                normalized_value = _decoded_value(filter_item)
+                values = (
+                    normalized_value
+                    if isinstance(normalized_value, list)
+                    else [normalized_value]
+                )
+                value_set = {str(value).strip().lower() for value in values}
+                if "application denied" in value_set:
+                    lookup_texts.append("mortgage denial rate")
+                if (
+                    "loan originated" in value_set
+                    and "application approved but not accepted" in value_set
+                ):
+                    lookup_texts.append("mortgage approval rate")
+                elif "loan originated" in value_set:
+                    lookup_texts.append("mortgage origination rate")
+                if "application withdrawn by applicant" in value_set:
+                    lookup_texts.append("mortgage withdrawal rate")
+    recipe = record_metric_map.lookup_any(lookup_texts)
+    if recipe is None:
+        return None
+    if recipe.dataset != dataset or recipe.table_id != table_id:
+        return None
+    return recipe
 
 
 def _variable_id(
@@ -153,17 +235,34 @@ def _variable_id(
 
 
 def _decoded_value(filter_item: ExtractedFilter) -> Any:
-    """Map common natural-language values to decoded HMDA labels.
+    """Map natural-language values to decoded HMDA labels.
 
-    If no explicit alias exists, preserve the user's value.  DuckDB compares
-    categorical values case-insensitively, so this remains useful for labels
-    already emitted by the codebook without inventing a new category.
+    LLM extraction sometimes returns list-valued normalized hints as a JSON
+    string (for example ``["Loan originated", "Application approved but not
+    accepted"]``).  Normalize that before building RecordFilter objects so
+    DuckDB sees a real iterable for IN predicates, not one literal string.
     """
-    raw = (
+    raw_value = (
         filter_item.normalized_value_hint
         or filter_item.value_text
         or ""
-    ).strip()
+    )
+    if isinstance(raw_value, list):
+        return [
+            _decoded_value_for_dimension(filter_item.dimension, str(value))
+            for value in raw_value
+        ]
+    raw = str(raw_value).strip()
+    if raw.startswith("[") and raw.endswith("]"):
+        try:
+            parsed = json.loads(raw)
+        except json.JSONDecodeError:
+            parsed = None
+        if isinstance(parsed, list):
+            return [
+                _decoded_value_for_dimension(filter_item.dimension, str(value))
+                for value in parsed
+            ]
     return _decoded_value_for_dimension(
         filter_item.dimension,
         raw,
@@ -306,13 +405,105 @@ def has_record_analysis(intent: ExtractedIntent) -> bool:
 
 def _rate_concept_label(numerator_filters: list[RecordFilter]) -> Optional[str]:
     for filter_item in numerator_filters:
-        value = str(filter_item.value or "").strip().lower()
-        if value == "application denied":
+        raw_value = filter_item.value
+        values = (
+            [str(value).strip().lower() for value in raw_value]
+            if isinstance(raw_value, list)
+            else [str(raw_value or "").strip().lower()]
+        )
+        if "application denied" in values:
             return "mortgage denial rate"
-        if value == "loan originated":
+        if (
+            "loan originated" in values
+            and "application approved but not accepted" in values
+        ):
             return "mortgage approval rate"
+        if "loan originated" in values:
+            return "mortgage origination rate"
     return None
 
+
+def _normalized_operator_value(
+    operator: str,
+    value: Any,
+) -> tuple[str, Any]:
+    """Make extracted filter operators match DuckDB's expected value shape."""
+    if operator == "equals" and isinstance(value, list):
+        return "in", value
+    if operator == "not_equals" and isinstance(value, list):
+        return "not_in", value
+    if operator in {"in", "not_in"} and (
+        isinstance(value, (str, bytes)) or value is None
+    ):
+        if isinstance(value, str) and "," in value:
+            parts = [part.strip() for part in value.split(",") if part.strip()]
+            if parts:
+                return operator, parts
+        return operator, [value]
+    return operator, value
+
+
+def _is_ambiguous_record_filter(filter_item: ExtractedFilter) -> bool:
+    dim = _key(filter_item.dimension.canonical_hint or filter_item.dimension.text)
+    value = _key(filter_item.normalized_value_hint or filter_item.value_text)
+    return "age" in dim and value in {
+        "young", "younger", "youth", "young adult", "young adults",
+    }
+
+
+
+
+def _is_rate_like_record_measure(concept: ExtractedConcept) -> bool:
+    """True when the requested measure is a rate over an outcome column."""
+    text = _key(f"{concept.text} {concept.canonical_hint or ''}")
+    return any(
+        phrase in text
+        for phrase in {
+            "denial rate", "approval rate", "origination rate",
+            "application denial", "application approval",
+            "loan denial", "loan approval",
+            "denied applications", "approved applications",
+            "originated applications",
+        }
+    )
+
+
+def _is_record_status_dimension(concept: ExtractedConcept) -> bool:
+    """True for HMDA action/status/outcome dimensions."""
+    text = _key(f"{concept.text} {concept.canonical_hint or ''}")
+    return any(
+        phrase in text
+        for phrase in {
+            "action taken", "application status", "loan application status",
+            "mortgage application outcome", "application outcome",
+            "loan outcome", "status", "outcome",
+        }
+    )
+
+
+def _percentage_measure_dimension(
+    analysis: ExtractedAnalysis,
+) -> ExtractedConcept:
+    """Choose the real record column for percentage/rate calculations.
+
+    A user-facing measure such as "denial rate" is not itself an HMDA
+    column. The actual column is the application status/action_taken
+    variable, while the requested outcome (for example "Application denied")
+    is the numerator condition.
+    """
+    measure = analysis.measure
+    if measure is None:
+        raise ValueError("record percentage analysis has no measure")
+    if analysis.operation != "percentage":
+        return measure
+    if _is_record_status_dimension(measure):
+        return measure
+    if not _is_rate_like_record_measure(measure):
+        return measure
+    for filter_item in analysis.filters:
+        if _is_record_status_dimension(filter_item.dimension):
+            return filter_item.dimension
+    return measure
 
 def _record_supported_years(
     intent: ExtractedIntent,
@@ -364,6 +555,7 @@ def plan_record_query(
     record_id_column: str = "record_id",
     geo_db: Optional[sqlite3.Connection] = None,
     metadata_db: Optional[sqlite3.Connection] = None,
+    record_metric_map: Optional[RecordMetricMap] = None,
 ) -> PlanResult:
     """Build a record-level plan with parameterized filter metadata.
 
@@ -372,6 +564,7 @@ def plan_record_query(
     response mapper can consume it without a second pipeline.
     """
     analyses = _record_analysis(intent)
+    metric_map = record_metric_map or load_default_record_metric_map()
     if not analyses:
         return PlanResult(
             intent=intent, resolved_geos=resolved_geos,
@@ -405,7 +598,11 @@ def plan_record_query(
         if analysis.measure is None:
             notes.append("record analysis has no measure; skipped")
             continue
-        if analysis.operation not in {
+        recipe = _metric_recipe_for_analysis(
+            analysis, metric_map, dataset=dataset, table_id=table_id,
+        )
+        operation = recipe.operation if recipe is not None else analysis.operation
+        if operation not in {
             "value", "count", "sum", "average", "median", "percentage",
         }:
             notes.append(
@@ -414,8 +611,14 @@ def plan_record_query(
             )
             continue
 
-        measure = analysis.measure
-        measure_id, measure_route = _variable_id(measure, semantic_router)
+        if recipe is not None:
+            measure = recipe.measure_concept()
+            measure_id = recipe.measure.variable_id
+            measure_route = None
+            notes.append(f"record metric recipe matched: {recipe.canonical}")
+        else:
+            measure = _percentage_measure_dimension(analysis)
+            measure_id, measure_route = _variable_id(measure, semantic_router)
         concept_idx = len(concepts)
         concepts.append(measure)
         resolutions.append(ConceptResolution(
@@ -424,9 +627,26 @@ def plan_record_query(
             routed_result=measure_route,
         ))
 
-        record_filters: list[RecordFilter] = []
-        numerator_filters: list[RecordFilter] = []
+        record_filters: list[RecordFilter] = (
+            recipe.record_filter_objects() if recipe is not None else []
+        )
+        numerator_filters: list[RecordFilter] = (
+            recipe.numerator_filter_objects() if recipe is not None else []
+        )
+        record_filter_keys = {
+            _record_filter_signature(item) for item in record_filters
+        }
+        numerator_filter_keys = {
+            _record_filter_signature(item) for item in numerator_filters
+        }
         for filter_item in analysis.filters:
+            if _is_ambiguous_record_filter(filter_item):
+                notes.append(
+                    f"skipped ambiguous record filter "
+                    f"{filter_item.dimension.text!r}={filter_item.value_text!r}; "
+                    "use a concrete HMDA age bin such as '<25' or '25-34'"
+                )
+                continue
             filter_id, _ = _variable_id(
                 filter_item.dimension, semantic_router,
             )
@@ -441,24 +661,36 @@ def plan_record_query(
                     raise ValueError(
                         f"Filter {filter_item.dimension.text!r} has no value"
                     )
+                operator, value = _normalized_operator_value(
+                    filter_item.operator, value,
+                )
                 record_filter = RecordFilter(
                     variable_id=filter_id,
-                    operator=filter_item.operator,
+                    operator=operator,
                     value=value,
                 )
-            if analysis.operation == "percentage" and filter_id == measure_id:
-                numerator_filters.append(record_filter)
-            else:
+            if recipe is not None and operation == "percentage" and filter_id == measure_id:
+                # The curated recipe owns numerator math.  Do not let an
+                # extracted status/action filter accidentally restrict the
+                # denominator or add a contradictory numerator predicate.
+                continue
+            signature = _record_filter_signature(record_filter)
+            if operation == "percentage" and filter_id == measure_id:
+                if signature not in numerator_filter_keys:
+                    numerator_filters.append(record_filter)
+                    numerator_filter_keys.add(signature)
+            elif signature not in record_filter_keys:
                 record_filters.append(record_filter)
+                record_filter_keys.add(signature)
 
-        if analysis.operation == "percentage" and not numerator_filters:
+        if operation == "percentage" and not numerator_filters:
             notes.append(
                 f"percentage analysis for {measure.text!r} has no "
                 "numerator condition; skipped"
             )
             continue
-        if analysis.operation == "percentage":
-            label = _rate_concept_label(numerator_filters)
+        if operation == "percentage":
+            label = recipe.canonical if recipe is not None else _rate_concept_label(numerator_filters)
             if label:
                 concepts[concept_idx] = measure.model_copy(update={
                     "text": label,
@@ -496,7 +728,7 @@ def plan_record_query(
                             numerator="__record_numerator__",
                             denominator="__record_denominator__",
                         )
-                        if analysis.operation == "percentage"
+                        if operation == "percentage"
                         else ConceptVariables(value=measure_id)
                     )
                     calls.append(PlannedCall(
@@ -505,7 +737,7 @@ def plan_record_query(
                         concept_idx=concept_idx,
                         year=int(year),
                         role=role,
-                        operation=analysis.operation,
+                        operation=operation,
                         variables=variables,
                         tract_filter=[],
                     ))

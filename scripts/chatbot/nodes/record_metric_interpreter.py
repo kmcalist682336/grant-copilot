@@ -17,6 +17,7 @@ from scripts.chatbot.models import ExtractedIntent
 from scripts.chatbot.prompt_loader import (
     load_prompt_template, render_system_prompt,
 )
+from scripts.chatbot.record_metric_map import load_default_record_metric_map
 
 _PROMPT_PATH = (
     Path(__file__).resolve().parents[3]
@@ -124,9 +125,13 @@ def interpret_record_metrics(
         "semantic_candidate_cards": _candidate_cards_for_intent(
             intent, semantic_router,
         ),
+        "curated_record_metric_recipes": (
+            load_default_record_metric_map().summaries()
+        ),
         "instructions": [
             "Return the full ExtractedIntent JSON shape.",
             "Preserve Census concepts unless they are clearly HMDA concepts.",
+            "Prefer curated_record_metric_recipes for HMDA metrics such as denial rate, approval rate, origination rate, average income, and loan amount.",
             "For HMDA rates, use operation='percentage' with an action/status filter on the measure variable.",
             "Filters must come from the user question or be required by the metric wording; do not invent unrelated filters.",
             "Use decoded labels when known, such as 'Application denied', 'Loan originated', 'Female', 'Black or African American', 'White'.",

@@ -891,6 +891,9 @@ concepts:
     aliases:
       - "rented homes"
       - "renter occupied"
+      - "renter households percentage"
+      - "percentage of households that are renters"
+      - "percent of households that are renters"
     table_id: "B25003"
     dataset: "acs/acs5"
     variables:
