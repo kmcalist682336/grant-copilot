@@ -113,7 +113,8 @@ from scripts.chatbot.planner import (
     ConceptResolution, PlanResult, data_level_for, plan_query,
 )
 from scripts.chatbot.record_planner import (
-    has_record_analysis, plan_record_query,
+    has_record_analysis, plan_record_query, record_analyses,
+    record_metric_recipe_for_analysis,
 )
 from scripts.chatbot.synthesizer import (
     SynthesisError, SynthesizedAnswer, build_synthesis_bundle, synthesize,
@@ -161,6 +162,78 @@ def _record_filter_key(filter_item: ExtractedFilter) -> tuple[str, str, str]:
     )
 
 
+def _concept_key(concept: ExtractedConcept) -> str:
+    return _key(concept.canonical_hint or concept.text)
+
+
+def _merge_missing_concepts(
+    intent: ExtractedIntent,
+    protected: list[ExtractedConcept],
+) -> ExtractedIntent:
+    """Keep frame-expanded Census concepts from being erased downstream.
+
+    The record metric interpreter is allowed to rewrite record analyses, but it
+    should not remove Census/frame concepts that were deliberately added before
+    routing.  Otherwise narrative frames can collapse into a single HMDA scalar.
+    """
+    if not protected:
+        return intent
+    existing = {_concept_key(concept) for concept in intent.concepts}
+    merged = list(intent.concepts)
+    for concept in protected:
+        key = _concept_key(concept)
+        if key and key not in existing:
+            merged.append(concept)
+            existing.add(key)
+    if len(merged) == len(intent.concepts):
+        return intent
+    return intent.model_copy(update={"concepts": merged})
+
+
+def _frame_is_census_expansion(frame: Optional[Frame]) -> bool:
+    return bool(
+        frame
+        and getattr(frame, "name", None) != "specific_lookup"
+        and getattr(frame, "required_additional_concepts", None)
+        and not getattr(frame, "required_record_analyses", None)
+    )
+
+
+def _suppress_frame_conflicting_record_analyses(
+    intent: ExtractedIntent,
+    frame: Optional[Frame],
+) -> tuple[ExtractedIntent, list[str]]:
+    """Prefer Census frame expansion over un-recognized HMDA scalar guesses.
+
+    Some narrative questions mention mortgage/homebuyer language but are meant
+    to expand into Census affordability and ownership indicators. If such a
+    frame does not explicitly request record analyses, keep only HMDA analyses
+    that are backed by curated record metric recipes.
+    """
+    if not _frame_is_census_expansion(frame) or not intent.analyses:
+        return intent, []
+
+    kept: list[ExtractedAnalysis] = []
+    dropped: list[str] = []
+    for analysis in intent.analyses:
+        if record_metric_recipe_for_analysis(analysis) is not None:
+            kept.append(analysis)
+            continue
+        measure = analysis.measure
+        dropped.append(
+            ((measure.canonical_hint or measure.text) if measure else "")
+            or analysis.operation
+        )
+
+    if not dropped:
+        return intent, []
+    notes = [
+        "dropped unrecognized record analysis during Census frame expansion: "
+        + ", ".join(repr(item) for item in dropped)
+    ]
+    return intent.model_copy(update={"analyses": kept}), notes
+
+
 def _is_ambiguous_record_filter(filter_item: ExtractedFilter) -> bool:
     dim = _key(filter_item.dimension.canonical_hint or filter_item.dimension.text)
     value = _key(filter_item.normalized_value_hint or filter_item.value_text)
@@ -202,29 +275,198 @@ def _looks_record_level_query(text: str) -> bool:
     ))
 
 
+def _record_metric_recipes_cover(intent: ExtractedIntent) -> bool:
+    """True when every record analysis can be planned from curated recipes."""
+    analyses = record_analyses(intent)
+    if not analyses:
+        return False
+    return all(
+        record_metric_recipe_for_analysis(analysis) is not None
+        for analysis in analyses
+    )
+
+
+def _has_record_filter_cues(text: str) -> bool:
+    key = f" {_key(text)} "
+    return any(f" {token} " in key for token in (
+        "black", "white", "asian", "hispanic", "latino",
+        "female", "male", "women", "woman", "men", "man",
+        "young", "older", "senior", "age", "race", "sex",
+        "income band", "low income", "middle income",
+    ))
+
+
+def _is_simple_curated_record_lookup(
+    intent: ExtractedIntent,
+    frame: Optional[Frame],
+    *,
+    query: str = "",
+) -> bool:
+    """Direct HMDA metric lookup that does not need optional LLM enrichments.
+
+    The record metric map is the source of truth for common HMDA measures such
+    as average loan amount, applicant income, denial rate, and approval rate.
+    When a query has only record analyses, no group-by comparison, and the
+    matched frame is the direct lookup frame, the extra record-metric
+    interpreter / plan reviewer / follow-up path adds latency without changing
+    the deterministic query recipe.
+    """
+    if frame is not None and getattr(frame, "name", None) != "specific_lookup":
+        return False
+    if intent.concepts:
+        return False
+    analyses = record_analyses(intent)
+    if not analyses:
+        return False
+    if any(analysis.groupings for analysis in analyses):
+        return False
+    if _has_record_filter_cues(query):
+        has_explicit_filters = any(analysis.filters for analysis in analyses)
+        if not has_explicit_filters:
+            return False
+    return _record_metric_recipes_cover(intent)
+
+
+def _has_hmda_context(*texts: str) -> bool:
+    """Conservative gate for record-level mortgage/HMDA probes.
+
+    We only create normalized HMDA route text when the user's language points
+    at loan applications, applicants/borrowers, lenders, or application
+    outcomes.  This keeps Census phrases such as "households with a mortgage"
+    or "Black women in poverty" on the existing Census path.
+    """
+    key = _key(" ".join(t for t in texts if t))
+    return any(token in key for token in (
+        "hmda",
+        "mortgage applicant", "mortgage application",
+        "loan applicant", "loan application",
+        "borrower", "lender",
+        "approval", "approved", "denial", "denied",
+        "originated", "origination", "withdrawn",
+        "loan amount", "loan purpose", "preapproval",
+    ))
+
+
+def _normalized_hmda_route_texts(
+    query: str,
+    concept: ExtractedConcept,
+) -> list[str]:
+    """Candidate measure strings for dataset routing.
+
+    Raw subgroup-heavy phrases like "average income of Black female mortgage
+    applicants" often route to Census demographic cards.  For the initial
+    dataset choice, route the measure + HMDA population instead; if that maps
+    to HMDA, the record metric interpreter can later recover race/sex/age
+    filters from the original query.
+    """
+    raw = " ".join(
+        part for part in (concept.canonical_hint, concept.text, query) if part
+    )
+    key = _key(raw)
+    out: list[str] = []
+
+    def add(text: str) -> None:
+        clean = " ".join(text.strip().split())
+        if clean and clean.lower() not in {t.lower() for t in out}:
+            out.append(clean)
+
+    if any(t in key for t in ("approval", "approved", "approve")):
+        add("mortgage approval rate")
+        add("loan application outcome")
+    if any(t in key for t in ("denial", "denied", "deny")):
+        add("mortgage denial rate")
+        add("loan application outcome")
+    if "origination" in key or "originated" in key:
+        add("mortgage origination rate")
+        add("loan application outcome")
+    if "loan amount" in key or "mortgage amount" in key:
+        if "median" in key:
+            add("median mortgage loan amount")
+        elif any(t in key for t in ("average", "mean")):
+            add("average mortgage loan amount")
+        else:
+            add("mortgage loan amount")
+    if "income" in key:
+        if "median" in key:
+            add("median income of mortgage applicants")
+        elif any(t in key for t in ("average", "mean")):
+            add("average income of mortgage applicants")
+        else:
+            add("income of mortgage applicants")
+    if "debt" in key and "income" in key:
+        add("debt to income ratio for mortgage applicants")
+    if "loan purpose" in key:
+        add("loan purpose for mortgage applications")
+    if "denial reason" in key or "reasons for denial" in key:
+        add("mortgage denial reasons")
+    if any(t in key for t in ("how many", "number of", "count")):
+        add("mortgage application count")
+
+    add(concept.canonical_hint or concept.text)
+    return out[:6]
+
+
+def _route_text_prefers_hmda(
+    text: str,
+    semantic_router: Optional[object],
+) -> bool:
+    """Return true only when global semantic routing prefers HMDA.
+
+    This deliberately uses the normal cross-dataset router, not
+    ``route_dataset(..., target_dataset='hmda')``.  The question is not merely
+    whether HMDA has *some* match; it is whether HMDA beats the Census cards for
+    the normalized measure text.
+    """
+    if semantic_router is None or not text.strip():
+        return False
+    try:
+        routed = semantic_router.route(text, top_k=8)
+    except Exception:
+        return False
+    candidates = [*routed.top_variables, *routed.top_tables]
+    if not candidates:
+        return False
+    top = candidates[0]
+    top_dataset = getattr(top, "target_dataset", None)
+    if top_dataset == "hmda":
+        return True
+
+    # Allow an HMDA second-place hit only when it is essentially tied with the
+    # top result.  This catches noisy card rankings without hijacking clear
+    # Census concepts.
+    top_score = float(getattr(top, "aggregate_score", 0.0) or 0.0)
+    for candidate in candidates[1:3]:
+        if getattr(candidate, "target_dataset", None) != "hmda":
+            continue
+        score = float(getattr(candidate, "aggregate_score", 0.0) or 0.0)
+        if top_score <= 0 or score >= 0.90 * top_score:
+            return True
+    return False
+
+
 def _concept_routes_to_hmda(
     concept: ExtractedConcept,
     semantic_router: Optional[object],
+    *,
+    query: str = "",
 ) -> bool:
     if concept.dataset_hint in {"hmda", "both"}:
         return True
     if concept.dataset_hint == "census":
         return False
     text = concept.canonical_hint or concept.text
-    if _looks_record_level_query(text):
-        return True
+    if not _has_hmda_context(query, text):
+        return False
     if semantic_router is None:
-        return False
-    try:
-        routed = semantic_router.route_dataset(text, target_dataset="hmda", top_k=3)
-    except Exception:
-        return False
-    candidates = [*routed.top_variables, *routed.top_tables]
-    if not candidates:
-        return False
-    top_score = max(float(getattr(c, "aggregate_score", 0.0) or 0.0)
-                    for c in candidates)
-    return top_score >= 4.0 and _looks_record_level_query(text)
+        return _looks_record_level_query(query) and _looks_record_level_query(text)
+    for route_text in _normalized_hmda_route_texts(query, concept):
+        if _route_text_prefers_hmda(route_text, semantic_router):
+            logger.info(
+                "concept promoted to HMDA analysis via normalized route %r",
+                route_text,
+            )
+            return True
+    return False
 
 
 def _analysis_key(analysis: ExtractedAnalysis) -> tuple[str, str, tuple]:
@@ -245,7 +487,7 @@ def _promote_record_concepts_to_analyses(
     added: list[ExtractedAnalysis] = []
     existing = {_analysis_key(a) for a in intent.analyses}
     for concept in intent.concepts:
-        if not _concept_routes_to_hmda(concept, semantic_router):
+        if not _concept_routes_to_hmda(concept, semantic_router, query=query):
             kept.append(concept)
             continue
         measure = concept.model_copy(update={"dataset_hint": "hmda"})
@@ -662,7 +904,11 @@ async def answer_query(
     # chatbot.yaml. Fails open on LLM errors (proceeds with the
     # query) so a broken gate never blocks legitimate work.
     sg_cfg = config.get("scope_gate", {}) or {}
-    if sg_cfg.get("enabled", True):
+    if sg_cfg.get("enabled", True) and _looks_record_level_query(query):
+        logger.info(
+            "scope_gate: skipped for likely record-level/HMDA query",
+        )
+    elif sg_cfg.get("enabled", True):
         from scripts.chatbot.nodes.scope_gate import (
             is_in_scope, user_message_for_refusal,
         )
@@ -845,33 +1091,60 @@ async def answer_query(
         if updates:
             intent_for_routing = intent.model_copy(update=updates)
 
+    frame_protected_concepts = list(intent_for_routing.concepts)
+    intent_for_routing, frame_suppression_notes = (
+        _suppress_frame_conflicting_record_analyses(
+            intent_for_routing, frame,
+        )
+    )
+
     if semantic_router is not None:
         intent_for_routing = _promote_record_concepts_to_analyses(
             query, intent_for_routing, semantic_router,
         )
 
-    record_metric_notes: list[str] = []
+    record_metric_notes: list[str] = list(frame_suppression_notes)
+    simple_curated_record_lookup = _is_simple_curated_record_lookup(
+        intent_for_routing, frame, query=query,
+    )
     if intent_for_routing.analyses:
-        _progress(progress_cb, "Interpreting record-level metric")
-        t0 = time.time()
-        try:
-            intent_for_routing, record_metric_notes = interpret_record_metrics(
-                query,
-                intent_for_routing,
-                llm,
-                frame=frame,
-                semantic_router=semantic_router,
-                temperature=config.get("vertex_ai", {}).get("temperature", 0.1),
-            )
-        except RecordMetricInterpreterError as e:
-            logger.warning(
-                "record metric interpreter failed (%s); using extracted analyses",
-                e,
-            )
+        if simple_curated_record_lookup:
             record_metric_notes = [
-                "record metric interpreter failed; using extracted analyses",
+                "direct record metric matched curated recipe; "
+                "skipped record metric interpreter",
             ]
-        metrics.decompose_s += time.time() - t0
+            logger.info(
+                "record metric interpreter skipped for curated direct lookup",
+            )
+        else:
+            _progress(progress_cb, "Interpreting record-level metric")
+            t0 = time.time()
+            try:
+                intent_for_routing, record_metric_notes = interpret_record_metrics(
+                    query,
+                    intent_for_routing,
+                    llm,
+                    frame=frame,
+                    semantic_router=semantic_router,
+                    temperature=config.get("vertex_ai", {}).get("temperature", 0.1),
+                )
+            except RecordMetricInterpreterError as e:
+                logger.warning(
+                    "record metric interpreter failed (%s); using extracted analyses",
+                    e,
+                )
+                record_metric_notes = [
+                    "record metric interpreter failed; using extracted analyses",
+                ]
+            metrics.decompose_s += time.time() - t0
+            intent_for_routing = _merge_missing_concepts(
+                intent_for_routing, frame_protected_concepts,
+            )
+            if frame_suppression_notes:
+                record_metric_notes = frame_suppression_notes + [
+                    note for note in record_metric_notes
+                    if note not in frame_suppression_notes
+                ]
 
     # 4. Agent routing (rewrite → route → critique) -------------------
     # When a SemanticRouter is available, run the Phase 1 agent chain
@@ -1005,7 +1278,11 @@ async def answer_query(
     max_review_cycles = int(clar_cfg.get("max_review_cycles",
                                           clar_cfg.get("max_cycles_per_scope", 1)))
     confidence_threshold = float(clar_cfg.get("min_confidence", 0.85))
-    if clarification_enabled and max_review_cycles > 0:
+    if (
+        clarification_enabled
+        and max_review_cycles > 0
+        and not simple_curated_record_lookup
+    ):
         _progress(progress_cb, "Reviewing plan for correctness")
         t0 = time.time()
         cycles_used = 0
@@ -1250,24 +1527,29 @@ async def answer_query(
             anomaly_flags = detect_anomalies(magnitude_framings)
         except Exception as e:                     # pragma: no cover
             logger.warning("AnomalyDetector failed: %s", e)
-        _progress(progress_cb, "Finding relevant follow-ups")
-        try:
-            followups = find_followups(
-                user_query=query,
-                frame=frame,
-                aggregated=aggregated,
-                llm=llm,
-                temperature=config.get("vertex_ai", {}).get(
-                    "temperature", 0.4,
-                ),
+        if simple_curated_record_lookup:
+            logger.info(
+                "followup gap-finder skipped for curated direct record lookup",
             )
-        except Exception as e:                     # pragma: no cover
-            logger.warning("FollowupGapFinder failed: %s", e)
+        else:
+            _progress(progress_cb, "Finding relevant follow-ups")
+            try:
+                followups = find_followups(
+                    user_query=query,
+                    frame=frame,
+                    aggregated=aggregated,
+                    llm=llm,
+                    temperature=config.get("vertex_ai", {}).get(
+                        "temperature", 0.4,
+                    ),
+                )
+            except Exception as e:                     # pragma: no cover
+                logger.warning("FollowupGapFinder failed: %s", e)
 
     # Peer context is also post-aggregate. It doesn't need LLM calls
     # and is read-only against peer_features.sqlite; still defensive
     # in case the file is missing or the anchor isn't in the index.
-    if peer_retriever is not None:
+    if peer_retriever is not None and not simple_curated_record_lookup:
         _progress(progress_cb, "Retrieving peer comparisons")
         try:
             peer_contexts = get_peer_contexts(
@@ -1276,6 +1558,10 @@ async def answer_query(
             )
         except Exception as e:                     # pragma: no cover
             logger.warning("peer_context failed: %s", e)
+    elif peer_retriever is not None:
+        logger.info(
+            "peer_context skipped for curated direct record lookup",
+        )
 
     # 7. Synthesis ---------------------------------------------------
     _progress(progress_cb, "Writing answer prose")
@@ -1407,3 +1693,5 @@ def answer_query_sync(*args: Any, **kwargs: Any) -> QueryResponse:
     """Synchronous convenience wrapper for non-async callers
     (REPL one-shot, scripts). Spawns its own event loop."""
     return asyncio.run(answer_query(*args, **kwargs))
+
+

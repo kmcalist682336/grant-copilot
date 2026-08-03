@@ -18,8 +18,8 @@ from typing import Any, Optional, Union
 from scripts.chatbot.census_caller import APIPlanCall, RecordFilter
 from scripts.chatbot.concept_map import ConceptVariables
 from scripts.chatbot.models import (
-    ExtractedAnalysis, ExtractedConcept, ExtractedIntent, ExtractedFilter,
-    ResolvedGeography,
+    ExtractedAnalysis, ExtractedConcept, ExtractedGeoRef, ExtractedIntent,
+    ExtractedFilter, ResolvedGeography,
 )
 from scripts.chatbot.metadata_search import find_supported_years
 from scripts.chatbot.planner import (
@@ -30,6 +30,40 @@ from scripts.chatbot.record_metric_map import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+def _default_record_geography(dataset: str) -> Optional[ResolvedGeography]:
+    """Default geography for record datasets when the user omits one.
+
+    The current HMDA record store is a Georgia-focused demo extract.  Rather
+    than returning zero planned calls for "average loan amount for Asian male
+    applicants", default to Georgia statewide and keep the assumption in the
+    plan notes so synthesis can disclose it.
+    """
+    if dataset != "hmda":
+        return None
+    source_ref = ExtractedGeoRef(
+        text="Georgia",
+        ref_type="administrative",
+    )
+    return ResolvedGeography(
+        geo_id="13",
+        geo_level="state",
+        geo_type="state",
+        display_name="Georgia",
+        tract_geoids=[],
+        county_geoid=None,
+        api_for_clause="state:13",
+        api_in_clause="",
+        confidence=0.80,
+        assumption_notes=[
+            "No geography was specified; defaulted HMDA record query to "
+            "Georgia statewide because the local HMDA record store is "
+            "Georgia-focused.",
+        ],
+        data_level_available="state",
+        source_ref=source_ref,
+    )
 
 
 # Stable IDs from the HMDA variable registry/cards.  These aliases are a
@@ -143,10 +177,22 @@ def _metric_recipe_for_analysis(
 ):
     if analysis.measure is None:
         return None
-    lookup_texts: list[Optional[str]] = [
+    measure_lookup_texts: list[Optional[str]] = [
         analysis.measure.canonical_hint,
         analysis.measure.text,
     ]
+    operation_prefixes = {
+        "average": "average",
+        "median": "median",
+        "sum": "total",
+        "count": "count of",
+    }
+    prefix = operation_prefixes.get(analysis.operation)
+    if prefix:
+        for text in (analysis.measure.canonical_hint, analysis.measure.text):
+            if text:
+                measure_lookup_texts.append(f"{prefix} {text}")
+    status_lookup_texts: list[Optional[str]] = []
     if analysis.operation == "percentage":
         for filter_item in analysis.filters:
             dimension_text = _key(
@@ -162,7 +208,7 @@ def _metric_recipe_for_analysis(
                     or filter_item.value_text
                     or ""
                 )
-                lookup_texts.extend([
+                status_lookup_texts.extend([
                     filter_item.value_text,
                     filter_item.normalized_value_hint,
                     f"{raw_value} rate",
@@ -177,16 +223,21 @@ def _metric_recipe_for_analysis(
                 )
                 value_set = {str(value).strip().lower() for value in values}
                 if "application denied" in value_set:
-                    lookup_texts.append("mortgage denial rate")
+                    status_lookup_texts.append("mortgage denial rate")
                 if (
                     "loan originated" in value_set
                     and "application approved but not accepted" in value_set
                 ):
-                    lookup_texts.append("mortgage approval rate")
+                    status_lookup_texts.append("mortgage approval rate")
                 elif "loan originated" in value_set:
-                    lookup_texts.append("mortgage origination rate")
+                    status_lookup_texts.append("mortgage origination rate")
                 if "application withdrawn by applicant" in value_set:
-                    lookup_texts.append("mortgage withdrawal rate")
+                    status_lookup_texts.append("mortgage withdrawal rate")
+    # For percentage/rate questions, outcome/status filters define the metric.
+    # Put them before generic measure text such as "loan applications" so
+    # "approval rate of mortgage applications" cannot be swallowed by the
+    # broader "mortgage application count" recipe.
+    lookup_texts = status_lookup_texts + measure_lookup_texts
     recipe = record_metric_map.lookup_any(lookup_texts)
     if recipe is None:
         return None
@@ -351,13 +402,38 @@ def _admin_place_tract_prefixes(
     geo: ResolvedGeography,
     geo_db: Optional[sqlite3.Connection],
 ) -> list[str]:
-    """Expand a GA admin place to tracts for record-level filtering only."""
+    """Expand a GA admin place to tracts for record-level filtering only.
+
+    Prefer the gazetteer's curated ``admin_place_tract_map``.  That is the
+    same lookup used by validation/debug queries and avoids subtle differences
+    from ad-hoc geometry intersections at query time.  The spatial fallback is
+    retained for older gazetteers that do not have the mapping table.
+    """
     if (
         geo_db is None
         or geo.geo_level != "place"
         or not geo.geo_id.startswith("13")
     ):
         return []
+    try:
+        rows = geo_db.execute(
+            """
+            SELECT tract_geoid
+            FROM admin_place_tract_map
+            WHERE admin_geoid = ?
+            ORDER BY tract_geoid
+            """,
+            (geo.geo_id,),
+        ).fetchall()
+        mapped = [str(row["tract_geoid"]) for row in rows]
+        if mapped:
+            return mapped
+    except sqlite3.Error:
+        logger.debug(
+            "admin_place_tract_map unavailable; falling back to spatial "
+            "place/tract intersection",
+            exc_info=True,
+        )
     rows = geo_db.execute(
         """
         SELECT t.geoid AS tract_geoid
@@ -399,8 +475,36 @@ def _record_analysis(intent: ExtractedIntent) -> list[ExtractedAnalysis]:
     return analyses
 
 
+def record_analyses(intent: ExtractedIntent) -> list[ExtractedAnalysis]:
+    """Public wrapper for the record-analysis selector.
+
+    Orchestration code needs to make the same Census-vs-record decision as the
+    planner before deciding whether an optional record-only LLM pass is worth
+    running.  Keep that definition centralized here so the fast path and the
+    actual planner cannot drift apart.
+    """
+    return _record_analysis(intent)
+
+
 def has_record_analysis(intent: ExtractedIntent) -> bool:
     return bool(_record_analysis(intent))
+
+
+def record_metric_recipe_for_analysis(
+    analysis: ExtractedAnalysis,
+    *,
+    dataset: str = "hmda",
+    table_id: str = "hmda",
+    record_metric_map: Optional[RecordMetricMap] = None,
+):
+    """Return the deterministic record metric recipe for an analysis, if any."""
+    metric_map = record_metric_map or load_default_record_metric_map()
+    return _metric_recipe_for_analysis(
+        analysis,
+        metric_map,
+        dataset=dataset,
+        table_id=table_id,
+    )
 
 
 def _rate_concept_label(numerator_filters: list[RecordFilter]) -> Optional[str]:
@@ -572,23 +676,27 @@ def plan_record_query(
             notes=["no record-level analysis was extracted"],
         )
 
-    if not resolved_geos:
-        return PlanResult(
-            intent=intent,
-            resolved_geos=resolved_geos,
-            concept_resolutions=[],
-            calls=[],
-            notes=[
-                "record-level analysis detected, but no geography was "
-                "resolved; provide a state, county, tract, city, or another "
-                "supported area",
-            ],
-        )
-
     concepts = list(intent.concepts)
     resolutions: list[ConceptResolution] = []
     calls: list[PlannedCall] = []
     notes: list[str] = []
+    if not resolved_geos:
+        default_geo = _default_record_geography(dataset)
+        if default_geo is None:
+            return PlanResult(
+                intent=intent,
+                resolved_geos=resolved_geos,
+                concept_resolutions=[],
+                calls=[],
+                notes=[
+                    "record-level analysis detected, but no geography was "
+                    "resolved; provide a state, county, tract, city, or "
+                    "another supported area",
+                ],
+            )
+        resolved_geos = [default_geo]
+        notes.extend(default_geo.assumption_notes)
+
     supported_years = _record_supported_years(
         intent, metadata_db, table_id, dataset,
     )
