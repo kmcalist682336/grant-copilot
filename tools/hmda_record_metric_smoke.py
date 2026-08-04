@@ -57,6 +57,7 @@ INCOME = "c1aa5d4f3f72"
 LOAN_AMOUNT = "c02eb39025e6"
 RACE = "38ad9c360a98"
 SEX = "6057363dc2e9"
+ETHNICITY = "b4588a673468"
 
 APPROVED_ACTIONS = ["Loan originated", "Application approved but not accepted"]
 DENIED_ACTIONS = ["Application denied"]
@@ -179,6 +180,8 @@ CASES: list[SmokeCase] = [
                   FilterSpec(RACE, "applicant race", "Black or African American"),
                   FilterSpec(SEX, "applicant sex", "Female"),
               ]),
+    SmokeCase("average income of Hispanic applicants in Atlanta", "average_income", "Atlanta",
+              filters=[FilterSpec(ETHNICITY, "applicant ethnicity", "Hispanic or Latino")]),
     SmokeCase("average loan amount for Asian men in Atlanta", "average_loan_amount", "Atlanta",
               filters=[
                   FilterSpec(RACE, "applicant race", "Asian"),

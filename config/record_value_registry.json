@@ -1,0 +1,191 @@
+{
+  "datasets": {
+    "hmda": {
+      "tables": {
+        "hmda": {
+          "variables": {
+            "906bb78b0f70": {
+              "source_name": "action_taken",
+              "label": "Action taken on the mortgage application",
+              "value_type": "categorical",
+              "values": [
+                {
+                  "canonical_value": "Loan originated",
+                  "aliases": ["originated", "loan originated", "approved and originated", "successful loan"]
+                },
+                {
+                  "canonical_value": "Application approved but not accepted",
+                  "aliases": ["approved but not accepted", "accepted", "approved not accepted"]
+                },
+                {
+                  "canonical_value": ["Loan originated", "Application approved but not accepted"],
+                  "aliases": ["approved", "approval", "approved applications", "mortgage approval"]
+                },
+                {
+                  "canonical_value": "Application denied",
+                  "aliases": ["denied", "denial", "application denied", "mortgage denial", "denied applications"]
+                },
+                {
+                  "canonical_value": "Application withdrawn by applicant",
+                  "aliases": ["withdrawn", "application withdrawn", "withdrawn by applicant"]
+                },
+                {
+                  "canonical_value": "File closed for incompleteness",
+                  "aliases": ["closed for incompleteness", "incomplete", "file closed"]
+                },
+                {
+                  "canonical_value": "Purchased loan",
+                  "aliases": ["purchased", "purchased loan"]
+                },
+                {
+                  "canonical_value": "Preapproval request denied",
+                  "aliases": ["preapproval denied", "preapproval request denied"]
+                },
+                {
+                  "canonical_value": "Preapproval request approved but not accepted",
+                  "aliases": ["preapproval approved", "preapproval approved but not accepted"]
+                }
+              ]
+            },
+            "38ad9c360a98": {
+              "source_name": "applicant_race_1",
+              "label": "Race of applicant or borrower: 1",
+              "value_type": "categorical",
+              "values": [
+                {
+                  "canonical_value": "Black or African American",
+                  "aliases": ["black", "african american", "black applicants", "black borrower", "black borrowers"]
+                },
+                {
+                  "canonical_value": "White",
+                  "aliases": ["white", "white applicants", "white borrower", "white borrowers"]
+                },
+                {
+                  "canonical_value": "Asian",
+                  "aliases": ["asian", "asian applicants", "asian borrower", "asian borrowers"]
+                },
+                {
+                  "canonical_value": "American Indian or Alaska Native",
+                  "aliases": ["american indian", "alaska native", "native american"]
+                },
+                {
+                  "canonical_value": "Native Hawaiian or Other Pacific Islander",
+                  "aliases": ["native hawaiian", "pacific islander", "nhpi"]
+                },
+                {
+                  "canonical_value": "Information not provided by applicant in mail, internet, or telephone application",
+                  "aliases": ["race not provided", "race unknown", "information not provided"]
+                },
+                {
+                  "canonical_value": "Not applicable",
+                  "aliases": ["race not applicable", "not applicable"]
+                }
+              ]
+            },
+            "6057363dc2e9": {
+              "source_name": "applicant_sex",
+              "label": "Sex of applicant or borrower",
+              "value_type": "categorical",
+              "values": [
+                {
+                  "canonical_value": "Female",
+                  "aliases": ["female", "woman", "women", "female applicants", "women applicants"]
+                },
+                {
+                  "canonical_value": "Male",
+                  "aliases": ["male", "man", "men", "male applicants", "men applicants"]
+                },
+                {
+                  "canonical_value": "Joint",
+                  "aliases": ["joint", "joint applicants"]
+                },
+                {
+                  "canonical_value": "Information not provided by applicant in mail, internet, or telephone application",
+                  "aliases": ["sex not provided", "gender unknown", "information not provided"]
+                },
+                {
+                  "canonical_value": "Not applicable",
+                  "aliases": ["sex not applicable", "not applicable"]
+                }
+              ]
+            },
+            "b4588a673468": {
+              "source_name": "applicant_ethnicity_1",
+              "label": "Ethnicity of applicant or borrower: 1",
+              "value_type": "categorical",
+              "values": [
+                {
+                  "canonical_value": "Hispanic or Latino",
+                  "aliases": ["hispanic", "latino", "hispanic applicant", "latino applicant", "hispanic or latino"]
+                },
+                {
+                  "canonical_value": "Not Hispanic or Latino",
+                  "aliases": ["non-hispanic", "not hispanic", "not latino", "not hispanic or latino"]
+                },
+                {
+                  "canonical_value": "Mexican",
+                  "aliases": ["mexican", "mexican applicant"]
+                },
+                {
+                  "canonical_value": "Puerto Rican",
+                  "aliases": ["puerto rican", "puerto rican applicant"]
+                },
+                {
+                  "canonical_value": "Cuban",
+                  "aliases": ["cuban", "cuban applicant"]
+                },
+                {
+                  "canonical_value": "Other Hispanic or Latino",
+                  "aliases": ["other hispanic", "other latino", "other hispanic or latino"]
+                },
+                {
+                  "canonical_value": "Information not provided by applicant in mail, internet, or telephone application",
+                  "aliases": ["ethnicity not provided", "ethnicity unknown", "information not provided"]
+                },
+                {
+                  "canonical_value": "Not applicable",
+                  "aliases": ["ethnicity not applicable", "not applicable"]
+                }
+              ]
+            },
+            "78651f637517": {
+              "source_name": "applicant_age",
+              "label": "Age of applicant or borrower",
+              "value_type": "categorical",
+              "values": [
+                {
+                  "canonical_value": "<25",
+                  "aliases": ["under 25", "younger than 25", "less than 25", "under twenty five"]
+                },
+                {
+                  "canonical_value": "25-34",
+                  "aliases": ["25 to 34", "25-34", "25 through 34", "young adults"]
+                },
+                {
+                  "canonical_value": "35-44",
+                  "aliases": ["35 to 44", "35-44", "35 through 44"]
+                },
+                {
+                  "canonical_value": "45-54",
+                  "aliases": ["45 to 54", "45-54", "45 through 54"]
+                },
+                {
+                  "canonical_value": "55-64",
+                  "aliases": ["55 to 64", "55-64", "55 through 64"]
+                },
+                {
+                  "canonical_value": "65-74",
+                  "aliases": ["65 to 74", "65-74", "65 through 74"]
+                },
+                {
+                  "canonical_value": ">74",
+                  "aliases": ["over 74", "older than 74", "75 and older", "over seventy four"]
+                }
+              ]
+            }
+          }
+        }
+      }
+    }
+  }
+}

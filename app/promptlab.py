@@ -123,6 +123,7 @@ def render_run(
         run.bundle.get("aggregated"),
         run.bundle.get("peer_contexts"),
         pres.lints,
+        run.bundle.get("magnitude_framings"),
     )
 
     try:

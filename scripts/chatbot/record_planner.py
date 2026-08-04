@@ -1,10 +1,11 @@
 """Deterministic planner for record-level datasets.
 
 This module is intentionally small and dataset-agnostic at its public
-boundary.  HMDA is the first record-level dataset, so its variable aliases
-and decoded filter values live here until they can be moved into a shared
-dataset registry.  The LLM supplies *which* dimensions and values were
-explicitly requested; this module chooses variables, builds a structured
+boundary.  HMDA is the first record-level dataset, so its high-value variable
+aliases live here as guardrails.  Categorical filter values are resolved
+through the record value registry after variable routing.  The LLM supplies
+*which* dimensions and values were explicitly requested; this module chooses
+variables, normalizes allowed filter values, builds a structured
 ``APIPlanCall``, and leaves SQL generation to ``DuckDBCaller``.
 """
 from __future__ import annotations
@@ -13,7 +14,7 @@ import json
 import logging
 import sqlite3
 from itertools import product
-from typing import Any, Optional, Union
+from typing import Any, Optional
 
 from scripts.chatbot.census_caller import APIPlanCall, RecordFilter
 from scripts.chatbot.concept_map import ConceptVariables
@@ -28,6 +29,8 @@ from scripts.chatbot.planner import (
 from scripts.chatbot.record_metric_map import (
     RecordMetricMap, load_default_record_metric_map,
 )
+from scripts.chatbot.record_variable_aliases import resolve_record_variable_alias
+from scripts.chatbot.record_value_registry import resolve_record_filter_value
 
 logger = logging.getLogger(__name__)
 
@@ -64,96 +67,6 @@ def _default_record_geography(dataset: str) -> Optional[ResolvedGeography]:
         data_level_available="state",
         source_ref=source_ref,
     )
-
-
-# Stable IDs from the HMDA variable registry/cards.  These aliases are a
-# guardrail for the high-value dimensions where semantic search can otherwise
-# confuse primary- and co-applicant fields.  Unknown dimensions still use the
-# semantic router and are never silently substituted.
-_HMDA_ALIASES: dict[str, str] = {
-    "income": "c1aa5d4f3f72",
-    "applicant income": "c1aa5d4f3f72",
-    "loan applicant income": "c1aa5d4f3f72",
-    "applicant sex": "6057363dc2e9",
-    "primary applicant sex": "6057363dc2e9",
-    "sex of applicant": "6057363dc2e9",
-    "applicant race": "38ad9c360a98",
-    "applicant race 1": "38ad9c360a98",
-    "race of applicant": "38ad9c360a98",
-    "applicant age": "78651f637517",
-    "age of applicant": "78651f637517",
-    "borrower age": "78651f637517",
-    "action taken": "906bb78b0f70",
-    "mortgage application outcome": "906bb78b0f70",
-    "application status": "906bb78b0f70",
-    "loan application status": "906bb78b0f70",
-    "mortgage applications": "906bb78b0f70",
-    "loan applications": "906bb78b0f70",
-    "applications": "906bb78b0f70",
-    "county": "6422e2d2aab7",
-    "county code": "6422e2d2aab7",
-    "loan amount": "c02eb39025e6",
-    "mortgage amount": "c02eb39025e6",
-    "requested loan amount": "c02eb39025e6",
-}
-
-_VALUE_ALIASES: dict[str, dict[str, Union[str, list[str]]]] = {
-    "sex": {
-        "female": "Female", "woman": "Female", "women": "Female",
-        "male": "Male", "man": "Male", "men": "Male",
-        "joint": "Joint",
-    },
-    "race": {
-        "black": "Black or African American",
-        "african american": "Black or African American",
-        "white": "White",
-        "asian": "Asian",
-        "native hawaiian": "Native Hawaiian or Other Pacific Islander",
-    },
-    "action": {
-        "originated": "Loan originated",
-        "loan originated": "Loan originated",
-        "denied": "Application denied",
-        "denial": "Application denied",
-        "approved": ["Loan originated", "Application approved but not accepted"],
-        "approval": ["Loan originated", "Application approved but not accepted"],
-        "accepted": "Application approved but not accepted",
-        "withdrawn": "Application withdrawn by applicant",
-        "closed for incompleteness": "File closed for incompleteness",
-    },
-    "status": {
-        "originated": "Loan originated",
-        "loan originated": "Loan originated",
-        "denied": "Application denied",
-        "denial": "Application denied",
-        "approved": ["Loan originated", "Application approved but not accepted"],
-        "approval": ["Loan originated", "Application approved but not accepted"],
-        "accepted": "Application approved but not accepted",
-        "withdrawn": "Application withdrawn by applicant",
-        "closed for incompleteness": "File closed for incompleteness",
-    },
-    "outcome": {
-        "originated": "Loan originated",
-        "loan originated": "Loan originated",
-        "denied": "Application denied",
-        "denial": "Application denied",
-        "approved": ["Loan originated", "Application approved but not accepted"],
-        "approval": ["Loan originated", "Application approved but not accepted"],
-        "accepted": "Application approved but not accepted",
-        "withdrawn": "Application withdrawn by applicant",
-        "closed for incompleteness": "File closed for incompleteness",
-    },
-    "age": {
-        "under 25": "<25",
-        "younger than 25": "<25",
-        "less than 25": "<25",
-        "25 to 34": "25-34",
-        "25-34": "25-34",
-        "25 through 34": "25-34",
-        "35 to 44": "35-44",
-        "35-44": "35-44",
-    },
-}
 
 
 def _key(text: Optional[str]) -> str:
@@ -203,6 +116,14 @@ def _metric_recipe_for_analysis(
                 token in dimension_text
                 for token in {"status", "outcome", "action taken"}
             ):
+                status_variable_id = resolve_record_variable_alias(
+                    dataset=dataset,
+                    table_id=table_id,
+                    texts=[
+                        filter_item.dimension.canonical_hint,
+                        filter_item.dimension.text,
+                    ],
+                )
                 raw_value = (
                     filter_item.normalized_value_hint
                     or filter_item.value_text
@@ -216,22 +137,32 @@ def _metric_recipe_for_analysis(
                     f"application {raw_value} rate",
                 ])
                 normalized_value = _decoded_value(filter_item)
+                if status_variable_id is not None:
+                    normalized_value = resolve_record_filter_value(
+                        dataset=dataset,
+                        table_id=table_id,
+                        variable_id=status_variable_id,
+                        raw_value=normalized_value,
+                    )
                 values = (
                     normalized_value
                     if isinstance(normalized_value, list)
                     else [normalized_value]
                 )
                 value_set = {str(value).strip().lower() for value in values}
-                if "application denied" in value_set:
+                if value_set & {"application denied", "denied", "denial"}:
                     status_lookup_texts.append("mortgage denial rate")
                 if (
                     "loan originated" in value_set
                     and "application approved but not accepted" in value_set
                 ):
                     status_lookup_texts.append("mortgage approval rate")
-                elif "loan originated" in value_set:
+                elif value_set & {"loan originated", "originated"}:
                     status_lookup_texts.append("mortgage origination rate")
-                if "application withdrawn by applicant" in value_set:
+                if value_set & {
+                    "application withdrawn by applicant",
+                    "withdrawn",
+                }:
                     status_lookup_texts.append("mortgage withdrawal rate")
     # For percentage/rate questions, outcome/status filters define the metric.
     # Put them before generic measure text such as "loan applications" so
@@ -249,17 +180,19 @@ def _metric_recipe_for_analysis(
 def _variable_id(
     concept: ExtractedConcept,
     semantic_router: Optional[object],
+    *,
+    dataset: str,
+    table_id: str,
 ) -> tuple[str, Optional[object]]:
-    """Resolve one concept to an HMDA variable ID.
+    """Resolve one concept to a record-level variable ID.
 
     The card-backed semantic router is used when available, while curated
-    aliases remain guardrails for high-risk primary-vs-co-applicant fields.
+    dataset-scoped aliases remain guardrails for high-risk fields.
     """
-    candidates = [_key(concept.canonical_hint), _key(concept.text)]
-    alias_id = next(
-        (_HMDA_ALIASES[candidate] for candidate in candidates
-         if candidate in _HMDA_ALIASES),
-        None,
+    alias_id = resolve_record_variable_alias(
+        dataset=dataset,
+        table_id=table_id,
+        texts=[concept.canonical_hint, concept.text],
     )
 
     routed = None
@@ -267,9 +200,11 @@ def _variable_id(
         search_text = (concept.canonical_hint or concept.text).strip()
         if search_text:
             routed = semantic_router.route_dataset(
-                search_text, target_dataset="hmda", top_k=10,
+                search_text, target_dataset=dataset, top_k=10,
             )
             for target in routed.top_variables:
+                if target.target_table_id and target.target_table_id != table_id:
+                    continue
                 if not target.target_variable_id:
                     continue
                 if alias_id is None or target.target_variable_id == alias_id:
@@ -280,13 +215,13 @@ def _variable_id(
     if alias_id is not None:
         return alias_id, routed
     raise ValueError(
-        f"HMDA variable could not be resolved for "
+        f"{dataset}/{table_id} variable could not be resolved for "
         f"{(concept.canonical_hint or concept.text)!r}"
     )
 
 
 def _decoded_value(filter_item: ExtractedFilter) -> Any:
-    """Map natural-language values to decoded HMDA labels.
+    """Parse extracted scalar/list values without dataset-specific aliases.
 
     LLM extraction sometimes returns list-valued normalized hints as a JSON
     string (for example ``["Loan originated", "Application approved but not
@@ -299,10 +234,7 @@ def _decoded_value(filter_item: ExtractedFilter) -> Any:
         or ""
     )
     if isinstance(raw_value, list):
-        return [
-            _decoded_value_for_dimension(filter_item.dimension, str(value))
-            for value in raw_value
-        ]
+        return [str(value).strip() for value in raw_value]
     raw = str(raw_value).strip()
     if raw.startswith("[") and raw.endswith("]"):
         try:
@@ -310,31 +242,33 @@ def _decoded_value(filter_item: ExtractedFilter) -> Any:
         except json.JSONDecodeError:
             parsed = None
         if isinstance(parsed, list):
-            return [
-                _decoded_value_for_dimension(filter_item.dimension, str(value))
-                for value in parsed
-            ]
-    return _decoded_value_for_dimension(
-        filter_item.dimension,
-        raw,
-    )
-
-
-def _decoded_value_for_dimension(
-    dimension: ExtractedConcept,
-    raw: str,
-) -> str:
-    """Map a value using the decoded labels for a dimension."""
-    dim = _key(dimension.canonical_hint or dimension.text)
-    for token, mapping in _VALUE_ALIASES.items():
-        if token in dim:
-            return mapping.get(raw.lower(), raw)
+            return [str(value).strip() for value in parsed]
     return raw
+
+
+def _decoded_filter_value(
+    filter_item: ExtractedFilter,
+    *,
+    dataset: str,
+    table_id: str,
+    variable_id: str,
+) -> Any:
+    """Resolve a filter value using the selected record variable as the key."""
+    legacy_value = _decoded_value(filter_item)
+    return resolve_record_filter_value(
+        dataset=dataset,
+        table_id=table_id,
+        variable_id=variable_id,
+        raw_value=legacy_value,
+    )
 
 
 def _grouping_alternatives(
     analysis: ExtractedAnalysis,
     semantic_router: Optional[object],
+    *,
+    dataset: str,
+    table_id: str,
 ) -> tuple[list[tuple[list[RecordFilter], str]], Optional[str]]:
     """Expand explicit grouping values into deterministic filter variants.
 
@@ -373,8 +307,18 @@ def _grouping_alternatives(
         filters: list[RecordFilter] = []
         labels: list[str] = []
         for (_, grouping, _), raw_value in zip(dimensions, combination):
-            variable, _ = _variable_id(grouping, semantic_router)
-            decoded = _decoded_value_for_dimension(grouping, str(raw_value))
+            variable, _ = _variable_id(
+                grouping,
+                semantic_router,
+                dataset=dataset,
+                table_id=table_id,
+            )
+            decoded = resolve_record_filter_value(
+                dataset=dataset,
+                table_id=table_id,
+                variable_id=variable,
+                raw_value=str(raw_value).strip(),
+            )
             filters.append(RecordFilter(
                 variable_id=variable,
                 operator="equals",
@@ -726,7 +670,12 @@ def plan_record_query(
             notes.append(f"record metric recipe matched: {recipe.canonical}")
         else:
             measure = _percentage_measure_dimension(analysis)
-            measure_id, measure_route = _variable_id(measure, semantic_router)
+            measure_id, measure_route = _variable_id(
+                measure,
+                semantic_router,
+                dataset=dataset,
+                table_id=table_id,
+            )
         concept_idx = len(concepts)
         concepts.append(measure)
         resolutions.append(ConceptResolution(
@@ -756,7 +705,10 @@ def plan_record_query(
                 )
                 continue
             filter_id, _ = _variable_id(
-                filter_item.dimension, semantic_router,
+                filter_item.dimension,
+                semantic_router,
+                dataset=dataset,
+                table_id=table_id,
             )
             if filter_item.operator in {"is_null", "is_not_null"}:
                 record_filter = RecordFilter(
@@ -764,7 +716,12 @@ def plan_record_query(
                     operator=filter_item.operator,
                 )
             else:
-                value = _decoded_value(filter_item)
+                value = _decoded_filter_value(
+                    filter_item,
+                    dataset=dataset,
+                    table_id=table_id,
+                    variable_id=filter_id,
+                )
                 if value == "":
                     raise ValueError(
                         f"Filter {filter_item.dimension.text!r} has no value"
@@ -806,7 +763,10 @@ def plan_record_query(
                 })
 
         grouping_variants, grouping_note = _grouping_alternatives(
-            analysis, semantic_router,
+            analysis,
+            semantic_router,
+            dataset=dataset,
+            table_id=table_id,
         )
         if grouping_note:
             notes.append(grouping_note)

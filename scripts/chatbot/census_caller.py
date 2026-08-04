@@ -77,6 +77,12 @@ class APIPlanCall:
         """Stable identifier for this call (used for logging)."""
         base = f"{self.dataset}/{self.year}/{self.table_id}/{self.geo_level}"
         pieces = []
+        if self.variables:
+            variables = json.dumps(
+                sorted(self.variables),
+                separators=(",", ":"),
+            )
+            pieces.append(f"variables={variables}")
         if self.record_filters:
             filters = json.dumps(
                 [

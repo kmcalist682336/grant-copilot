@@ -61,7 +61,10 @@ def _parse_number(token: str) -> Optional[float]:
         return None
 
 
-def _sourced_values(aggregated: Any) -> set[float]:
+def _sourced_values(
+    aggregated: Any,
+    magnitude_framings: Any = None,
+) -> set[float]:
     """Every number the pipeline actually retrieved, in every form the
     synthesizer is licensed to render it in.
 
@@ -105,6 +108,42 @@ def _sourced_values(aggregated: Any) -> set[float]:
                     pass
             add(total)                # component sums are fair to state
 
+    for framing in magnitude_framings or []:
+        for attr in (
+            "value",
+            "vs_county",
+            "vs_msa",
+            "vs_state",
+            "vs_us",
+            "county_value",
+            "msa_value",
+            "state_value",
+            "us_value",
+            "prior_period_value",
+            "trend_delta",
+            "trend_pct",
+        ):
+            value = getattr(framing, attr, None)
+            if value is None and isinstance(framing, dict):
+                value = framing.get(attr)
+            add(value)
+            if value is not None and attr in {
+                "value",
+                "county_value",
+                "msa_value",
+                "state_value",
+                "us_value",
+                "prior_period_value",
+                "trend_delta",
+                "trend_pct",
+            }:
+                try:
+                    pct = float(value) * 100.0
+                except (TypeError, ValueError):
+                    continue
+                add(pct)
+                add(abs(pct))
+
     return out
 
 
@@ -124,8 +163,12 @@ def _is_sourced(n: float, sourced: Iterable[float]) -> bool:
     return False
 
 
-def check_unsourced_numbers(prose: str, aggregated: Any) -> list[Lint]:
-    sourced = _sourced_values(aggregated)
+def check_unsourced_numbers(
+    prose: str,
+    aggregated: Any,
+    magnitude_framings: Any = None,
+) -> list[Lint]:
+    sourced = _sourced_values(aggregated, magnitude_framings)
     years = {m.group(0) for m in _YEAR_RE.finditer(prose)}
 
     unsourced: list[str] = []
@@ -241,6 +284,7 @@ def run_all(
     aggregated: Any,
     peer_contexts: Any,
     config: dict,
+    magnitude_framings: Any = None,
 ) -> list[Lint]:
     """Run every enabled lint. Never raises — a broken lint must not take
     down an otherwise good answer."""
@@ -253,7 +297,9 @@ def run_all(
 
     try:
         if config.get("forbid_unsourced_numbers", True) and aggregated is not None:
-            out += check_unsourced_numbers(prose, aggregated)
+            out += check_unsourced_numbers(
+                prose, aggregated, magnitude_framings,
+            )
         if config.get("require_year_mentioned", True):
             out += check_year_mentioned(prose)
         if config.get("forbid_peer_names", True):

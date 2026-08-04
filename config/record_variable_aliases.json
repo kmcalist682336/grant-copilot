@@ -1,0 +1,43 @@
+{
+  "datasets": {
+    "hmda": {
+      "tables": {
+        "hmda": {
+          "aliases": {
+            "income": "c1aa5d4f3f72",
+            "applicant income": "c1aa5d4f3f72",
+            "loan applicant income": "c1aa5d4f3f72",
+            "applicant sex": "6057363dc2e9",
+            "primary applicant sex": "6057363dc2e9",
+            "sex of applicant": "6057363dc2e9",
+            "applicant race": "38ad9c360a98",
+            "applicant race 1": "38ad9c360a98",
+            "race of applicant": "38ad9c360a98",
+            "applicant ethnicity": "b4588a673468",
+            "applicant ethnicity 1": "b4588a673468",
+            "primary applicant ethnicity": "b4588a673468",
+            "ethnicity of applicant": "b4588a673468",
+            "hispanic ethnicity": "b4588a673468",
+            "hispanic applicant": "b4588a673468",
+            "latino applicant": "b4588a673468",
+            "applicant age": "78651f637517",
+            "age of applicant": "78651f637517",
+            "borrower age": "78651f637517",
+            "action taken": "906bb78b0f70",
+            "mortgage application outcome": "906bb78b0f70",
+            "application status": "906bb78b0f70",
+            "loan application status": "906bb78b0f70",
+            "mortgage applications": "906bb78b0f70",
+            "loan applications": "906bb78b0f70",
+            "applications": "906bb78b0f70",
+            "county": "6422e2d2aab7",
+            "county code": "6422e2d2aab7",
+            "loan amount": "c02eb39025e6",
+            "mortgage amount": "c02eb39025e6",
+            "requested loan amount": "c02eb39025e6"
+          }
+        }
+      }
+    }
+  }
+}
