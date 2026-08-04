@@ -598,7 +598,10 @@ frames:
   - name: homeownership_gap
     description: |
       First-time homebuyer programs, down-payment assistance,
-      closing the racial homeownership gap.
+      closing homeownership gaps, and renter-to-owner transition
+      programs. Combines Census affordability context with HMDA
+      mortgage-access metrics when the query mentions lending,
+      mortgage applications, or applicant outcomes.
     triggers:
       - "homeownership"
       - "first-time homebuyer"
@@ -608,15 +611,60 @@ frames:
       - "racial homeownership gap"
       - "closing costs"
       - "mortgage assistance"
+      - "renter to homeowner"
+      - "pathway to homeownership"
     required_additional_concepts:
       - "homeownership rate"
       - "median home value"
       - "median household income"
       - "mortgage status"
       - "racial composition"
-    rhetorical_target: "Homeownership-gap case: tenure by race + value + income affordability gap."
+    required_record_analyses:
+      - operation: percentage
+        measure:
+          text: "application status"
+          canonical_hint: "application status"
+          dataset_hint: hmda
+        filters:
+          - dimension:
+              text: "application status"
+              canonical_hint: "application status"
+              dataset_hint: hmda
+            operator: equals
+            value_text: "originated"
+            normalized_value_hint: "Loan originated"
+        groupings: []
+        grouping_values: {}
+        population_context: "mortgage applications"
+      - operation: percentage
+        measure:
+          text: "application status"
+          canonical_hint: "application status"
+          dataset_hint: hmda
+        filters:
+          - dimension:
+              text: "application status"
+              canonical_hint: "application status"
+              dataset_hint: hmda
+            operator: equals
+            value_text: "denied"
+            normalized_value_hint: "Application denied"
+        groupings: []
+        grouping_values: {}
+        population_context: "mortgage applications"
+      - operation: average
+        measure:
+          text: "loan amount"
+          canonical_hint: "loan amount"
+          dataset_hint: hmda
+        filters: []
+        groupings: []
+        grouping_values: {}
+        population_context: "mortgage applications"
+    rhetorical_target: "Homeownership-access case: combine tenure, home values, income affordability, and HMDA lending outcomes for the requested target group."
     standard_caveats:
       - "ACS homeownership is by householder race; gaps at small-area level have wide margins of error."
+      - "HMDA describes mortgage applications, not all households or all first-time homebuyers."
 
   - name: weatherization_rehab
     description: |
@@ -1080,10 +1128,10 @@ frames:
       - "improve mortgage outcomes"
     required_additional_concepts:
       - "racial composition"
-      - "poverty rate black"
-      - "median household income black"
-      - "median household income white"
+      - "poverty rate"
+      - "median household income"
       - "homeownership rate"
+      - "rent burden"
     required_record_analyses:
       - operation: percentage
         measure:
@@ -1120,6 +1168,194 @@ frames:
     rhetorical_target: "Mortgage-lending equity case: pair Census socioeconomic context with HMDA approval/denial metrics for the target applicant population."
     standard_caveats:
       - "HMDA records describe mortgage applications, not all households; applicant age, race, and sex filters may reduce sample size."
+
+  - name: mortgage_affordability_gap
+    description: |
+      Mortgage affordability, purchasing power, rising loan amounts,
+      applicant income, and whether households can realistically enter
+      the ownership market. Combines Census housing-cost context with
+      HMDA applicant income and loan amount metrics.
+    triggers:
+      - "mortgage affordability"
+      - "home purchase affordability"
+      - "purchasing power"
+      - "loan amount compared to income"
+      - "loan sizes increasing"
+      - "applicant income and loan amount"
+      - "afford a mortgage"
+      - "housing market affordability"
+    required_additional_concepts:
+      - "median home value"
+      - "median household income"
+      - "homeownership rate"
+      - "rent burden"
+      - "poverty rate"
+    required_record_analyses:
+      - operation: average
+        measure:
+          text: "income"
+          canonical_hint: "applicant income"
+          dataset_hint: hmda
+        filters: []
+        groupings: []
+        grouping_values: {}
+        population_context: "mortgage applicants"
+      - operation: average
+        measure:
+          text: "loan amount"
+          canonical_hint: "loan amount"
+          dataset_hint: hmda
+        filters: []
+        groupings: []
+        grouping_values: {}
+        population_context: "mortgage applications"
+      - operation: percentage
+        measure:
+          text: "application status"
+          canonical_hint: "application status"
+          dataset_hint: hmda
+        filters:
+          - dimension:
+              text: "application status"
+              canonical_hint: "application status"
+              dataset_hint: hmda
+            operator: equals
+            value_text: "denied"
+            normalized_value_hint: "Application denied"
+        groupings: []
+        grouping_values: {}
+        population_context: "mortgage applications"
+    rhetorical_target: "Mortgage-affordability case: connect home values, local incomes, applicant incomes, requested loan amounts, and denial outcomes."
+    standard_caveats:
+      - "HMDA applicant income and loan amount describe applicants, not all households in the geography."
+
+  - name: neighborhood_lending_access
+    description: |
+      Geographic concentration of mortgage applications, denials,
+      approvals, and lending outcomes in neighborhoods or underserved
+      places. Useful for place-based grant cases and neighborhood
+      investment strategies.
+    triggers:
+      - "mortgage access in neighborhoods"
+      - "lending access in neighborhoods"
+      - "underserved neighborhoods"
+      - "where are mortgage denials concentrated"
+      - "southwest atlanta mortgage access"
+      - "east atlanta mortgage access"
+      - "neighborhood lending"
+      - "place-based mortgage access"
+    required_additional_concepts:
+      - "racial composition"
+      - "poverty rate"
+      - "median household income"
+      - "homeownership rate"
+      - "rent burden"
+    required_record_analyses:
+      - operation: count
+        measure:
+          text: "mortgage applications"
+          canonical_hint: "loan applications"
+          dataset_hint: hmda
+        filters: []
+        groupings: []
+        grouping_values: {}
+        population_context: "mortgage applications"
+      - operation: percentage
+        measure:
+          text: "application status"
+          canonical_hint: "application status"
+          dataset_hint: hmda
+        filters:
+          - dimension:
+              text: "application status"
+              canonical_hint: "application status"
+              dataset_hint: hmda
+            operator: equals
+            value_text: "denied"
+            normalized_value_hint: "Application denied"
+        groupings: []
+        grouping_values: {}
+        population_context: "mortgage applications"
+      - operation: percentage
+        measure:
+          text: "application status"
+          canonical_hint: "application status"
+          dataset_hint: hmda
+        filters:
+          - dimension:
+              text: "application status"
+              canonical_hint: "application status"
+              dataset_hint: hmda
+            operator: equals
+            value_text: "originated"
+            normalized_value_hint: "Loan originated"
+        groupings: []
+        grouping_values: {}
+        population_context: "mortgage applications"
+    rhetorical_target: "Neighborhood lending-access case: show whether mortgage activity and outcomes in the requested place suggest access barriers or investment gaps."
+    standard_caveats:
+      - "Neighborhood HMDA metrics are tract-based approximations and may be sensitive to small sample sizes."
+
+  - name: application_readiness_barriers
+    description: |
+      Mortgage readiness, borrower navigation, pre-application support,
+      denial barriers, and counseling programs designed to help
+      applicants become better positioned for approval.
+    triggers:
+      - "mortgage readiness"
+      - "homebuyer readiness"
+      - "borrower readiness"
+      - "application readiness"
+      - "pre-application support"
+      - "mortgage counseling"
+      - "homebuyer counseling"
+      - "why are applicants denied"
+      - "barriers to mortgage approval"
+      - "reduce mortgage denials"
+    required_additional_concepts:
+      - "poverty rate"
+      - "median household income"
+      - "educational attainment"
+      - "rent burden"
+      - "homeownership rate"
+    required_record_analyses:
+      - operation: percentage
+        measure:
+          text: "application status"
+          canonical_hint: "application status"
+          dataset_hint: hmda
+        filters:
+          - dimension:
+              text: "application status"
+              canonical_hint: "application status"
+              dataset_hint: hmda
+            operator: equals
+            value_text: "denied"
+            normalized_value_hint: "Application denied"
+        groupings: []
+        grouping_values: {}
+        population_context: "mortgage applications"
+      - operation: count
+        measure:
+          text: "denied mortgage applications"
+          canonical_hint: "denied mortgage applications"
+          dataset_hint: hmda
+        filters: []
+        groupings: []
+        grouping_values: {}
+        population_context: "mortgage applications"
+      - operation: average
+        measure:
+          text: "income"
+          canonical_hint: "applicant income"
+          dataset_hint: hmda
+        filters: []
+        groupings: []
+        grouping_values: {}
+        population_context: "mortgage applicants"
+    rhetorical_target: "Application-readiness case: connect socioeconomic need with HMDA denial outcomes and applicant income to justify counseling, navigation, or pre-application support."
+    standard_caveats:
+      - "HMDA can show application outcomes, but detailed credit readiness and underwriting reasons may require lender or counseling-program data."
 
   - name: racial_disparity
     description: |
