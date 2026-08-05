@@ -19,12 +19,19 @@ from app.lints import Lint
 
 class Citation(BaseModel):
     """A source the answer draws on. Derived from the plan, never from
-    the model — citations here cannot be hallucinated."""
+    the model — citations here cannot be hallucinated.
+
+    ``title`` and ``variables`` are plain-English when the metadata DB
+    has them (table title, per-variable label) — never a client-side
+    guess at what a table code means, only what the pipeline actually
+    looked up. ``variables`` falls back to the raw variable id when a
+    label isn't in the catalog, so the list is never empty."""
 
     table_id: str = ""
     dataset: str = ""
     year: Optional[int] = None
     title: str = ""
+    universe: str = ""
     variables: list[str] = Field(default_factory=list)
     url: str = ""
 
@@ -269,8 +276,21 @@ def to_public(
                     table_id=str(_attr(c, "table_id", "") or ""),
                     dataset=str(_attr(c, "dataset", "") or ""),
                     year=_attr(c, "year"),
-                    title=str(_attr(c, "title", "") or ""),
-                    variables=[str(v) for v in (_attr(c, "variables", []) or [])],
+                    # The internal Citation calls this `table_title`, not
+                    # `title` — reading the wrong name here silently sent
+                    # an empty string to the frontend on every citation,
+                    # even when the pipeline had the real table title.
+                    title=str(_attr(c, "table_title", "") or ""),
+                    universe=str(_attr(c, "universe", "") or ""),
+                    # Each entry is a CitedVariable(variable_id, label).
+                    # Prefer the plain-English label the metadata DB
+                    # looked up; fall back to the raw variable id rather
+                    # than `str(obj)`, which stringified the whole
+                    # pydantic object instead of a name.
+                    variables=[
+                        str(_attr(v, "label") or _attr(v, "variable_id", "") or "")
+                        for v in (_attr(c, "variables", []) or [])
+                    ],
                     url=str(_attr(c, "url", "") or ""),
                 ))
 
