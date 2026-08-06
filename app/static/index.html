@@ -84,6 +84,32 @@
   .brand h1 { font-size: 16px; margin: 0; font-weight: 700; color: var(--ink); letter-spacing: -.01em; }
   #status { font-size: 12.5px; color: var(--dim); }
   .header-actions { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+
+  /* Long-term memory: past sessions saved to this browser's localStorage
+     (never sent anywhere), reopenable without re-querying the backend. */
+  .history-panel {
+    position: fixed; top: 54px; right: 18px; width: 340px; max-height: 70vh;
+    background: var(--bg); border: 1px solid var(--line); border-radius: 12px;
+    box-shadow: var(--shadow); z-index: 60; display: flex; flex-direction: column;
+    overflow: hidden;
+  }
+  .history-head {
+    display: flex; align-items: center; gap: 8px; padding: 10px 8px 10px 14px;
+    border-bottom: 1px solid var(--line); flex: none;
+  }
+  .history-head .title { font-weight: 700; font-size: 13.5px; margin-right: auto; }
+  .history-head button.ghost { color: var(--accent); padding: 5px 10px; }
+  .history-head .icon-btn { width: 28px; height: 28px; }
+  .history-list { overflow-y: auto; padding: 6px; }
+  .history-item {
+    display: block; width: 100%; text-align: left; background: transparent;
+    border: 0; border-radius: 8px; padding: 9px 10px; color: var(--fg);
+    font-weight: 400; cursor: pointer;
+  }
+  .history-item:hover { background: var(--panel); }
+  .history-q { font-size: 13px; overflow: hidden; text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; }
+  .history-meta { margin-top: 2px; }
+  @media (max-width: 560px) { .history-panel { right: 8px; left: 8px; width: auto; } }
   .icon-btn {
     width: 34px; height: 34px; padding: 0; border-radius: 9px;
     background: var(--bg); border: 1px solid var(--line); color: var(--dim);
@@ -96,7 +122,10 @@
 
   /* ---------- layout ---------- */
   .layout { display: flex; height: calc(100vh - 55px); }
-  .left { flex: 1 1 60%; overflow-y: auto; padding: 22px; min-width: 0; }
+  .left {
+    flex: 1 1 60%; overflow-y: auto; padding: 22px; min-width: 0;
+    display: flex; flex-direction: column;
+  }
   .right {
     flex: 1 1 40%; overflow-y: auto; padding: 18px;
     border-left: 1px solid var(--line); background: var(--panel);
@@ -189,10 +218,25 @@
   .citation-title { font-size: 14px; font-weight: 600; color: var(--fg); }
   .citation-universe { font-size: 12.5px; color: var(--dim); margin-top: 2px; }
   .citation-vars { font-size: 12.5px; color: var(--dim); margin-top: 4px; }
+  .citation-years { font-size: 12.5px; color: var(--fg); margin-top: 4px; font-variant-numeric: tabular-nums; }
   .citation-code { font-size: 11.5px; color: var(--dim); margin-top: 6px; }
   .citation-code code { font-family: var(--mono); color: var(--dim); }
   .citation-code a { color: var(--accent); }
   hr.citation-sep { border: none; border-top: 1px solid var(--line); margin: 4px 0; }
+  .citation-year-heading {
+    font-size: 12px; font-weight: 700; color: var(--dim); letter-spacing: .04em;
+    text-transform: uppercase; margin: 14px 0 2px;
+  }
+  .citation-year-heading:first-child { margin-top: 0; }
+  .seg-group { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; padding: 2px; margin-bottom: 12px; }
+  .seg-btn {
+    background: transparent; color: var(--dim); border: 0; border-radius: 999px;
+    padding: 5px 13px; font-size: 12.5px; font-weight: 600; cursor: pointer;
+  }
+  .seg-btn.active { background: var(--accent); color: #fff; }
+  .export-sections { display: flex; flex-wrap: wrap; gap: 8px 18px; }
+  .export-sec-label { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--fg); cursor: pointer; }
+  .export-sec-label input { margin: 0; }
 
   /* ---------- Filled cards: Main Response / Peers / Citations / Try Next ---------- */
   .fill-card {
@@ -220,15 +264,6 @@
 
   button.copy { padding: 6px 12px; font-size: 12px; }
 
-  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 16px; }
-  .chip {
-    display: inline-flex; align-items: center; gap: 6px; font-size: 12px;
-    border: 1px solid var(--line); border-radius: 999px; padding: 4px 10px;
-    background: var(--accent-soft); color: var(--fg); max-width: 100%;
-  }
-  .chip .chip-title { color: var(--fg); font-weight: 500; overflow: hidden; text-overflow: ellipsis;
-                       white-space: nowrap; max-width: 280px; }
-
   .geo-row { display: flex; gap: 8px; align-items: center; margin-top: 12px; flex-wrap: wrap; }
   .badge {
     display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600;
@@ -238,7 +273,10 @@
   .badge.dim { background: var(--panel); color: var(--dim); }
 
   /* Peers */
+  .peers-anchor { font-size: 12.5px; color: var(--dim); margin-bottom: 12px; }
   .peer-group + .peer-group { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--line); }
+  .peer-row-head { margin-top: 0 !important; }
+  .peer-row-head .val { color: var(--dim); font-family: inherit; font-size: 11px; text-transform: uppercase; letter-spacing: .03em; }
   .peer-axis { font-weight: 700; font-size: 14.5px; }
   .peer-axis-desc { font-size: 12.5px; color: var(--dim); margin-top: 2px; }
   .peer-row { display: flex; align-items: center; gap: 10px; margin: 10px 0 0; font-size: 13.5px; }
@@ -303,25 +341,44 @@
   .chart-summary { margin-top: 8px; }
 
   /* ---------- landing / empty state ---------- */
-  #ask-panel { position: relative; overflow: hidden; padding-bottom: 60px; min-height: 480px; }
+  #ask-panel { position: relative; overflow: hidden; }
+  #ask-panel:not(.started) {
+    flex: 1 1 auto; display: flex; flex-direction: column; justify-content: center;
+    padding-bottom: 60px; min-height: 480px;
+  }
   #ask-panel.started { padding-bottom: 0; min-height: 0; }
+  #ask-panel.started #welcome-logo,
   #ask-panel.started #welcome-heading,
   #ask-panel.started #suggested-chips,
   #ask-panel.started #empty-trust,
   #ask-panel.started #globe-wrap { display: none; }
-  #ask-panel:not(.started) .composer-wrap { max-width: 620px; margin: 0 auto; }
+  #ask-panel:not(.started) .composer-wrap { max-width: 820px; margin: 0 auto; }
+  #welcome-logo { display: block; width: 60px; height: auto; margin: 0 auto 26px; }
+  /* Sized against .composer-wrap's own 820px cap — each clamp ceiling
+     is checked against the actual string so neither line ever runs
+     wider than the composer box beneath it. Three-step hierarchy at
+     every viewport width: "Welcome" (biggest) > the question (middle)
+     > the composer input text, 21px (smallest) — never just two sizes. */
   #welcome-heading {
-    text-align: center; font-size: clamp(22px, 3.4vw, 30px); font-weight: 800;
-    color: var(--ink); margin: 8px 0 26px; letter-spacing: -.01em; text-wrap: balance;
+    text-align: center; font-weight: 800;
+    color: var(--ink); margin: 0 0 34px; letter-spacing: -.015em;
   }
+  .welcome-line { display: block; line-height: 1.2; text-wrap: balance; }
+  .welcome-line:first-child { font-size: clamp(30px, 4.6vw, 44px); }
+  .welcome-line:last-child { font-size: clamp(22px, 3.2vw, 30px); font-weight: 700; }
+  .welcome-line + .welcome-line { margin-top: .12em; }
   .composer {
     background: var(--fill-2); border-radius: 20px; padding: 8px;
     position: relative; z-index: 2; box-shadow: var(--shadow);
   }
+  #ask-panel:not(.started) .composer { padding: 13px; border-radius: 28px; }
   .composer textarea {
     background: var(--fill); color: var(--on-fill); border: none; border-radius: 14px;
     padding: 16px 16px 12px; font-size: 15.5px; min-height: 70px; resize: vertical;
     caret-color: var(--on-fill);
+  }
+  #ask-panel:not(.started) .composer textarea {
+    border-radius: 20px; padding: 24px 24px 18px; font-size: 21px; min-height: 96px;
   }
   .composer textarea::placeholder { color: rgba(255,255,255,.72); }
   :root[data-theme="dark"] .composer textarea::placeholder { color: rgba(230,238,251,.55); }
@@ -332,31 +389,42 @@
     display: flex; justify-content: space-between; align-items: center;
     padding: 10px 12px 4px; margin-top: 2px; border-top: 1px solid rgba(255,255,255,.22);
   }
+  #ask-panel:not(.started) .composer-foot { padding: 14px 16px 6px; }
+  #ask-panel:not(.started) .composer-foot button.secondary { font-size: 15.5px; padding: 11px 19px; }
   :root[data-theme="dark"] .composer-foot { border-top-color: rgba(255,255,255,.14); }
   .send-btn {
     width: 38px; height: 38px; border-radius: 11px; background: var(--bg);
     display: flex; align-items: center; justify-content: center; padding: 0;
     color: var(--fill); border: none; flex: none;
   }
+  #ask-panel:not(.started) .send-btn { width: 58px; height: 58px; border-radius: 17px; }
   .send-btn svg { width: 17px; height: 17px; }
+  #ask-panel:not(.started) .send-btn svg { width: 26px; height: 26px; }
   .send-btn:disabled { opacity: .5; }
-  #suggested-chips { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 16px; }
+  #suggested-chips { display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; margin-top: 22px; }
   .chip-btn {
-    font-size: 12.5px; border: 1px solid var(--line); border-radius: 999px;
-    padding: 7px 14px; color: var(--dim); background: var(--bg); cursor: pointer;
+    font-size: 16px; border: 1px solid var(--line); border-radius: 999px;
+    padding: 12px 22px; color: var(--dim); background: var(--bg); cursor: pointer;
     transition: border-color 150ms ease, color 150ms ease;
   }
   .chip-btn:hover { border-color: var(--accent); color: var(--accent); }
   .chip-btn.primary { color: var(--accent); border-color: var(--accent-soft); background: var(--accent-soft); font-weight: 600; }
-  #empty-trust { text-align: center; font-size: 12.5px; color: var(--dim); margin-top: 20px; position: relative; z-index: 2; }
+  #empty-trust { text-align: center; font-size: 15px; color: var(--dim); margin-top: 28px; position: relative; z-index: 2; }
 
   #globe-wrap {
-    position: absolute; left: -90px; bottom: -110px; width: 360px; height: 360px;
+    /* Positioned against the viewport (not #ask-panel) so the sphere
+       sits flush at the true page corner with zero gap — an ancestor's
+       padding no longer pushes it inward, and #ask-panel's
+       overflow:hidden no longer clips it (fixed descendants escape an
+       ancestor's clipping box entirely). transform % resolve against
+       the element's own size, so the crop ratio holds at any size. */
+    position: fixed; left: 0; bottom: 0; transform: translate(-22%, 26%);
+    width: clamp(380px, 78vmin, 1100px); height: clamp(380px, 78vmin, 1100px);
     pointer-events: none; z-index: 1; opacity: .9;
   }
   #globe-canvas { width: 100%; height: 100%; display: block; }
   @media (max-width: 700px) {
-    #globe-wrap { width: 240px; height: 240px; left: -70px; bottom: -80px; opacity: .6; }
+    #globe-wrap { width: clamp(180px, 55vw, 260px); height: clamp(180px, 55vw, 260px); opacity: .6; }
   }
 
   /* Query echo + live stage, shown once a question is in flight. */
@@ -380,7 +448,8 @@
   @media print {
     body { background: #fff; color: #000; }
     header, #ask-panel, #banner, #stage-card, .right, .fill-head button,
-    #download-answer, #print-answer { display: none !important; }
+    #export-card, .seg-group { display: none !important; }
+    .export-hide { display: none !important; }
     .left { padding: 0; overflow: visible; height: auto; }
     .fill-card { background: #fff !important; border: 1.5px solid #223; box-shadow: none; }
     .fill-head { color: #223 !important; }
@@ -395,13 +464,6 @@
 
 <header>
   <div class="brand">
-    <svg width="26" height="20" viewBox="0 0 34 26" fill="none" aria-hidden="true">
-      <path d="M3 21 L14 12 L22 15 L31 4" stroke="var(--accent)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
-      <circle cx="3" cy="21" r="2.6" fill="var(--ink)"/>
-      <circle cx="14" cy="12" r="2.6" fill="var(--ink)"/>
-      <circle cx="22" cy="15" r="2.6" fill="var(--ink)"/>
-      <circle cx="31" cy="4" r="3.2" fill="var(--accent)"/>
-    </svg>
     <h1>Grant Copilot</h1>
   </div>
   <span id="status">connecting…</span>
@@ -409,9 +471,21 @@
     <button id="theme-toggle" class="icon-btn" type="button" aria-label="Switch to dark theme">
       <svg id="theme-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="4.5"/><path d="M12 2.5v2.5M12 19v2.5M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M2.5 12H5M19 12h2.5M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8"/></svg>
     </button>
+    <button id="toggle-history" class="secondary" type="button" aria-haspopup="true" aria-expanded="false">History</button>
     <button id="toggle-dev" class="secondary" type="button">Developer</button>
   </div>
 </header>
+
+<div id="history-panel" class="history-panel hide">
+  <div class="history-head">
+    <span class="title">Previous sessions</span>
+    <button id="history-clear" class="ghost" type="button">Clear</button>
+    <button id="history-close" class="icon-btn" type="button" aria-label="Close">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="5" y1="5" x2="19" y2="19"/><line x1="19" y1="5" x2="5" y2="19"/></svg>
+    </button>
+  </div>
+  <div id="history-list" class="history-list"></div>
+</div>
 
 <!-- Setup gate. Shown until the app has everything it needs; the rest of
      the UI stays hidden behind it so nothing looks broken. -->
@@ -440,8 +514,10 @@
   <div class="left">
     <div id="ask-panel">
       <div class="composer-wrap">
-        <h2 id="welcome-heading" style="font-size:inherit;text-transform:none;letter-spacing:normal;color:inherit">
-          Welcome — what can I help you with today?
+        <img id="welcome-logo" src="/static/ia-logo.png" alt="ia">
+        <h2 id="welcome-heading" style="text-transform:none;letter-spacing:normal;color:inherit">
+          <span class="welcome-line">Welcome</span>
+          <span class="welcome-line">What can I help you with today?</span>
         </h2>
         <div class="composer">
           <textarea id="query" rows="2"
@@ -612,6 +688,76 @@ $("toggle-dev").onclick = () => {
 };
 setDevVisible(localStorage.getItem(DEV_VISIBLE_KEY) === "1");
 
+// ---------- long-term memory: session history ----------
+// Saved entirely to this browser's localStorage — nothing is sent
+// anywhere new, and nothing here is shared across devices or users.
+// "Everyone has their own token" in a locally-run app already means
+// everyone has their own browser profile, so per-origin localStorage
+// is already the right scope without needing real account plumbing.
+const HISTORY_KEY = "gc-history";
+const HISTORY_MAX = 30;
+function loadHistory() {
+  try { return JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]"); }
+  catch { return []; }
+}
+function saveHistoryEntry(r) {
+  if (!r || !r.run_id) return;
+  // trace/upstream/metrics are the Developer pane's payload, not needed
+  // to review a saved result, and the biggest thing in a run — drop them
+  // so history doesn't blow past the localStorage quota after a few runs.
+  const light = {...r, trace: null, upstream: [], metrics: null};
+  const list = loadHistory().filter(e => e.run_id !== r.run_id);
+  list.unshift({run_id: r.run_id, query: r.query || "", ts: Date.now(), response: light});
+  const trimmed = list.slice(0, HISTORY_MAX);
+  try {
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(trimmed));
+  } catch (e) {
+    // Quota exceeded — history is best-effort, never block the app on it.
+    try { localStorage.setItem(HISTORY_KEY, JSON.stringify(trimmed.slice(0, 5))); } catch {}
+  }
+}
+function fmtHistoryTime(ts) {
+  return new Date(ts).toLocaleString(undefined,
+    {month: "short", day: "numeric", hour: "numeric", minute: "2-digit"});
+}
+function renderHistoryList() {
+  const list = loadHistory();
+  const body = $("history-list");
+  if (!list.length) {
+    body.innerHTML = '<div class="dim small" style="padding:14px;">' +
+      'No previous sessions saved on this device yet.</div>';
+    return;
+  }
+  body.innerHTML = list.map((e, i) => `
+    <button type="button" class="history-item" data-hist="${i}">
+      <div class="history-q">${esc(e.query || "(untitled query)")}</div>
+      <div class="history-meta dim small">${esc(fmtHistoryTime(e.ts))}</div>
+    </button>`).join("");
+  body.querySelectorAll("[data-hist]").forEach(btn => {
+    btn.onclick = () => {
+      const entry = list[+btn.dataset.hist];
+      if (!entry) return;
+      $("ask-panel").classList.add("started");
+      $("query").value = entry.query;
+      $("query-echo").textContent = entry.query;
+      $("query-echo").classList.remove("hide");
+      render(entry.response);
+      setHistoryVisible(false);
+    };
+  });
+}
+function setHistoryVisible(visible) {
+  $("history-panel").classList.toggle("hide", !visible);
+  $("toggle-history").setAttribute("aria-expanded", String(visible));
+  if (visible) renderHistoryList();
+}
+$("toggle-history").onclick = () => setHistoryVisible($("history-panel").classList.contains("hide"));
+$("history-close").onclick = () => setHistoryVisible(false);
+$("history-clear").onclick = () => {
+  localStorage.removeItem(HISTORY_KEY);
+  renderHistoryList();
+};
+
 // ---------- globe ----------
 // A genuine rotating dot-sphere (Canvas, orthographic projection), built
 // on the same idea as the previous `#ambient-globe` SVG: purely
@@ -620,15 +766,25 @@ setDevVisible(localStorage.getItem(DEV_VISIBLE_KEY) === "1");
 // intentionally stylized, not surveyed geometry.
 (function initGlobe() {
   const canvas = $("globe-canvas");
-  if (!canvas || !canvas.getContext) return;
+  const wrap = $("globe-wrap");
+  if (!canvas || !canvas.getContext || !wrap) return;
   const ctx = canvas.getContext("2d");
   const DPR = Math.min(window.devicePixelRatio || 1, 2);
-  const CSS_SIZE = 360;
-  canvas.width = CSS_SIZE * DPR;
-  canvas.height = CSS_SIZE * DPR;
-  ctx.scale(DPR, DPR);
-  const R = CSS_SIZE / 2 - 4;
-  const CX = CSS_SIZE / 2, CY = CSS_SIZE / 2;
+  // Backing-store size tracks the CSS box (itself viewport-scaled via
+  // clamp()), so the sphere's resolution and dot layout stay sharp and
+  // centered at any window size instead of being fixed at load time.
+  let CSS_SIZE = 360, R = CSS_SIZE / 2 - 4, CX = CSS_SIZE / 2, CY = CSS_SIZE / 2;
+  function resize(measuredWidth) {
+    const size = Math.round(measuredWidth || wrap.getBoundingClientRect().width) || CSS_SIZE;
+    if (size === CSS_SIZE) return;
+    CSS_SIZE = size;
+    canvas.width = CSS_SIZE * DPR;
+    canvas.height = CSS_SIZE * DPR;
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+    R = CSS_SIZE / 2 - 4;
+    CX = CSS_SIZE / 2; CY = CSS_SIZE / 2;
+  }
+  resize();
 
   const CONTINENTS = [
     [[-165,68],[-140,70],[-95,72],[-75,68],[-65,60],[-52,48],[-60,45],[-75,35],
@@ -664,11 +820,36 @@ setDevVisible(localStorage.getItem(DEV_VISIBLE_KEY) === "1");
     }
   }
 
+  // Real-world major-city coordinates [lon, lat], each checked against
+  // CONTINENTS above so a pin never drops in an ocean gap the coarse
+  // polygons don't cover (a few real cities — London, Tokyo,
+  // Singapore — sit on islands/peninsulas this simplified coastline
+  // drops entirely, so those are swapped for the nearest mainland point).
+  const CITIES = [
+    [-74.0, 40.7], [-87.65, 41.85], [-118.2, 34.0], [-79.4, 43.7], [-99.1, 19.4],
+    [-46.6, -23.5], [-58.4, -34.6],
+    [2.35, 48.85], [13.4, 52.5], [37.6, 55.75], [28.9, 41.0],
+    [31.2, 30.0], [3.4, 6.5], [28.0, -26.2], [36.8, -1.3],
+    [116.4, 39.9], [127.0, 37.5], [72.9, 19.1], [100.0, 18.0], [132.0, -22.0],
+  ];
+  // Each city runs its own pop-up/hold/pop-out/wait loop, offset by a
+  // prime-ish multiple of its index so they stagger instead of blinking
+  // in unison — little pins dropping in as the globe turns.
+  const PIN_PERIOD = 5200, PIN_POP = 350, PIN_HOLD = 2000;
+  function pinScale(i, elapsedMs) {
+    const t = (elapsedMs + (i * 977) % PIN_PERIOD) % PIN_PERIOD;
+    if (t < PIN_POP) return t / PIN_POP;
+    if (t < PIN_POP + PIN_HOLD) return 1;
+    if (t < PIN_POP * 2 + PIN_HOLD) return 1 - (t - PIN_POP - PIN_HOLD) / PIN_POP;
+    return 0;
+  }
+
   const reduceMotion = window.matchMedia &&
     window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   let rotation = -0.6;
+  let elapsedMs = 0;
   let last = null;
-  const SPEED = (2 * Math.PI) / 90; // one full turn per 90s
+  const SPEED = (2 * Math.PI) / 60; // one full turn per 60s (was 90s — ~33% faster)
 
   function draw() {
     ctx.clearRect(0, 0, CSS_SIZE, CSS_SIZE);
@@ -697,6 +878,37 @@ setDevVisible(localStorage.getItem(DEV_VISIBLE_KEY) === "1");
       ctx.fillStyle = dotColor;
       ctx.fill();
     }
+
+    // Map pins: a little bigger than the dots, same color, dropping in
+    // briefly at real city coordinates as those cities rotate into
+    // view. Fixed CSS-pixel sizing (not scaled by R) so they read as
+    // consistently "a little bigger than a dot" at any globe size.
+    CITIES.forEach(([lon, lat], i) => {
+      const scale = pinScale(i, elapsedMs);
+      if (scale <= 0.001) return;
+      const phi = lat * Math.PI / 180;
+      const theta = lon * Math.PI / 180 + rotation;
+      const x = Math.cos(phi) * Math.sin(theta);
+      const z = Math.cos(phi) * Math.cos(theta);
+      const y = Math.sin(phi);
+      if (z < -0.08) return;
+      const depth = Math.max(0, Math.min(1, (z + 0.08) / 1.08));
+      const px = CX + x * R;
+      const py = CY - y * R; // the pin's tip anchors exactly here
+      const headR = 3 * scale, tipLen = 7.5 * scale;
+      const headCY = py - tipLen;
+      ctx.globalAlpha = (0.35 + depth * 0.65) * scale;
+      ctx.fillStyle = dotColor;
+      ctx.beginPath();
+      ctx.moveTo(px, py);
+      ctx.lineTo(px - headR * 0.82, headCY + headR * 0.4);
+      ctx.lineTo(px + headR * 0.82, headCY + headR * 0.4);
+      ctx.closePath();
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(px, headCY, headR, 0, Math.PI * 2);
+      ctx.fill();
+    });
     ctx.globalAlpha = 1;
   }
 
@@ -705,11 +917,56 @@ setDevVisible(localStorage.getItem(DEV_VISIBLE_KEY) === "1");
     const dt = (t - last) / 1000;
     last = t;
     rotation += SPEED * dt;
+    elapsedMs += dt * 1000;
     draw();
     if (!reduceMotion) requestAnimationFrame(frame);
   }
   draw();
   if (!reduceMotion) requestAnimationFrame(frame);
+  // A plain window "resize" listener misses the case that actually bit
+  // us here: the panel starts at zero size behind the setup/status
+  // check and only gets its real size once that resolves, with no
+  // window resize involved. ResizeObserver fires on that transition
+  // too, so the globe always matches the box it's actually in.
+  if (window.ResizeObserver) {
+    new ResizeObserver((entries) => {
+      const w = entries[0] && entries[0].contentRect && entries[0].contentRect.width;
+      resize(w);
+      if (reduceMotion) draw();
+    }).observe(wrap);
+  } else {
+    window.addEventListener("resize", () => { resize(); if (reduceMotion) draw(); });
+  }
+})();
+
+// ---------- welcome heading: typewriter ----------
+// Real text stays in the HTML (no-JS fallback, and the final state for
+// reduced-motion users); this only clears and retypes it visually.
+(function typeWelcome() {
+  const heading = $("welcome-heading");
+  if (!heading) return;
+  const lines = Array.from(heading.querySelectorAll(".welcome-line"));
+  if (!lines.length) return;
+  if (window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+  const texts = lines.map(el => el.textContent);
+  lines.forEach(el => { el.textContent = ""; });
+
+  const CHAR_MS = 58; // slow-to-moderate per-character pace
+  const LINE_PAUSE_MS = 260;
+  let lineIdx = 0, charIdx = 0;
+  function step() {
+    const text = texts[lineIdx];
+    charIdx++;
+    lines[lineIdx].textContent = text.slice(0, charIdx);
+    if (charIdx < text.length) {
+      setTimeout(step, CHAR_MS);
+    } else if (lineIdx < lines.length - 1) {
+      lineIdx++; charIdx = 0;
+      setTimeout(step, LINE_PAUSE_MS);
+    }
+  }
+  setTimeout(step, 150);
 })();
 
 // ---------- helpers ----------
@@ -746,6 +1003,13 @@ function fmtValue(v) {
   if (v.ratio !== null && v.ratio !== undefined) return fmtByUnits(v.ratio * 100, v.units, true);
   return "—";
 }
+// Display-only formatting of a snake_case axis key ("race_ethnicity" ->
+// "Race ethnicity") — same value, just not run through a code identifier.
+function axisLabel(axis) {
+  const s = String(axis || "").replace(/_/g, " ").trim();
+  return s ? s[0].toUpperCase() + s.slice(1) : s;
+}
+
 // The app's own two data sources — stable, real names, not a guess at
 // what a specific table means. Any actual interpretation of a table
 // (title, universe, variable labels) comes only from what the pipeline's
@@ -764,6 +1028,101 @@ function citationHeadline(c) {
 }
 function citationCode(c) {
   return `${c.dataset}${c.year ? "/" + c.year : ""}/${c.table_id}`;
+}
+
+// Collapses a sorted list of years into ranges — [2020,2021,2022] -> "2020–2022".
+// Purely a display compression of the real years present; invents nothing.
+function formatYearRanges(years) {
+  const sorted = [...new Set(years)].sort((a, b) => a - b);
+  const runs = [];
+  let start = sorted[0], prev = sorted[0];
+  for (let i = 1; i <= sorted.length; i++) {
+    const y = sorted[i];
+    if (y === prev + 1) { prev = y; continue; }
+    runs.push(start === prev ? `${start}` : `${start}–${prev}`);
+    start = prev = y;
+  }
+  return runs.join(", ");
+}
+
+// One citation object exists per (table, year) pair from the pipeline.
+// Grouping by table turns "the same table cited 5 times, once per year"
+// into one entry with a year range — same underlying facts, just not
+// repeated. Nothing here is guessed: title/universe/variables/url are
+// copied verbatim from the source citations, only re-grouped.
+function groupCitationsByCategory(citations) {
+  const groups = new Map();
+  for (const c of citations) {
+    const key = `${c.dataset}::${c.table_id}`;
+    if (!groups.has(key)) {
+      groups.set(key, {
+        title: citationHeadline(c), universe: c.universe || "",
+        dataset: c.dataset, table_id: c.table_id,
+        variables: [], years: [], urls: new Map(),
+      });
+    }
+    const g = groups.get(key);
+    for (const v of c.variables || []) if (!g.variables.includes(v)) g.variables.push(v);
+    if (c.year !== null && c.year !== undefined) g.years.push(c.year);
+    if (c.url) g.urls.set(c.year, c.url);
+  }
+  return [...groups.values()];
+}
+function groupCitationsByYear(citations) {
+  const groups = new Map();
+  for (const c of citations) {
+    const key = c.year === null || c.year === undefined ? "—" : c.year;
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(c);
+  }
+  return [...groups.entries()].sort((a, b) => {
+    if (a[0] === "—") return 1;
+    if (b[0] === "—") return -1;
+    return a[0] - b[0];
+  });
+}
+// A category group can cover several years, each pointing at a
+// different source URL — link every one rather than dropping the rest.
+function citationLinksHtml(urls) {
+  const distinct = new Set(urls.values());
+  if (distinct.size === 0) return "";
+  if (distinct.size === 1) {
+    return ` · <a href="${esc([...distinct][0])}" target="_blank" rel="noopener">source</a>`;
+  }
+  const parts = [...urls.entries()].sort((a, b) => a[0] - b[0])
+    .map(([y, u]) => `<a href="${esc(u)}" target="_blank" rel="noopener">${esc(y)}</a>`);
+  return ` · sources: ${parts.join(", ")}`;
+}
+function citationsBodyHtml(citations, mode) {
+  const out = [];
+  if (mode === "year") {
+    const groups = groupCitationsByYear(citations);
+    groups.forEach(([year, list], gi) => {
+      out.push(`<div class="citation-year-heading">${esc(year)}</div>`);
+      list.forEach(c => {
+        out.push(`<div class="citation-block">
+          <div class="citation-title">${esc(citationHeadline(c))}</div>
+          ${c.universe ? `<div class="citation-universe">Covers: ${esc(c.universe)}</div>` : ""}
+          ${c.variables && c.variables.length ? `<div class="citation-vars">${c.variables.map(esc).join(", ")}</div>` : ""}
+          <div class="citation-code"><code>${esc(c.dataset)}/${esc(c.table_id)}</code>
+            ${c.url ? ` · <a href="${esc(c.url)}" target="_blank" rel="noopener">source</a>` : ""}</div>
+        </div>`);
+      });
+      if (gi < groups.length - 1) out.push('<hr class="citation-sep">');
+    });
+  } else {
+    const groups = groupCitationsByCategory(citations);
+    groups.forEach((g, i) => {
+      out.push(`<div class="citation-block">
+        <div class="citation-title">${esc(g.title)}</div>
+        ${g.universe ? `<div class="citation-universe">Covers: ${esc(g.universe)}</div>` : ""}
+        ${g.variables.length ? `<div class="citation-vars">${g.variables.map(esc).join(", ")}</div>` : ""}
+        ${g.years.length ? `<div class="citation-years">Years: ${esc(formatYearRanges(g.years))}</div>` : ""}
+        <div class="citation-code"><code>${esc(g.dataset)}/${esc(g.table_id)}</code>${citationLinksHtml(g.urls)}</div>
+      </div>${i < groups.length - 1 ? '<hr class="citation-sep">' : ""}`);
+    });
+  }
+  return out.join("\n");
 }
 function banner(msg, isError) {
   const b = $("banner");
@@ -972,7 +1331,7 @@ function render(r) {
   const leadGeo = lead && r.geos ? r.geos.find(g => g.name === lead.geo) : null;
 
   if (r.prose || (r.key_findings && r.key_findings.length) || lead) {
-    out.push('<div class="fill-card">');
+    out.push('<div class="fill-card" data-section="main">');
     out.push(`<div class="fill-head"><span class="title">Main Response</span>
       <button class="ghost copy" id="copy-answer" type="button">Copy</button></div>`);
     out.push('<div class="fill-body">');
@@ -994,22 +1353,18 @@ function render(r) {
       out.push('</div>');
     }
     if (r.prose) out.push(`<div class="prose mt">${esc(r.prose)}</div>`);
-    if (r.key_findings && r.key_findings.length) {
+    // Older cached runs (or a stale synthesizer prompt) can still have
+    // "Try next: ..." lines baked into key_findings — that content
+    // belongs only in the dedicated Try Next section below, never
+    // duplicated here. Filtered, not guessed: this drops exact
+    // "Try next:"-prefixed strings, it doesn't rewrite anything.
+    const findings = (r.key_findings || []).filter(k => !/^try next:/i.test(k.trim()));
+    if (findings.length) {
       out.push('<ul class="hero-findings">');
-      for (const k of r.key_findings) out.push(`<li>${esc(k)}</li>`);
+      for (const k of findings) out.push(`<li>${esc(k)}</li>`);
       out.push('</ul>');
     }
     if (currentTrend) out.push(trendCardHtml(currentTrend));
-    if (r.citations && r.citations.length) {
-      out.push('<div class="chips">');
-      for (const c of r.citations) {
-        // Plain English leads; the dataset/year/table code that used to
-        // dominate this chip is now a hover tooltip, not the label.
-        out.push(`<span class="chip" title="${esc(citationCode(c))}">
-          <span class="chip-title">${esc(citationHeadline(c))}</span></span>`);
-      }
-      out.push('</div>');
-    }
     if (r.caveats && r.caveats.length) {
       out.push(`<div class="caveat-line"><b>Read with care:</b> ${esc(r.caveats[0])}` +
         (r.caveats.length > 1 ? ` <span class="dim">(+${r.caveats.length - 1} more below)</span>` : "") +
@@ -1019,13 +1374,20 @@ function render(r) {
   }
 
   if (r.peer_groups && r.peer_groups.length) {
-    out.push('<div class="fill-card"><div class="fill-head"><span class="title">Peers</span></div><div class="fill-body">');
+    out.push(`<div class="fill-card" data-section="peers"><div class="fill-head"><span class="title">Peers</span></div><div class="fill-body">`);
+    const anchorName = r.peer_groups.find(g => g.anchor_geo_name)?.anchor_geo_name;
+    if (anchorName) {
+      out.push(`<div class="peers-anchor">Comparators below are chosen against <b>${esc(anchorName)}</b>.</div>`);
+    }
     r.peer_groups.forEach((g, gi) => {
       out.push(`<div class="peer-group">
-        <div class="peer-axis">${esc(g.axis)}</div>
+        <div class="peer-axis">${esc(axisLabel(g.axis))}</div>
         <div class="peer-axis-desc">${esc(g.axis_description)}</div>`);
       const pops = g.peers.map(p => p.population || 0);
-      const maxPop = Math.max(1, ...pops, ...(g.anchor_geo_name ? [] : []));
+      const maxPop = Math.max(1, ...pops);
+      if (g.peers.some(p => p.population)) {
+        out.push('<div class="peer-row peer-row-head"><span class="name"></span><div class="track"></div><span class="val">Population</span></div>');
+      }
       for (const p of g.peers) {
         const pct = p.population ? Math.max(6, Math.round((p.population / maxPop) * 100)) : 0;
         out.push(`<div class="peer-row">
@@ -1041,26 +1403,18 @@ function render(r) {
   }
 
   if (r.citations && r.citations.length) {
-    out.push(`<div class="fill-card"><div class="fill-head"><span class="title">Citations</span></div>
-      <div class="fill-body">`);
-    r.citations.forEach((c, i) => {
-      out.push(`<div class="citation-block">
-        <div class="citation-title">${esc(citationHeadline(c))}</div>
-        ${c.universe ? `<div class="citation-universe">Covers: ${esc(c.universe)}</div>` : ""}
-        ${c.variables && c.variables.length ? `<div class="citation-vars">${c.variables.map(esc).join(", ")}</div>` : ""}
-        <div class="citation-code"><code>${esc(citationCode(c))}</code>
-          ${c.url ? ` · <a href="${esc(c.url)}" target="_blank" rel="noopener">source</a>` : ""}</div>
-      </div>${i < r.citations.length - 1 ? '<hr class="citation-sep">' : ""}`);
-    });
-    out.push(`<div class="row mt">
-        <button id="download-answer" class="secondary" type="button">Download (.txt)</button>
-        <button id="print-answer" class="secondary" type="button">Print / Save as PDF</button>
-      </div>`);
-    out.push('</div></div>');
+    out.push(`<div class="fill-card" data-section="citations"><div class="fill-head"><span class="title">Citations</span></div>
+      <div class="fill-body">
+        <div class="seg-group" role="tablist" aria-label="Group citations by">
+          <button type="button" class="seg-btn active" data-citmode="category" role="tab" aria-selected="true">By category</button>
+          <button type="button" class="seg-btn" data-citmode="year" role="tab" aria-selected="false">By year</button>
+        </div>
+        <div id="citations-list">${citationsBodyHtml(r.citations, "category")}</div>
+      </div></div>`);
   }
 
   if (r.followups && r.followups.length) {
-    out.push(`<div class="fill-card"><div class="fill-head"><span class="title">Try next</span></div>
+    out.push(`<div class="fill-card" data-section="followups"><div class="fill-head"><span class="title">Try next</span></div>
       <div class="fill-body">`);
     r.followups.forEach((f, i) => {
       out.push(`<button class="followup-btn" type="button" data-followup="${i}">${esc(f.question)}
@@ -1070,7 +1424,7 @@ function render(r) {
   }
 
   if (r.values && r.values.length) {
-    out.push(`<details class="collapse"><summary>The numbers <span class="count">(${r.values.length})</span></summary>
+    out.push(`<details class="collapse" data-section="numbers"><summary>The numbers <span class="count">(${r.values.length})</span></summary>
       <div class="collapse-body"><div class="card" style="overflow-x:auto"><table>`);
     out.push('<tr><th>Geography</th><th>Concept</th><th>Year</th>' +
              '<th class="num">Value</th><th class="num">Ratio</th></tr>');
@@ -1117,23 +1471,57 @@ function render(r) {
              'or try a more specific geography or concept.</div>');
   }
 
+  // Export picker — only offers sections that actually rendered above,
+  // each tagged with the same data-section value used here.
+  const exportableSections = [
+    { key: "main", label: "Main response", present: !!(r.prose || (r.key_findings && r.key_findings.length) || lead) },
+    { key: "peers", label: "Peers", present: !!(r.peer_groups && r.peer_groups.length) },
+    { key: "citations", label: "Citations", present: !!(r.citations && r.citations.length) },
+    { key: "followups", label: "Try next", present: !!(r.followups && r.followups.length) },
+    { key: "numbers", label: "The numbers", present: !!(r.values && r.values.length) },
+  ].filter(s => s.present);
+  if (exportableSections.length) {
+    out.push(`<div class="fill-card" id="export-card"><div class="fill-head"><span class="title">Export</span></div>
+      <div class="fill-body">
+        <div class="dim small">Choose what to include — leave everything checked to export the entire result.</div>
+        <div class="export-sections mt">
+          ${exportableSections.map(s => `<label class="export-sec-label">
+            <input type="checkbox" class="export-sec" value="${esc(s.key)}" checked> ${esc(s.label)}</label>`).join("")}
+        </div>
+        <div class="row mt">
+          <button id="export-word" class="secondary" type="button">Export as Word (.doc)</button>
+          <button id="export-pdf" class="secondary" type="button">Export as PDF</button>
+        </div>
+      </div></div>`);
+  }
+
   $("output").innerHTML = out.join("\n");
   const copyBtn = $("copy-answer");
   if (copyBtn) copyBtn.onclick = () => copyAnswer(r);
-  const dlBtn = $("download-answer");
-  if (dlBtn) dlBtn.onclick = () => downloadAnswer(r);
-  const printBtn = $("print-answer");
-  if (printBtn) printBtn.onclick = () => window.print();
+  document.querySelectorAll('[data-citmode]').forEach(btn => {
+    btn.onclick = () => {
+      document.querySelectorAll('[data-citmode]').forEach(b => {
+        b.classList.toggle("active", b === btn);
+        b.setAttribute("aria-selected", String(b === btn));
+      });
+      $("citations-list").innerHTML = citationsBodyHtml(r.citations, btn.dataset.citmode);
+    };
+  });
+  const exportWordBtn = $("export-word");
+  if (exportWordBtn) exportWordBtn.onclick = () => exportWord(r);
+  const exportPdfBtn = $("export-pdf");
+  if (exportPdfBtn) exportPdfBtn.onclick = () => exportPdf();
   document.querySelectorAll("[data-followup]").forEach(btn => {
     btn.onclick = () => {
       const f = r.followups[+btn.dataset.followup];
-      $("query").value = f.question;
+      $("query").value = followupQueryText(f, r);
       ask();
     };
   });
   wireTrendChart();
   renderTrace(r.trace);
   renderUpstream(r.upstream, r.metrics);
+  if (!r.error) saveHistoryEntry(r);
   setBusy(false, "");
 }
 
@@ -1169,21 +1557,79 @@ function copyAnswer(r) {
   });
 }
 
-// A real, working export — a plain-text file, not a fabricated PDF
-// service the backend doesn't have. "Print / Save as PDF" covers the
-// formatted case using the browser's own print pipeline (see @media print).
-function downloadAnswer(r) {
-  const blob = new Blob([answerText(r)], {type: "text/plain;charset=utf-8"});
+function exportSlug(r) {
+  return (r.query || "grant-copilot-answer").toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "").slice(0, 60) || "answer";
+}
+function getSelectedSections() {
+  return [...document.querySelectorAll(".export-sec:checked")].map(el => el.value);
+}
+// Clones the LIVE rendered node so the export matches exactly what's on
+// screen (same rule as everywhere else here: no re-deriving, no
+// guessing) and strips only the controls that don't mean anything on a
+// static page — buttons, the category/year toggle, checkboxes, and the
+// interactive SVG (its already-computed plain-text summary stays).
+function cleanNodeForExport(node) {
+  const clone = node.cloneNode(true);
+  clone.querySelectorAll("button, .seg-group, .year-checks, input[type=checkbox], .chart-tooltip")
+    .forEach(el => el.remove());
+  clone.querySelectorAll(".chart-wrap").forEach(el => { el.innerHTML = ""; });
+  return clone;
+}
+function buildWordDocument(title, bodyHtml) {
+  return `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40">
+<head><meta charset="utf-8"><title>${esc(title)}</title>
+<style>
+  body { font-family: Calibri, Arial, sans-serif; font-size: 11pt; color: #13253f; }
+  h1 { font-size: 18pt; margin-bottom: 2pt; }
+  .title { font-weight: bold; font-size: 12.5pt; display: block; margin: 16pt 0 6pt; }
+  table { border-collapse: collapse; margin-top: 6pt; }
+  td, th { border: 1px solid #999; padding: 4px 9px; text-align: left; font-size: 10pt; }
+  .stat { font-size: 20pt; font-weight: bold; }
+  .citation-title { font-weight: bold; margin-top: 8pt; }
+  hr.citation-sep { border: none; border-top: 1px solid #ccc; }
+</style></head>
+<body>
+<h1>Grant Copilot</h1>
+<p><i>${esc(title)}</i></p>
+${bodyHtml}
+</body></html>`;
+}
+// Word can't open true OOXML .docx without a zip/deflate implementation
+// this app has no library for — this is the well-established
+// zero-dependency alternative: Word recognizes HTML tagged with its own
+// XML namespaces and opens/edits it like a native document.
+function exportWord(r) {
+  const keys = getSelectedSections();
+  if (!keys.length) return;
+  const nodes = keys.map(k => document.querySelector(`#output [data-section="${k}"]`)).filter(Boolean);
+  if (!nodes.length) return;
+  const bodyHtml = nodes.map(n => cleanNodeForExport(n).outerHTML).join("\n");
+  const doc = buildWordDocument(r.query || "Grant Copilot result", bodyHtml);
+  const blob = new Blob(["﻿", doc], {type: "application/msword"});
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  const slug = (r.query || "grant-copilot-answer").toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "").slice(0, 60) || "answer";
-  a.download = slug + ".txt";
+  a.download = exportSlug(r) + ".doc";
   document.body.appendChild(a);
   a.click();
   a.remove();
   URL.revokeObjectURL(url);
+}
+// Reuses the browser's own print-to-PDF pipeline (real pagination, no
+// hand-rolled PDF writer) — just hides the unselected sections first,
+// via the same @media print rules already used for "Print".
+function exportPdf() {
+  const keys = getSelectedSections();
+  if (!keys.length) return;
+  const tagged = document.querySelectorAll("#output [data-section]");
+  tagged.forEach(el => el.classList.toggle("export-hide", !keys.includes(el.dataset.section)));
+  const restore = () => {
+    tagged.forEach(el => el.classList.remove("export-hide"));
+    window.removeEventListener("afterprint", restore);
+  };
+  window.addEventListener("afterprint", restore);
+  window.print();
 }
 
 function renderUpstream(items, metrics) {
@@ -1260,6 +1706,24 @@ function renderTrace(t) {
     <h2>Synthesizer — raw response</h2>
     <pre>${esc(JSON.stringify(t.raw_response, null, 2))}</pre>
     ${otherHtml}`;
+}
+
+// ---------- short-term memory (follow-up context) ----------
+// Each /chat/stream call is independent — the pipeline's query
+// understanding has no conversation-history input to extend without
+// changing scripts/chatbot (out of scope here). This is the
+// frontend-only approximation: a follow-up like "...here?" gets the
+// geography this answer already established prefixed onto it, so
+// there's something concrete to resolve instead of a bare pronoun.
+// Always shown in the query box before sending — never hidden, and the
+// user can edit or clear it like any other typed query.
+function followupQueryText(f, r) {
+  const geoName = (r.geos && r.geos[0] && r.geos[0].name) ||
+    (r.values && r.values[0] && r.values[0].geo) || "";
+  if (!geoName || f.question.toLowerCase().includes(geoName.toLowerCase())) {
+    return f.question;
+  }
+  return `For ${geoName}: ${f.question}`;
 }
 
 // ---------- actions ----------
