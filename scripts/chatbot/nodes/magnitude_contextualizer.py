@@ -239,6 +239,35 @@ def _concept_key(v: AggregatedValue) -> str:
     return (v.concept.canonical_hint or v.concept.text or "").strip().lower()
 
 
+def _base_record_role(role: str) -> str:
+    """Return the role identity used for same-group record trend matching."""
+    if role.startswith("prior_period."):
+        return role.removeprefix("prior_period.")
+    return role
+
+
+def _context_key(v: AggregatedValue) -> str:
+    """Match values for contextualization without mixing record groups.
+
+    Census comparisons historically bucket by concept only: the primary,
+    comparator.county/state/etc., and prior_period calls all share the same
+    concept text. Record group comparisons add roles such as
+    ``group_applicant race=White``; those should receive their own trend frame
+    and should not borrow another group's prior year. Suffix group roles onto
+    the key while leaving Census primary/comparator roles untouched.
+    """
+    key = _concept_key(v)
+    base_role = _base_record_role(v.role)
+    if base_role.startswith("group_"):
+        return f"{key}|{base_role}"
+    return key
+
+
+def _is_primary_like(v: AggregatedValue) -> bool:
+    """Values that deserve their own framing row."""
+    return v.role == "primary" or v.role.startswith("group_")
+
+
 # ---------------------------------------------------------------------------
 # Public entry point
 # ---------------------------------------------------------------------------
@@ -260,13 +289,13 @@ def contextualize_magnitudes(
     by_concept: dict[str, list[AggregatedValue]] = defaultdict(list)
 
     for v in aggregated.values:
-        by_concept[_concept_key(v)].append(v)
-        if v.role == "primary":
+        by_concept[_context_key(v)].append(v)
+        if _is_primary_like(v):
             primaries.append(v)
 
     out: list[MagnitudeFraming] = []
     for primary in primaries:
-        key = _concept_key(primary)
+        key = _context_key(primary)
         neighbors = by_concept[key]
         framing = _framing_for(primary, neighbors)
         out.append(framing)
@@ -315,7 +344,7 @@ def _framing_for(
         elif role == "comparator.us":
             f.us_value = n_scalar
             f.vs_us = _safe_ratio(primary_scalar, n_scalar)
-        elif role == "prior_period":
+        elif role == "prior_period" or role.startswith("prior_period."):
             # Pick the most recent prior if multiple exist.
             # Trend uses the SAME geo across years, so the plausibility
             # window doesn't apply — the value is comparing a place

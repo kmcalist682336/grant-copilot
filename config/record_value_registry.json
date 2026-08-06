@@ -159,7 +159,11 @@
                 },
                 {
                   "canonical_value": "25-34",
-                  "aliases": ["25 to 34", "25-34", "25 through 34", "young adults"]
+                  "aliases": ["25 to 34", "25-34", "25 through 34"]
+                },
+                {
+                  "canonical_value": ["<25", "25-34"],
+                  "aliases": ["young", "younger", "youth", "young adult", "young adults", "younger applicants", "young mortgage applicants"]
                 },
                 {
                   "canonical_value": "35-44",
@@ -180,6 +184,10 @@
                 {
                   "canonical_value": ">74",
                   "aliases": ["over 74", "older than 74", "75 and older", "over seventy four"]
+                },
+                {
+                  "canonical_value": ["65-74", ">74"],
+                  "aliases": ["elderly", "senior", "seniors", "older adult", "older adults", "senior applicants", "older applicants", "65+", "65 and older", "over 65", "age 65 and older"]
                 }
               ]
             }

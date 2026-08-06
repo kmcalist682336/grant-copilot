@@ -238,7 +238,8 @@ def _is_ambiguous_record_filter(filter_item: ExtractedFilter) -> bool:
     dim = _key(filter_item.dimension.canonical_hint or filter_item.dimension.text)
     value = _key(filter_item.normalized_value_hint or filter_item.value_text)
     return "age" in dim and value in {
-        "young", "younger", "youth", "young adult", "young adults",
+        "middle aged", "middle-aged", "working age", "working-age",
+        "adult", "adults",
     }
 
 

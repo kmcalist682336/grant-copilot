@@ -495,7 +495,8 @@ def _is_ambiguous_record_filter(filter_item: ExtractedFilter) -> bool:
     dim = _key(filter_item.dimension.canonical_hint or filter_item.dimension.text)
     value = _key(filter_item.normalized_value_hint or filter_item.value_text)
     return "age" in dim and value in {
-        "young", "younger", "youth", "young adult", "young adults",
+        "middle aged", "middle-aged", "working age", "working-age",
+        "adult", "adults",
     }
 
 
@@ -590,6 +591,32 @@ def _pick_record_years(
         wanted = sorted(set(intent.years))
         return [year for year in wanted if year in supported_years] or wanted
     return _pick_years(intent, supported_years)
+
+
+def _record_year_role(
+    *,
+    base_role: str,
+    year: int,
+    years: list[int],
+    temporal_intent: str,
+) -> str:
+    """Label record calls so existing trend/context tools can read them.
+
+    Census trend expansion emits older comparison years with
+    ``role="prior_period"``.  Record plans already expand change/trend
+    questions into multiple years, so mark every non-latest year the same
+    way instead of inventing a second trend representation.  Grouped record
+    comparisons keep their group label in the suffix, e.g.
+    ``prior_period.group_applicant race=White``.
+    """
+    if temporal_intent not in {"change", "trend"} or len(years) < 2:
+        return base_role
+    latest_year = max(years)
+    if year == latest_year:
+        return base_role
+    if base_role == "primary":
+        return "prior_period"
+    return f"prior_period.{base_role}"
 
 
 def plan_record_query(
@@ -776,6 +803,12 @@ def plan_record_query(
             for geo_idx, geo in enumerate(resolved_geos):
                 geo_prefixes = _record_geo_prefixes(geo, geo_db)
                 for grouping_filters, role in grouping_variants:
+                    planned_role = _record_year_role(
+                        base_role=role,
+                        year=int(year),
+                        years=years,
+                        temporal_intent=intent.temporal_intent,
+                    )
                     api_call = APIPlanCall(
                         url=f"record://{dataset}/{year}/{table_id}",
                         table_id=table_id,
@@ -804,7 +837,7 @@ def plan_record_query(
                         geo_idx=geo_idx,
                         concept_idx=concept_idx,
                         year=int(year),
-                        role=role,
+                        role=planned_role,
                         operation=operation,
                         variables=variables,
                         tract_filter=[],
