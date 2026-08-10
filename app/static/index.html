@@ -80,7 +80,9 @@
     background: var(--bg);
     display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
   }
-  .brand { display: flex; align-items: center; gap: 9px; }
+  .brand { display: flex; align-items: center; gap: 9px; cursor: pointer; border-radius: 6px; }
+  .brand:hover h1 { color: var(--accent); }
+  .brand:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
   .brand h1 { font-size: 16px; margin: 0; font-weight: 700; color: var(--ink); letter-spacing: -.01em; }
   #status { font-size: 12.5px; color: var(--dim); }
   .header-actions { margin-left: auto; display: flex; align-items: center; gap: 8px; }
@@ -463,7 +465,7 @@
 <body>
 
 <header>
-  <div class="brand">
+  <div class="brand" id="brand-home" role="button" tabindex="0" aria-label="Return to landing page">
     <h1>Grant Copilot</h1>
   </div>
   <span id="status">connecting…</span>
@@ -640,6 +642,7 @@
 const $ = (id) => document.getElementById(id);
 let currentRunId = null;
 let currentResponse = null;
+let currentEventSource = null;
 let busy = false;
 
 // ---------- theme ----------
@@ -1304,7 +1307,9 @@ function render(r) {
   currentRunId = r.run_id || null;
   currentResponse = r;
   banner(r.config_warning || r.error, !!r.error);
-  $("query-echo").classList.add("hide");
+  // Deliberately left visible here (not hidden) — the user should still
+  // see what they asked at the top once the answer is in, not just
+  // while it's in flight.
 
   const out = [];
   const lints = r.lints || [];
@@ -1738,24 +1743,51 @@ async function ask() {
   setBusy(true, "starting…");
 
   const es = new EventSource("/chat/stream?q=" + encodeURIComponent(q));
+  currentEventSource = es;
   es.onmessage = (ev) => {
     const msg = JSON.parse(ev.data);
     if (msg.type === "stage") {
       $("stage-text").textContent = msg.stage + (msg.detail ? " · " + msg.detail : "");
     } else if (msg.type === "result") {
       es.close();
+      currentEventSource = null;
       render(msg.response);
     } else if (msg.type === "error") {
       es.close();
+      currentEventSource = null;
       banner(msg.error, true);
       setBusy(false, "");
     }
   };
   es.onerror = () => {
     es.close();
+    currentEventSource = null;
     if (busy) { banner("Connection lost.", true); setBusy(false, ""); }
   };
 }
+
+// Returning to the landing page: clear the in-progress state (closing
+// any still-streaming request so it can't call render() after the view
+// has reset), the query box, and the last result, back to a fresh load.
+function goHome() {
+  if (currentEventSource) { currentEventSource.close(); currentEventSource = null; }
+  $("ask-panel").classList.remove("started");
+  $("query").value = "";
+  $("query-echo").textContent = "";
+  $("query-echo").classList.add("hide");
+  $("output").innerHTML = "";
+  $("stage-card").classList.add("hide");
+  banner(null);
+  currentRunId = null;
+  currentResponse = null;
+  currentTrend = null;
+  setBusy(false, "");
+  setHistoryVisible(false);
+}
+$("brand-home").addEventListener("click", goHome);
+$("brand-home").addEventListener("keydown", (e) => {
+  if (e.key === "Enter" || e.key === " ") { e.preventDefault(); goHome(); }
+});
 
 async function post(url, body) {
   const r = await fetch(url, {
