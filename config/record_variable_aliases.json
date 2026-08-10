@@ -34,7 +34,17 @@
             "county code": "6422e2d2aab7",
             "loan amount": "c02eb39025e6",
             "mortgage amount": "c02eb39025e6",
-            "requested loan amount": "c02eb39025e6"
+            "requested loan amount": "c02eb39025e6",
+            "primary denial reason": "2742b6bb64c3",
+            "denial reason": "2742b6bb64c3",
+            "first denial reason": "2742b6bb64c3",
+            "main denial reason": "2742b6bb64c3",
+            "reason for denial": "2742b6bb64c3",
+            "reason denied": "2742b6bb64c3",
+            "denial_reason_1": "2742b6bb64c3",
+            "denial reason 1": "2742b6bb64c3",
+            "credit history denial reason": "2742b6bb64c3",
+            "credit score denial reason": "2742b6bb64c3"
           }
         }
       }

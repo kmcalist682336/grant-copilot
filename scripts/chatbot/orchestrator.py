@@ -1215,6 +1215,7 @@ async def answer_query(
             semantic_router=semantic_router,
             geo_db=db,
             metadata_db=metadata_db,
+            trend_lookback_years=trend_lookback_years,
         )
         # If the question also contains Census concepts, plan those in the
         # original way and merge both call lists.  The appended record

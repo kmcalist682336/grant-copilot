@@ -190,6 +190,57 @@
                   "aliases": ["elderly", "senior", "seniors", "older adult", "older adults", "senior applicants", "older applicants", "65+", "65 and older", "over 65", "age 65 and older"]
                 }
               ]
+            },
+            "2742b6bb64c3": {
+              "source_name": "denial_reason_1",
+              "label": "Primary reason for denial",
+              "value_type": "categorical",
+              "values": [
+                {
+                  "canonical_value": "Debt-to-income ratio",
+                  "aliases": ["debt-to-income", "debt to income", "dti", "debt-to-income ratio", "debt to income ratio", "high dti", "too much debt"]
+                },
+                {
+                  "canonical_value": "Employment history",
+                  "aliases": ["employment", "employment history", "job history", "work history", "unstable employment"]
+                },
+                {
+                  "canonical_value": "Credit history",
+                  "aliases": ["credit", "credit history", "credit score", "low credit score", "bad credit", "poor credit", "credit-related denial"]
+                },
+                {
+                  "canonical_value": "Collateral",
+                  "aliases": ["collateral", "property collateral", "collateral value", "appraisal", "appraisal issue"]
+                },
+                {
+                  "canonical_value": "Insufficient cash (downpayment, closing costs)",
+                  "aliases": ["insufficient cash", "not enough cash", "down payment", "downpayment", "closing costs", "lack of cash", "cash to close"]
+                },
+                {
+                  "canonical_value": "Unverifiable information",
+                  "aliases": ["unverifiable information", "could not verify information", "unable to verify", "verification issue"]
+                },
+                {
+                  "canonical_value": "Credit application incomplete",
+                  "aliases": ["application incomplete", "incomplete application", "credit application incomplete", "missing application information"]
+                },
+                {
+                  "canonical_value": "Mortgage insurance denied",
+                  "aliases": ["mortgage insurance denied", "mi denied", "insurance denied"]
+                },
+                {
+                  "canonical_value": "Other",
+                  "aliases": ["other", "other reason", "another reason"]
+                },
+                {
+                  "canonical_value": "Not applicable",
+                  "aliases": ["not applicable", "no denial reason", "not denied"]
+                },
+                {
+                  "canonical_value": "Exempt",
+                  "aliases": ["exempt"]
+                }
+              ]
             }
           }
         }

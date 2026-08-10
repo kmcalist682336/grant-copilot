@@ -584,12 +584,34 @@ def _record_supported_years(
 def _pick_record_years(
     intent: ExtractedIntent,
     supported_years: list[int],
+    *,
+    lookback_years: int = 3,
 ) -> list[int]:
     if not supported_years:
         return []
     if intent.years and intent.temporal_intent not in {"change", "trend"}:
         wanted = sorted(set(intent.years))
         return [year for year in wanted if year in supported_years] or wanted
+    if intent.temporal_intent == "latest":
+        latest = max(supported_years)
+        if lookback_years <= 0:
+            return [latest]
+
+        # Record metrics do not pass through the Census concept-rewrite
+        # trend expander: their deterministic measure and filters are built
+        # here.  Add the closest supported prior vintage here instead so the
+        # cloned call keeps the exact same numerator, denominator, filters,
+        # group, and geography scope as the latest call.
+        target = latest - lookback_years
+        prior_candidates = [year for year in supported_years if year <= target]
+        prior = (
+            max(prior_candidates)
+            if prior_candidates
+            else min(supported_years)
+        )
+        if prior == latest:
+            return [latest]
+        return sorted({prior, latest})
     return _pick_years(intent, supported_years)
 
 
@@ -598,18 +620,18 @@ def _record_year_role(
     base_role: str,
     year: int,
     years: list[int],
-    temporal_intent: str,
 ) -> str:
     """Label record calls so existing trend/context tools can read them.
 
     Census trend expansion emits older comparison years with
-    ``role="prior_period"``.  Record plans already expand change/trend
-    questions into multiple years, so mark every non-latest year the same
-    way instead of inventing a second trend representation.  Grouped record
-    comparisons keep their group label in the suffix, e.g.
+    ``role="prior_period"``. Record plans expand explicit change/trend
+    questions and automatically contextualize latest-only metrics, so mark
+    every non-latest year the same way instead of inventing a second trend
+    representation. Grouped record comparisons keep their group label in
+    the suffix, e.g.
     ``prior_period.group_applicant race=White``.
     """
-    if temporal_intent not in {"change", "trend"} or len(years) < 2:
+    if len(years) < 2:
         return base_role
     latest_year = max(years)
     if year == latest_year:
@@ -631,6 +653,7 @@ def plan_record_query(
     geo_db: Optional[sqlite3.Connection] = None,
     metadata_db: Optional[sqlite3.Connection] = None,
     record_metric_map: Optional[RecordMetricMap] = None,
+    trend_lookback_years: int = 3,
 ) -> PlanResult:
     """Build a record-level plan with parameterized filter metadata.
 
@@ -671,7 +694,11 @@ def plan_record_query(
     supported_years = _record_supported_years(
         intent, metadata_db, table_id, dataset,
     )
-    years = _pick_record_years(intent, supported_years) or (list(intent.years) or [2024])
+    years = _pick_record_years(
+        intent,
+        supported_years,
+        lookback_years=trend_lookback_years,
+    ) or (list(intent.years) or [2024])
 
     for analysis in analyses:
         if analysis.measure is None:
@@ -807,7 +834,6 @@ def plan_record_query(
                         base_role=role,
                         year=int(year),
                         years=years,
-                        temporal_intent=intent.temporal_intent,
                     )
                     api_call = APIPlanCall(
                         url=f"record://{dataset}/{year}/{table_id}",
