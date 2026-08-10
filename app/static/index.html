@@ -1012,6 +1012,13 @@ function axisLabel(axis) {
   const s = String(axis || "").replace(/_/g, " ").trim();
   return s ? s[0].toUpperCase() + s.slice(1) : s;
 }
+// Same text "Flagged" already shows — reused, not reworded, so the
+// quick caveat and the detailed card downstream never say different things.
+function anomalyCaveatText(a) {
+  if (a.context) return `${a.concept} — ${a.geo}: ${a.context}`;
+  const label = (a.kind || "anomaly").replace(/_/g, " ");
+  return `${a.concept} for ${a.geo} was flagged as ${label}.`;
+}
 
 // The app's own two data sources — stable, real names, not a guess at
 // what a specific table means. Any actual interpretation of a table
@@ -1315,8 +1322,19 @@ function render(r) {
   const lints = r.lints || [];
   const errorLints = lints.filter(l => l.severity === "error");
   const otherLints = lints.filter(l => l.severity !== "error");
-
-  for (const l of errorLints) out.push(lintHtml(l));
+  // "Read with care" / "All caveats" pull from every deterministic
+  // warning signal the backend already produced — not just the
+  // synthesizer's own `caveats` list, which is only ever non-empty when
+  // there was a fetch failure or an aggregation caveat on a value. A
+  // flagged anomaly (far_above_comparators, a broken trend, ...) is
+  // exactly as much a "read this carefully" signal, and unlike hoping
+  // the model decides to mention one, `r.anomalies` is deterministic
+  // and already reliably populated (it's what "Flagged" below reads
+  // from too — this reuses the same plain-English `context` text
+  // rather than inventing new wording for it).
+  const allCaveats = [...(r.caveats || []),
+    ...errorLints.map(l => l.message + (l.detail ? " " + l.detail : "")),
+    ...(r.anomalies || []).map(anomalyCaveatText)];
 
   const trends = buildTrends(r.values);
   currentTrend = trends[0] || null;
@@ -1370,9 +1388,9 @@ function render(r) {
       out.push('</ul>');
     }
     if (currentTrend) out.push(trendCardHtml(currentTrend));
-    if (r.caveats && r.caveats.length) {
-      out.push(`<div class="caveat-line"><b>Read with care:</b> ${esc(r.caveats[0])}` +
-        (r.caveats.length > 1 ? ` <span class="dim">(+${r.caveats.length - 1} more below)</span>` : "") +
+    if (allCaveats.length) {
+      out.push(`<div class="caveat-line"><b>Read with care:</b> ${esc(allCaveats[0])}` +
+        (allCaveats.length > 1 ? ` <span class="dim">(+${allCaveats.length - 1} more below)</span>` : "") +
         `</div>`);
     }
     out.push('</div></div>');
@@ -1454,11 +1472,11 @@ function render(r) {
     out.push('</div></details>');
   }
 
-  if (r.caveats && r.caveats.length) {
+  if (allCaveats.length) {
     out.push(`<details class="collapse"><summary>All caveats
-      <span class="count">(${r.caveats.length})</span></summary>
+      <span class="count">(${allCaveats.length})</span></summary>
       <div class="collapse-body"><ul>`);
-    for (const c of r.caveats) out.push(`<li>${esc(c)}</li>`);
+    for (const c of allCaveats) out.push(`<li>${esc(c)}</li>`);
     out.push('</ul></div></details>');
   }
 
@@ -1537,9 +1555,16 @@ function answerText(r) {
     lines.push("");
     for (const k of r.key_findings) lines.push("• " + k);
   }
-  if (r.caveats && r.caveats.length) {
+  // Same folding as the on-screen view — error-severity lints and
+  // flagged anomalies are both caveats about the answer, merged in here
+  // too so the copied text matches what's shown, not a different subset.
+  const errCaveats = (r.lints || []).filter(l => l.severity === "error")
+    .map(l => l.message + (l.detail ? " " + l.detail : ""));
+  const allCaveats = [...(r.caveats || []), ...errCaveats,
+    ...(r.anomalies || []).map(anomalyCaveatText)];
+  if (allCaveats.length) {
     lines.push("", "Caveats:");
-    for (const c of r.caveats) lines.push("• " + c);
+    for (const c of allCaveats) lines.push("• " + c);
   }
   if (r.citations && r.citations.length) {
     lines.push("", "Sources:");
