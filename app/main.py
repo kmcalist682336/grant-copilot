@@ -568,7 +568,16 @@ def delete_variant(name: str) -> dict:
 
 @app.get("/")
 def index() -> FileResponse:
-    return FileResponse(STATIC_DIR / "index.html")
+    # No cache headers by default here means a browser can serve a
+    # stale copy of this file without even revalidating — invisible
+    # during active edits, since the file on disk is already correct
+    # and a hard refresh "fixes" it, which reads as "nothing changed."
+    # This is a single-file dev tool with no cache-busting filename, so
+    # every load should hit disk.
+    return FileResponse(
+        STATIC_DIR / "index.html",
+        headers={"Cache-Control": "no-store"},
+    )
 
 
 if STATIC_DIR.exists():
