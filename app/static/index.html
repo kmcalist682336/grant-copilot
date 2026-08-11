@@ -278,6 +278,10 @@
   .peers-anchor { font-size: 12.5px; color: var(--dim); margin-bottom: 14px; }
   .peer-group + .peer-group { margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--line); }
   .peer-axis { font-weight: 700; font-size: 14.5px; }
+  .peer-axis-year {
+    font-weight: 500; font-size: 11.5px; color: var(--dim); margin-left: 8px;
+    font-variant-numeric: tabular-nums;
+  }
   .peer-axis-desc { font-size: 12.5px; color: var(--dim); margin-top: 2px; margin-bottom: 12px; }
 
   /* 3-across grid — CSS Grid's default align-items:stretch makes every
@@ -581,7 +585,7 @@
             placeholder="Ask about a geography, trend, disparity, or need — e.g. median household income in Buckhead"></textarea>
           <div class="composer-foot">
             <span class="row" style="gap:10px">
-              <button id="ask" class="send-btn" type="button" aria-label="Ask" title="Ask (⌘/Ctrl+Enter)">
+              <button id="ask" class="send-btn" type="button" aria-label="Ask" title="Ask (Enter) — Shift+Enter for a new line">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
               </button>
               <button id="resynth" class="secondary" disabled
@@ -1512,7 +1516,7 @@ function render(r) {
     const BROKEN_FEATURE_KEYS = new Set(["mean_household_income", "senior_poverty_rate"]);
     r.peer_groups.forEach((g, gi) => {
       out.push(`<div class="peer-group">
-        <div class="peer-axis">${esc(axisLabel(g.axis))}</div>
+        <div class="peer-axis">${esc(axisLabel(g.axis))}${g.year ? `<span class="peer-axis-year">${esc(g.year)} data</span>` : ""}</div>
         <div class="peer-axis-desc">${esc(g.axis_description)}</div>
         <div class="peer-cards-grid">`);
       const anchorFeatures = g.anchor_feature_values || {};
@@ -2078,7 +2082,9 @@ $("variant-save").onclick = async () => {
 };
 
 $("query").addEventListener("keydown", (e) => {
-  if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) ask();
+  if (e.key !== "Enter" || e.shiftKey) return; // Shift+Enter: let the textarea insert a newline
+  e.preventDefault();
+  ask();
 });
 document.querySelectorAll("#suggested-chips [data-q]").forEach(btn => {
   btn.onclick = () => { $("query").value = btn.dataset.q; ask(); };
