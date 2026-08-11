@@ -1553,11 +1553,20 @@ async def answer_query(
     # in case the file is missing or the anchor isn't in the index.
     if peer_retriever is not None and not simple_curated_record_lookup:
         _progress(progress_cb, "Retrieving peer comparisons")
+        # Every distinct year the query actually asked about, not just the
+        # latest — peer matching is a local SQLite lookup with no LLM or
+        # Census API cost, so computing it once per year here is cheap,
+        # and it's what lets the UI offer a year tab instead of guessing
+        # which single year the user cares about.
+        query_years = sorted({v.year for v in aggregated.values}) if aggregated else []
         try:
-            peer_contexts = get_peer_contexts(
-                resolved_geos=resolved, intent=intent_for_routing,
-                query=query, peer_retriever=peer_retriever,
-            )
+            peer_contexts = []
+            for y in (query_years or [None]):
+                peer_contexts.extend(get_peer_contexts(
+                    resolved_geos=resolved, intent=intent_for_routing,
+                    query=query, peer_retriever=peer_retriever,
+                    year=y,
+                ))
         except Exception as e:                     # pragma: no cover
             logger.warning("peer_context failed: %s", e)
     elif peer_retriever is not None:

@@ -275,19 +275,88 @@
   .badge.dim { background: var(--panel); color: var(--dim); }
 
   /* Peers */
-  .peers-anchor { font-size: 12.5px; color: var(--dim); margin-bottom: 12px; }
-  .peer-group + .peer-group { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--line); }
-  .peer-row-head { margin-top: 0 !important; }
-  .peer-row-head .val { color: var(--dim); font-family: inherit; font-size: 11px; text-transform: uppercase; letter-spacing: .03em; }
+  .peers-anchor { font-size: 12.5px; color: var(--dim); margin-bottom: 14px; }
+  /* Deliberately NOT styled like the dim/small captions elsewhere on this
+     card — a subtle dot + hover tooltip is exactly what caused the
+     confusion this note exists to prevent, so this one has to be seen
+     without hovering or reading fine print. */
+  .peers-note {
+    background: var(--accent-soft); border-left: 3px solid var(--accent);
+    border-radius: 6px; padding: 10px 14px; font-size: 13px; line-height: 1.5;
+    color: var(--fg); margin-bottom: 16px;
+  }
+  .peers-note b { color: var(--ink); }
+  .peer-group + .peer-group { margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--line); }
   .peer-axis { font-weight: 700; font-size: 14.5px; }
-  .peer-axis-desc { font-size: 12.5px; color: var(--dim); margin-top: 2px; }
-  .peer-row { display: flex; align-items: center; gap: 10px; margin: 10px 0 0; font-size: 13.5px; }
-  .peer-row .name { width: 150px; flex: none; text-overflow: ellipsis; overflow: hidden; white-space: nowrap; }
-  .peer-row .track { flex: 1; height: 8px; background: var(--panel); border-radius: 4px; overflow: hidden; min-width: 40px; }
-  .peer-row .fill-bar { height: 100%; background: var(--accent); border-radius: 4px; }
-  .peer-row .val { font-family: var(--mono); font-size: 11.5px; color: var(--dim); width: 64px; text-align: right; font-variant-numeric: tabular-nums; }
-  .peer-explain { font-size: 12px; color: var(--dim); margin: 3px 0 0 160px; }
-  @media (max-width: 560px) { .peer-explain { margin-left: 0; } .peer-row .name { width: 96px; } }
+  .peer-axis-year {
+    font-weight: 500; font-size: 11.5px; color: var(--dim); margin-left: 8px;
+    font-variant-numeric: tabular-nums;
+  }
+  .peer-axis-desc { font-size: 12.5px; color: var(--dim); margin-top: 2px; margin-bottom: 12px; }
+
+  /* 3-across grid — CSS Grid's default align-items:stretch makes every
+     card in a row match the tallest one for free, so a peer with fewer
+     compared metrics just has blank space at the bottom rather than a
+     ragged row. Narrows below 3 columns before anything gets cramped. */
+  .peer-cards-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 12px;
+  }
+  @media (max-width: 820px) { .peer-cards-grid { grid-template-columns: repeat(2, 1fr); } }
+  @media (max-width: 560px) { .peer-cards-grid { grid-template-columns: 1fr; } }
+
+  /* One card per peer — full name (wraps, never truncates), a plain
+     population fact, badges parsed from match_explanation's existing
+     "; "-joined clauses (real text, just split into scannable pills
+     instead of one run-on sentence), then a real table of the actual
+     axis metrics with the peer's and anchor's own name as column
+     headers — which number belongs to which place is positional, not
+     something a "vs." label has to carry. */
+  .peer-card { border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; }
+  .peer-card-head { display: flex; flex-direction: column; gap: 2px; }
+  .peer-name { font-size: 14px; font-weight: 600; color: var(--fg); white-space: normal; }
+  .peer-pop { font-size: 11.5px; color: var(--dim); font-variant-numeric: tabular-nums; }
+  .peer-badges { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  .peer-badge {
+    font-size: 11px; color: var(--dim); background: var(--panel);
+    border-radius: 999px; padding: 3px 9px;
+  }
+  .peer-metrics { margin-top: 10px; overflow-x: auto; }
+  .peer-match-caption {
+    font-size: 12px; font-weight: 600; color: var(--fg); margin-bottom: 6px;
+  }
+  .peer-match-caption-arrow { color: var(--dim); font-weight: 400; }
+  .peer-metric-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .peer-metric-table th {
+    font-size: 10.5px; font-weight: 600; color: var(--dim); text-align: right;
+    white-space: normal; padding: 0 0 4px 6px; border-bottom: 1px solid var(--line);
+  }
+  .peer-metric-table th:first-child { text-align: left; padding-left: 0; }
+  .peer-metric-table td { padding: 3px 0 3px 6px; }
+  .peer-metric-table td.pm-label { color: var(--dim); text-align: left; padding-left: 0; }
+  .peer-metric-table td.pm-value {
+    font-weight: 600; color: var(--fg); text-align: right; font-variant-numeric: tabular-nums;
+  }
+  .peer-metric-table td.pm-anchor {
+    color: var(--dim); text-align: right; font-variant-numeric: tabular-nums;
+  }
+  /* Direction only, never good/bad — a higher poverty rate and a higher
+     income both get the same "up" treatment, no value judgment either way. */
+  .pm-arrow { display: inline-block; font-size: 8px; margin-right: 4px; vertical-align: 1px; }
+  .pm-arrow-up { color: var(--accent); }
+  .pm-arrow-down { color: var(--dim); }
+  /* Ties the "closely matched on ..." badge text to the specific rows
+     it's talking about, instead of leaving that claim disconnected
+     from the numbers below it. */
+  tr.pm-matched { background: var(--accent-soft); }
+  tr.pm-matched td { border-radius: 0; }
+  .pm-dot {
+    display: inline-block; width: 5px; height: 5px; border-radius: 50%;
+    background: var(--accent); margin-right: 6px; vertical-align: 1px;
+  }
+  .peer-metrics-more {
+    background: transparent; border: 0; color: var(--accent); font-size: 12px;
+    font-weight: 600; padding: 4px 0 0; text-align: left; cursor: pointer;
+  }
 
   /* Try Next */
   .followup-btn {
@@ -526,7 +595,7 @@
             placeholder="Ask about a geography, trend, disparity, or need — e.g. median household income in Buckhead"></textarea>
           <div class="composer-foot">
             <span class="row" style="gap:10px">
-              <button id="ask" class="send-btn" type="button" aria-label="Ask" title="Ask (⌘/Ctrl+Enter)">
+              <button id="ask" class="send-btn" type="button" aria-label="Ask" title="Ask (Enter) — Shift+Enter for a new line">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
               </button>
               <button id="resynth" class="secondary" disabled
@@ -1012,6 +1081,82 @@ function axisLabel(axis) {
   const s = String(axis || "").replace(/_/g, " ").trim();
   return s ? s[0].toUpperCase() + s.slice(1) : s;
 }
+// Same text "Flagged" already shows — reused, not reworded, so the
+// quick caveat and the detailed card downstream never say different things.
+function anomalyCaveatText(a) {
+  if (a.context) return `${a.concept} — ${a.geo}: ${a.context}`;
+  const label = (a.kind || "anomaly").replace(/_/g, " ");
+  return `${a.concept} for ${a.geo} was flagged as ${label}.`;
+}
+
+// Same humanization as axisLabel, for a peer feature key
+// ("median_family_income" -> "Median family income").
+function featureLabel(key) {
+  const s = String(key || "").replace(/_/g, " ").trim();
+  return s ? s[0].toUpperCase() + s.slice(1) : s;
+}
+// Formats a peer-feature value by what the key's own naming convention
+// says it is — the catalog (scripts/chatbot/peer_features_catalog.py)
+// is consistent about this: *_income is a raw dollar figure, *_rate /
+// pct_* / labor_force_participation are 0..1 ratios needing ×100,
+// gini_index is a plain index (not a rate or dollar amount), and
+// everything else raw is a count. No value is invented — this only
+// decides how to print a number that's already real.
+function formatFeatureValue(key, value) {
+  if (value === null || value === undefined) return "—";
+  const k = String(key || "").toLowerCase();
+  if (k === "gini_index") return value.toFixed(2);
+  if (k.includes("income") || k.includes("rent") || k.includes("_value")) {
+    return "$" + Math.round(value).toLocaleString();
+  }
+  if (k.startsWith("pct_") || k.endsWith("_rate") || k === "labor_force_participation") {
+    return (value * 100).toFixed(1) + "%";
+  }
+  if (k.includes("age")) return value.toFixed(1);
+  return Math.round(value).toLocaleString();
+}
+
+// match_explanation ends with "closely matched on <feature> and <feature>"
+// when the backend found close features (_compose_explanation in
+// peer_retriever.py) — this pulls out exactly which of `keys` that
+// clause names, by checking each key's own humanized label against
+// the real sentence, so the table can flag those rows instead of
+// leaving the claim as text with nothing to point at. A key whose
+// backend wording diverges from the naive label (a handful of
+// overrides on other axes) just doesn't get flagged — never a
+// false flag, only an occasional missed one.
+function matchedFeatureKeys(explanationText, keys) {
+  const m = /closely matched on ([^;]+)$/i.exec(explanationText || "");
+  if (!m) return new Set();
+  // Exact segment match, not substring — "poverty rate" must not match
+  // inside "senior poverty rate" just because one contains the other.
+  const parts = m[1].toLowerCase().split(/\s+and\s+/).map(s => s.trim());
+  return new Set(keys.filter(k => parts.includes(featureLabel(k).toLowerCase())));
+}
+
+// Confirmed backend bugs, not display bugs — mean_household_income reads
+// a Census aggregate as if it were a per-household mean, and
+// senior_poverty_rate's denominator variable is duplicated into its own
+// numerator, so it can exceed 100%. Both live in
+// scripts/chatbot/peer_features_catalog.py, off-limits here — hidden
+// from the table until that's fixed rather than shown wrong.
+const BROKEN_FEATURE_KEYS = new Set(["mean_household_income", "senior_poverty_rate"]);
+
+// The backend's own ranking still scores peers using the full (still
+// buggy) feature set, so "closely matched on ..." can legitimately name
+// a feature the table above has already hidden. Strips those mentions
+// out of the sentence rather than showing a claim about data that isn't
+// displayed anywhere — never rewrites what the backend found, only
+// removes reference to the part we've already decided not to show.
+function stripBrokenFeatureMentions(clause) {
+  const m = /^(closely matched on )([^;]+)$/i.exec(clause || "");
+  if (!m) return clause;
+  const brokenLabels = new Set(
+    [...BROKEN_FEATURE_KEYS].map(k => featureLabel(k).toLowerCase()));
+  const kept = m[2].split(/\s+and\s+/).map(s => s.trim())
+    .filter(part => !brokenLabels.has(part.toLowerCase()));
+  return kept.length ? m[1] + kept.join(" and ") : null;
+}
 
 // The app's own two data sources — stable, real names, not a guess at
 // what a specific table means. Any actual interpretation of a table
@@ -1315,8 +1460,19 @@ function render(r) {
   const lints = r.lints || [];
   const errorLints = lints.filter(l => l.severity === "error");
   const otherLints = lints.filter(l => l.severity !== "error");
-
-  for (const l of errorLints) out.push(lintHtml(l));
+  // "Read with care" / "All caveats" pull from every deterministic
+  // warning signal the backend already produced — not just the
+  // synthesizer's own `caveats` list, which is only ever non-empty when
+  // there was a fetch failure or an aggregation caveat on a value. A
+  // flagged anomaly (far_above_comparators, a broken trend, ...) is
+  // exactly as much a "read this carefully" signal, and unlike hoping
+  // the model decides to mention one, `r.anomalies` is deterministic
+  // and already reliably populated (it's what "Flagged" below reads
+  // from too — this reuses the same plain-English `context` text
+  // rather than inventing new wording for it).
+  const allCaveats = [...(r.caveats || []),
+    ...errorLints.map(l => l.message + (l.detail ? " " + l.detail : "")),
+    ...(r.anomalies || []).map(anomalyCaveatText)];
 
   const trends = buildTrends(r.values);
   currentTrend = trends[0] || null;
@@ -1370,9 +1526,9 @@ function render(r) {
       out.push('</ul>');
     }
     if (currentTrend) out.push(trendCardHtml(currentTrend));
-    if (r.caveats && r.caveats.length) {
-      out.push(`<div class="caveat-line"><b>Read with care:</b> ${esc(r.caveats[0])}` +
-        (r.caveats.length > 1 ? ` <span class="dim">(+${r.caveats.length - 1} more below)</span>` : "") +
+    if (allCaveats.length) {
+      out.push(`<div class="caveat-line"><b>Read with care:</b> ${esc(allCaveats[0])}` +
+        (allCaveats.length > 1 ? ` <span class="dim">(+${allCaveats.length - 1} more below)</span>` : "") +
         `</div>`);
     }
     out.push('</div></div>');
@@ -1384,25 +1540,116 @@ function render(r) {
     if (anchorName) {
       out.push(`<div class="peers-anchor">Comparators below are chosen against <b>${esc(anchorName)}</b>.</div>`);
     }
-    r.peer_groups.forEach((g, gi) => {
+    const METRIC_CAP = 4;
+    // The backend now computes one PeerGroupOut per (axis, year) it
+    // actually has data for — regroup back to one section per axis, with
+    // a year tab when a query spans more than one, instead of repeating
+    // the axis header once per year.
+    const axisOrder = [];
+    const byAxis = new Map();
+    r.peer_groups.forEach(g => {
+      if (!byAxis.has(g.axis)) { byAxis.set(g.axis, []); axisOrder.push(g.axis); }
+      byAxis.get(g.axis).push(g);
+    });
+    const anyMultiYear = axisOrder.some(k =>
+      new Set(byAxis.get(k).map(v => v.year).filter(y => y != null)).size > 1);
+    out.push(`<div class="peers-note">
+        <b>Peers are ranked closest match first</b> — each card's position reflects how
+        statistically similar it is to ${anchorName ? esc(anchorName) : "the anchor"} on that axis, not alphabetical or random order.
+        ${anyMultiYear ? `<br><b>Switching years can change which cities appear</b> — peers are
+        re-ranked independently for each year using that year's real data, so the closest
+        match in 2020 isn't always the closest match in 2022.` : ""}
+      </div>`);
+
+    axisOrder.forEach((axisKey, gi) => {
+      const variants = byAxis.get(axisKey).slice()
+        .sort((a, b) => (a.year || 0) - (b.year || 0));
+      const distinctYears = [...new Set(variants.map(v => v.year).filter(y => y != null))];
+      // Prefer whichever year the main answer above is actually about;
+      // fall back to the most recent year this axis has.
+      const defaultYear = (lead && lead.year && distinctYears.includes(lead.year))
+        ? lead.year : distinctYears[distinctYears.length - 1];
+
       out.push(`<div class="peer-group">
-        <div class="peer-axis">${esc(axisLabel(g.axis))}</div>
-        <div class="peer-axis-desc">${esc(g.axis_description)}</div>`);
-      const pops = g.peers.map(p => p.population || 0);
-      const maxPop = Math.max(1, ...pops);
-      if (g.peers.some(p => p.population)) {
-        out.push('<div class="peer-row peer-row-head"><span class="name"></span><div class="track"></div><span class="val">Population</span></div>');
-      }
-      for (const p of g.peers) {
-        const pct = p.population ? Math.max(6, Math.round((p.population / maxPop) * 100)) : 0;
-        out.push(`<div class="peer-row">
-          <span class="name">${esc(p.geo_name)}</span>
-          <div class="track">${p.population ? `<div class="fill-bar" style="width:${pct}%"></div>` : ""}</div>
-          <span class="val">${p.population ? p.population.toLocaleString() : "—"}</span>
+        <div class="peer-axis">${esc(axisLabel(axisKey))}${distinctYears.length === 1 && variants[0].year
+          ? `<span class="peer-axis-year">${esc(variants[0].year)} data</span>` : ""}</div>
+        <div class="peer-axis-desc">${esc(variants[0].axis_description)}</div>`);
+
+      if (distinctYears.length > 1) {
+        out.push(`<div class="seg-group peer-year-tabs" role="tablist" aria-label="Comparison year">
+          ${distinctYears.map(y => `<button type="button" class="seg-btn year-tab${y === defaultYear ? " active" : ""}"
+              data-year-tab="${gi}-${y}" role="tab" aria-selected="${y === defaultYear}">${esc(y)}</button>`).join("")}
         </div>`);
-        if (p.match_explanation) out.push(`<div class="peer-explain">${esc(p.match_explanation)}</div>`);
       }
-      out.push('</div>');
+
+    variants.forEach(g => {
+      const isShown = distinctYears.length <= 1 || g.year === defaultYear;
+      out.push(`<div class="peer-cards-grid${isShown ? "" : " hide"}" data-year-panel="${gi}-${g.year}">`);
+      const anchorFeatures = g.anchor_feature_values || {};
+      g.peers.forEach((p, pi) => {
+        const clauses = (p.match_explanation || "").split(";").map(s => s.trim()).filter(Boolean);
+        // The "closely matched on ..." clause moves out of the badge
+        // row and becomes a caption directly above the table it's
+        // describing — position does the explaining instead of a
+        // hover tooltip or a dot the reader has to decode on their own.
+        const matchedClauseIdx = clauses.findIndex(c => /^closely matched on/i.test(c));
+        const matchedClause = matchedClauseIdx >= 0
+          ? stripBrokenFeatureMentions(clauses[matchedClauseIdx]) : null;
+        const badges = matchedClauseIdx >= 0
+          ? clauses.filter((_, i) => i !== matchedClauseIdx) : clauses;
+        const commonKeys = Object.keys(p.feature_values || {})
+          .filter(k => k in anchorFeatures && !BROKEN_FEATURE_KEYS.has(k));
+        const matchedKeys = matchedFeatureKeys(p.match_explanation, commonKeys);
+        // The row(s) the "closely matched on ..." badge is actually
+        // talking about should never be the ones hidden behind "+more" —
+        // sort them to the front before capping what's shown up front.
+        const orderedKeys = [...commonKeys].sort(
+          (a, b) => (matchedKeys.has(b) ? 1 : 0) - (matchedKeys.has(a) ? 1 : 0));
+        const shownKeys = orderedKeys.slice(0, METRIC_CAP);
+        const restKeys = orderedKeys.slice(METRIC_CAP);
+        // A real table, not "value vs. value" text — the column headers
+        // are the two geography names, so which number belongs to which
+        // place is positional, not something you have to read a label to get.
+        // The arrow is direction only (higher/lower than Atlanta), never
+        // a judgment — a higher poverty rate isn't "good" just because
+        // it's colored the same as a higher income would be.
+        const metricTableRows = keys => keys.map(k => {
+          const pv = p.feature_values[k], av = anchorFeatures[k];
+          let arrow = "";
+          if (typeof pv === "number" && typeof av === "number" && pv !== av) {
+            arrow = pv > av
+              ? '<span class="pm-arrow pm-arrow-up" title="Higher than Atlanta city, Georgia">&#9650;</span>'
+              : '<span class="pm-arrow pm-arrow-down" title="Lower than Atlanta city, Georgia">&#9660;</span>';
+          }
+          return `<tr class="${matchedKeys.has(k) ? "pm-matched" : ""}">
+              <td class="pm-label">${matchedKeys.has(k) ? '<span class="pm-dot" title="One of the features this peer was closely matched on"></span>' : ""}${esc(featureLabel(k))}</td>
+              <td class="pm-value">${arrow}${esc(formatFeatureValue(k, pv))}</td>
+              <td class="pm-anchor">${esc(formatFeatureValue(k, av))}</td>
+            </tr>`;
+        }).join("");
+        out.push(`<div class="peer-card">
+          <div class="peer-card-head">
+            <span class="peer-name">${esc(p.geo_name)}</span>
+            ${p.population ? `<span class="peer-pop">Population ${p.population.toLocaleString()}</span>` : ""}
+          </div>
+          ${badges.length ? `<div class="peer-badges">${badges.map(b =>
+            `<span class="peer-badge">${esc(b.charAt(0).toUpperCase() + b.slice(1))}</span>`).join("")}</div>` : ""}
+          ${commonKeys.length ? `<div class="peer-metrics" id="peer-metrics-${gi}-${g.year}-${pi}">
+            ${matchedClause ? `<div class="peer-match-caption">${esc(matchedClause.charAt(0).toUpperCase() + matchedClause.slice(1))}
+              <span class="peer-match-caption-arrow">&#8595;</span></div>` : ""}
+            <table class="peer-metric-table"><thead><tr>
+              <th></th><th>${esc(p.geo_name)}</th><th>${esc(g.anchor_geo_name)}</th>
+            </tr></thead>
+            <tbody>${metricTableRows(shownKeys)}</tbody>
+            <tbody class="peer-metrics-rest hide">${metricTableRows(restKeys)}</tbody>
+            </table>
+            ${restKeys.length ? `<button type="button" class="peer-metrics-more" data-more="peer-metrics-${gi}-${g.year}-${pi}">+${restKeys.length} more compared metric${restKeys.length > 1 ? "s" : ""}</button>` : ""}
+          </div>` : ""}
+        </div>`);
+      });
+      out.push('</div>'); // .peer-cards-grid
+    });
+      out.push('</div>'); // .peer-group
     });
     out.push('</div></div>');
   }
@@ -1454,11 +1701,11 @@ function render(r) {
     out.push('</div></details>');
   }
 
-  if (r.caveats && r.caveats.length) {
+  if (allCaveats.length) {
     out.push(`<details class="collapse"><summary>All caveats
-      <span class="count">(${r.caveats.length})</span></summary>
+      <span class="count">(${allCaveats.length})</span></summary>
       <div class="collapse-body"><ul>`);
-    for (const c of r.caveats) out.push(`<li>${esc(c)}</li>`);
+    for (const c of allCaveats) out.push(`<li>${esc(c)}</li>`);
     out.push('</ul></div></details>');
   }
 
@@ -1503,6 +1750,28 @@ function render(r) {
   $("output").innerHTML = out.join("\n");
   const copyBtn = $("copy-answer");
   if (copyBtn) copyBtn.onclick = () => copyAnswer(r);
+  document.querySelectorAll("[data-more]").forEach(btn => {
+    btn.onclick = () => {
+      const container = $(btn.dataset.more);
+      if (container) container.querySelector(".peer-metrics-rest").classList.remove("hide");
+      btn.remove();
+    };
+  });
+  document.querySelectorAll(".year-tab").forEach(btn => {
+    btn.onclick = () => {
+      // Scoped to this tab's own axis group so switching one axis's
+      // year never touches another axis's tabs sitting lower on the page.
+      const group = btn.closest(".peer-group");
+      if (!group) return;
+      group.querySelectorAll(".year-tab").forEach(b => {
+        b.classList.toggle("active", b === btn);
+        b.setAttribute("aria-selected", String(b === btn));
+      });
+      group.querySelectorAll("[data-year-panel]").forEach(panel => {
+        panel.classList.toggle("hide", panel.dataset.yearPanel !== btn.dataset.yearTab);
+      });
+    };
+  });
   document.querySelectorAll('[data-citmode]').forEach(btn => {
     btn.onclick = () => {
       document.querySelectorAll('[data-citmode]').forEach(b => {
@@ -1537,9 +1806,16 @@ function answerText(r) {
     lines.push("");
     for (const k of r.key_findings) lines.push("• " + k);
   }
-  if (r.caveats && r.caveats.length) {
+  // Same folding as the on-screen view — error-severity lints and
+  // flagged anomalies are both caveats about the answer, merged in here
+  // too so the copied text matches what's shown, not a different subset.
+  const errCaveats = (r.lints || []).filter(l => l.severity === "error")
+    .map(l => l.message + (l.detail ? " " + l.detail : ""));
+  const allCaveats = [...(r.caveats || []), ...errCaveats,
+    ...(r.anomalies || []).map(anomalyCaveatText)];
+  if (allCaveats.length) {
     lines.push("", "Caveats:");
-    for (const c of r.caveats) lines.push("• " + c);
+    for (const c of allCaveats) lines.push("• " + c);
   }
   if (r.citations && r.citations.length) {
     lines.push("", "Sources:");
@@ -1890,7 +2166,9 @@ $("variant-save").onclick = async () => {
 };
 
 $("query").addEventListener("keydown", (e) => {
-  if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) ask();
+  if (e.key !== "Enter" || e.shiftKey) return; // Shift+Enter: let the textarea insert a newline
+  e.preventDefault();
+  ask();
 });
 document.querySelectorAll("#suggested-chips [data-q]").forEach(btn => {
   btn.onclick = () => { $("query").value = btn.dataset.q; ask(); };

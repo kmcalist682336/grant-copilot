@@ -52,6 +52,7 @@ class PeerContext(BaseModel):
     # rate is 13.5%, comparable to Cobb's 8.7%." All peers' values
     # live on each PeerRef.feature_values.
     anchor_feature_values: dict[str, float] = Field(default_factory=dict)
+    anchor_vintage: Optional[int] = None
 
 
 # ---------------------------------------------------------------------------
@@ -203,6 +204,7 @@ def _resolve_anchor_key(
 def _anchor_by_tract_overlap(
     primary: ResolvedGeography,
     peer_retriever: PeerRetriever,
+    vintage: Optional[int] = None,
 ) -> Optional[object]:
     """Look up the pre-computed neighborhood whose tract list overlaps
     the query's tract_geoids most, and return that neighborhood as the
@@ -263,6 +265,7 @@ def _anchor_by_tract_overlap(
         try:
             anchor = peer_retriever.lookup_anchor(
                 geo_level="neighborhood", geo_id=r["place_id"],
+                vintage=vintage
             )
         except PeerRetrievalError:
             continue
@@ -284,6 +287,7 @@ def get_peer_contexts(
     max_axes: int = 3,
     top_k: int = 5,
     restrict_to_state: bool = True,
+    year: Optional[int] = None,
 ) -> list[PeerContext]:
     """Return grant-narrative peer context for the primary geo.
 
@@ -309,6 +313,7 @@ def get_peer_contexts(
         try:
             anchor = peer_retriever.lookup_anchor(
                 geo_level=peer_level, geo_id=geo_id,
+                vintage=year,
             )
         except PeerRetrievalError as e:
             logger.warning("peer_context: lookup failed: %s", e)
@@ -322,7 +327,7 @@ def get_peer_contexts(
     # grant-narrative peer context.
     if anchor is None and primary.geo_level == "neighborhood" \
             and primary.tract_geoids:
-        anchor = _anchor_by_tract_overlap(primary, peer_retriever)
+        anchor = _anchor_by_tract_overlap(primary, peer_retriever, vintage=year)
         if anchor is not None:
             peer_level = "neighborhood"
             logger.info(
@@ -356,6 +361,7 @@ def get_peer_contexts(
             peers = peer_retriever.peers(
                 anchor, axis=axis, geo_level=peer_level,
                 top_k=top_k, restrict_state=restrict_state,
+                vintage=year,
             )
             scope = (
                 f"within state {anchor.state_fips}" if restrict_state
@@ -367,6 +373,7 @@ def get_peer_contexts(
                 peers = peer_retriever.peers(
                     anchor, axis=axis, geo_level=peer_level,
                     top_k=top_k, restrict_state=None,
+                    vintage=year,
                 )
                 scope = "nationwide size-matched"
         except PeerRetrievalError as e:
@@ -391,5 +398,6 @@ def get_peer_contexts(
             peers=peers,
             pool_scope=scope,
             anchor_feature_values=anchor_vals,
+            anchor_vintage=anchor.vintage,
         ))
     return contexts
