@@ -276,6 +276,16 @@
 
   /* Peers */
   .peers-anchor { font-size: 12.5px; color: var(--dim); margin-bottom: 14px; }
+  /* Deliberately NOT styled like the dim/small captions elsewhere on this
+     card — a subtle dot + hover tooltip is exactly what caused the
+     confusion this note exists to prevent, so this one has to be seen
+     without hovering or reading fine print. */
+  .peers-note {
+    background: var(--accent-soft); border-left: 3px solid var(--accent);
+    border-radius: 6px; padding: 10px 14px; font-size: 13px; line-height: 1.5;
+    color: var(--fg); margin-bottom: 16px;
+  }
+  .peers-note b { color: var(--ink); }
   .peer-group + .peer-group { margin-top: 20px; padding-top: 20px; border-top: 1px solid var(--line); }
   .peer-axis { font-weight: 700; font-size: 14.5px; }
   .peer-axis-year {
@@ -1124,6 +1134,30 @@ function matchedFeatureKeys(explanationText, keys) {
   return new Set(keys.filter(k => parts.includes(featureLabel(k).toLowerCase())));
 }
 
+// Confirmed backend bugs, not display bugs — mean_household_income reads
+// a Census aggregate as if it were a per-household mean, and
+// senior_poverty_rate's denominator variable is duplicated into its own
+// numerator, so it can exceed 100%. Both live in
+// scripts/chatbot/peer_features_catalog.py, off-limits here — hidden
+// from the table until that's fixed rather than shown wrong.
+const BROKEN_FEATURE_KEYS = new Set(["mean_household_income", "senior_poverty_rate"]);
+
+// The backend's own ranking still scores peers using the full (still
+// buggy) feature set, so "closely matched on ..." can legitimately name
+// a feature the table above has already hidden. Strips those mentions
+// out of the sentence rather than showing a claim about data that isn't
+// displayed anywhere — never rewrites what the backend found, only
+// removes reference to the part we've already decided not to show.
+function stripBrokenFeatureMentions(clause) {
+  const m = /^(closely matched on )([^;]+)$/i.exec(clause || "");
+  if (!m) return clause;
+  const brokenLabels = new Set(
+    [...BROKEN_FEATURE_KEYS].map(k => featureLabel(k).toLowerCase()));
+  const kept = m[2].split(/\s+and\s+/).map(s => s.trim())
+    .filter(part => !brokenLabels.has(part.toLowerCase()));
+  return kept.length ? m[1] + kept.join(" and ") : null;
+}
+
 // The app's own two data sources — stable, real names, not a guess at
 // what a specific table means. Any actual interpretation of a table
 // (title, universe, variable labels) comes only from what the pipeline's
@@ -1507,18 +1541,50 @@ function render(r) {
       out.push(`<div class="peers-anchor">Comparators below are chosen against <b>${esc(anchorName)}</b>.</div>`);
     }
     const METRIC_CAP = 4;
-    // Confirmed backend bugs, not display bugs — mean_household_income
-    // reads Census "aggregate" (B19025_001E, a whole-area sum) as if it
-    // were a per-household mean, and senior_poverty_rate's denominator
-    // variable is accidentally duplicated into its own numerator, so it
-    // can exceed 100%. Both live in scripts/chatbot/peer_features_catalog.py,
-    // off-limits here — hidden until that's fixed rather than shown wrong.
-    const BROKEN_FEATURE_KEYS = new Set(["mean_household_income", "senior_poverty_rate"]);
-    r.peer_groups.forEach((g, gi) => {
+    // The backend now computes one PeerGroupOut per (axis, year) it
+    // actually has data for — regroup back to one section per axis, with
+    // a year tab when a query spans more than one, instead of repeating
+    // the axis header once per year.
+    const axisOrder = [];
+    const byAxis = new Map();
+    r.peer_groups.forEach(g => {
+      if (!byAxis.has(g.axis)) { byAxis.set(g.axis, []); axisOrder.push(g.axis); }
+      byAxis.get(g.axis).push(g);
+    });
+    const anyMultiYear = axisOrder.some(k =>
+      new Set(byAxis.get(k).map(v => v.year).filter(y => y != null)).size > 1);
+    out.push(`<div class="peers-note">
+        <b>Peers are ranked closest match first</b> — each card's position reflects how
+        statistically similar it is to ${anchorName ? esc(anchorName) : "the anchor"} on that axis, not alphabetical or random order.
+        ${anyMultiYear ? `<br><b>Switching years can change which cities appear</b> — peers are
+        re-ranked independently for each year using that year's real data, so the closest
+        match in 2020 isn't always the closest match in 2022.` : ""}
+      </div>`);
+
+    axisOrder.forEach((axisKey, gi) => {
+      const variants = byAxis.get(axisKey).slice()
+        .sort((a, b) => (a.year || 0) - (b.year || 0));
+      const distinctYears = [...new Set(variants.map(v => v.year).filter(y => y != null))];
+      // Prefer whichever year the main answer above is actually about;
+      // fall back to the most recent year this axis has.
+      const defaultYear = (lead && lead.year && distinctYears.includes(lead.year))
+        ? lead.year : distinctYears[distinctYears.length - 1];
+
       out.push(`<div class="peer-group">
-        <div class="peer-axis">${esc(axisLabel(g.axis))}${g.year ? `<span class="peer-axis-year">${esc(g.year)} data</span>` : ""}</div>
-        <div class="peer-axis-desc">${esc(g.axis_description)}</div>
-        <div class="peer-cards-grid">`);
+        <div class="peer-axis">${esc(axisLabel(axisKey))}${distinctYears.length === 1 && variants[0].year
+          ? `<span class="peer-axis-year">${esc(variants[0].year)} data</span>` : ""}</div>
+        <div class="peer-axis-desc">${esc(variants[0].axis_description)}</div>`);
+
+      if (distinctYears.length > 1) {
+        out.push(`<div class="seg-group peer-year-tabs" role="tablist" aria-label="Comparison year">
+          ${distinctYears.map(y => `<button type="button" class="seg-btn year-tab${y === defaultYear ? " active" : ""}"
+              data-year-tab="${gi}-${y}" role="tab" aria-selected="${y === defaultYear}">${esc(y)}</button>`).join("")}
+        </div>`);
+      }
+
+    variants.forEach(g => {
+      const isShown = distinctYears.length <= 1 || g.year === defaultYear;
+      out.push(`<div class="peer-cards-grid${isShown ? "" : " hide"}" data-year-panel="${gi}-${g.year}">`);
       const anchorFeatures = g.anchor_feature_values || {};
       g.peers.forEach((p, pi) => {
         const clauses = (p.match_explanation || "").split(";").map(s => s.trim()).filter(Boolean);
@@ -1527,7 +1593,8 @@ function render(r) {
         // describing — position does the explaining instead of a
         // hover tooltip or a dot the reader has to decode on their own.
         const matchedClauseIdx = clauses.findIndex(c => /^closely matched on/i.test(c));
-        const matchedClause = matchedClauseIdx >= 0 ? clauses[matchedClauseIdx] : null;
+        const matchedClause = matchedClauseIdx >= 0
+          ? stripBrokenFeatureMentions(clauses[matchedClauseIdx]) : null;
         const badges = matchedClauseIdx >= 0
           ? clauses.filter((_, i) => i !== matchedClauseIdx) : clauses;
         const commonKeys = Object.keys(p.feature_values || {})
@@ -1567,7 +1634,7 @@ function render(r) {
           </div>
           ${badges.length ? `<div class="peer-badges">${badges.map(b =>
             `<span class="peer-badge">${esc(b.charAt(0).toUpperCase() + b.slice(1))}</span>`).join("")}</div>` : ""}
-          ${commonKeys.length ? `<div class="peer-metrics" id="peer-metrics-${gi}-${pi}">
+          ${commonKeys.length ? `<div class="peer-metrics" id="peer-metrics-${gi}-${g.year}-${pi}">
             ${matchedClause ? `<div class="peer-match-caption">${esc(matchedClause.charAt(0).toUpperCase() + matchedClause.slice(1))}
               <span class="peer-match-caption-arrow">&#8595;</span></div>` : ""}
             <table class="peer-metric-table"><thead><tr>
@@ -1576,11 +1643,13 @@ function render(r) {
             <tbody>${metricTableRows(shownKeys)}</tbody>
             <tbody class="peer-metrics-rest hide">${metricTableRows(restKeys)}</tbody>
             </table>
-            ${restKeys.length ? `<button type="button" class="peer-metrics-more" data-more="peer-metrics-${gi}-${pi}">+${restKeys.length} more compared metric${restKeys.length > 1 ? "s" : ""}</button>` : ""}
+            ${restKeys.length ? `<button type="button" class="peer-metrics-more" data-more="peer-metrics-${gi}-${g.year}-${pi}">+${restKeys.length} more compared metric${restKeys.length > 1 ? "s" : ""}</button>` : ""}
           </div>` : ""}
         </div>`);
       });
-      out.push('</div></div>');
+      out.push('</div>'); // .peer-cards-grid
+    });
+      out.push('</div>'); // .peer-group
     });
     out.push('</div></div>');
   }
@@ -1686,6 +1755,21 @@ function render(r) {
       const container = $(btn.dataset.more);
       if (container) container.querySelector(".peer-metrics-rest").classList.remove("hide");
       btn.remove();
+    };
+  });
+  document.querySelectorAll(".year-tab").forEach(btn => {
+    btn.onclick = () => {
+      // Scoped to this tab's own axis group so switching one axis's
+      // year never touches another axis's tabs sitting lower on the page.
+      const group = btn.closest(".peer-group");
+      if (!group) return;
+      group.querySelectorAll(".year-tab").forEach(b => {
+        b.classList.toggle("active", b === btn);
+        b.setAttribute("aria-selected", String(b === btn));
+      });
+      group.querySelectorAll("[data-year-panel]").forEach(panel => {
+        panel.classList.toggle("hide", panel.dataset.yearPanel !== btn.dataset.yearTab);
+      });
     };
   });
   document.querySelectorAll('[data-citmode]').forEach(btn => {

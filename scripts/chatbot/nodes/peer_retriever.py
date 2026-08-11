@@ -85,6 +85,10 @@ class PeerRef(BaseModel):
             "scale, top 1-2 matching features)."
         ),
     )
+    vintage: Optional[int] = Field(
+        default=None,
+        description="The ACS vintage this peer's feature_values came from.",
+    )
 
 
 class PeerRetrievalError(RuntimeError):
@@ -323,9 +327,10 @@ class AnchorFeatures:
     population: Optional[int]
     state_fips: Optional[str]
     features: dict[str, float]
+    vintage: Optional[int] = None
 
 
-def _row_to_anchor(row: sqlite3.Row) -> AnchorFeatures:
+def _row_to_anchor(row: sqlite3.Row, vintage: int) -> AnchorFeatures:
     fj = json.loads(row["features_json"]) if row["features_json"] else {}
     return AnchorFeatures(
         geo_level=row["geo_level"],
@@ -334,6 +339,7 @@ def _row_to_anchor(row: sqlite3.Row) -> AnchorFeatures:
         population=row["population"],
         state_fips=row["state_fips"],
         features={k: float(v) for k, v in fj.items() if v is not None},
+        vintage=vintage,
     )
 
 
@@ -366,7 +372,9 @@ class PeerRetriever:
         con.row_factory = sqlite3.Row
         return con
 
-    def _resolve_vintage(self, con: sqlite3.Connection) -> int:
+    def _resolve_vintage(self, con: sqlite3.Connection, vintage: Optional[int]=None,) -> int:
+        if vintage is not None:
+            return vintage
         if self._vintage is not None:
             return self._vintage
         r = con.execute(
@@ -378,11 +386,12 @@ class PeerRetriever:
 
     def lookup_anchor(
         self, *, geo_level: GeoLevel, geo_id: str,
+        vintage: Optional[int] = None,
     ) -> Optional[AnchorFeatures]:
         """Fetch the feature vector for a specific geo_id, or None when
         it isn't in the DB."""
         with self._connect() as con:
-            vintage = self._resolve_vintage(con)
+            resolved = self._resolve_vintage(con, vintage)
             row = con.execute(
                 """
                 SELECT geo_level, geo_id, geo_name, state_fips,
@@ -390,9 +399,9 @@ class PeerRetriever:
                   FROM peer_features
                  WHERE geo_level = ? AND geo_id = ? AND vintage = ?
                 """,
-                (geo_level, geo_id, vintage),
+                (geo_level, geo_id, resolved),
             ).fetchone()
-            return _row_to_anchor(row) if row else None
+            return _row_to_anchor(row, resolved) if row else None
 
     def anchor_from_aggregated(
         self, *, features: dict[str, float], population: int,
@@ -462,7 +471,7 @@ class PeerRetriever:
             "       features_json "
             "FROM peer_features WHERE " + " AND ".join(where)
         )
-        return [_row_to_anchor(r) for r in con.execute(sql, params)]
+        return [_row_to_anchor(r, vintage) for r in con.execute(sql, params)]
 
     # ------------------------------------------------------------------
     # Ranking
@@ -554,6 +563,7 @@ class PeerRetriever:
         top_k: int = 10,
         restrict_state: Optional[str] = None,
         min_features: int = 3,
+        vintage: Optional[int] = None,
     ) -> list[PeerRef]:
         """Return top-K peers ranked by axis-specific z-score distance.
 
@@ -579,9 +589,9 @@ class PeerRetriever:
         """
         feature_names = self._axis_features(axis)
         with self._connect() as con:
-            vintage = self._resolve_vintage(con)
+            resolved = self._resolve_vintage(con, vintage)
             pool = self._candidate_pool(
-                con, vintage=vintage, geo_level=geo_level,
+                con, vintage=resolved, geo_level=geo_level,
                 anchor=anchor, restrict_state=restrict_state,
             )
         if not pool:
@@ -637,6 +647,7 @@ class PeerRetriever:
                 features_compared=n,
                 feature_values=axis_vals,
                 match_explanation=explanation,
+                vintage=resolved,
             ))
         return out
 
