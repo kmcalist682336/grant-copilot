@@ -40,6 +40,12 @@
     --ok: #0f7a4a; --warn: #a35a00; --err: #b42318;
     --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
     --shadow: 0 1px 2px rgba(14,34,64,.06), 0 6px 20px rgba(14,34,64,.05);
+    --glow: rgba(47,111,176,.4);
+    --ease-out-strong: cubic-bezier(.23,1,.32,1);
+    /* A gentle back-out — overshoots slightly, then settles. Used for
+       the globe's landing→band warp and each new turn sliding in, so
+       both read as a soft physical bounce rather than a plain glide. */
+    --ease-bounce: cubic-bezier(.34, 1.56, .64, 1);
   }
   @media (prefers-color-scheme: dark) {
     :root {
@@ -49,6 +55,7 @@
       --fill: #1c3f5f; --fill-2: #142943; --on-fill: #eef3fb;
       --ok: #34d399; --warn: #fbbf24; --err: #f87171;
       --shadow: 0 1px 2px rgba(0,0,0,.3), 0 10px 30px rgba(0,0,0,.35);
+      --glow: rgba(110,168,250,.38);
     }
   }
   :root[data-theme="dark"] {
@@ -58,6 +65,7 @@
     --fill: #1c3f5f; --fill-2: #142943; --on-fill: #eef3fb;
     --ok: #34d399; --warn: #fbbf24; --err: #f87171;
     --shadow: 0 1px 2px rgba(0,0,0,.3), 0 10px 30px rgba(0,0,0,.35);
+    --glow: rgba(110,168,250,.38);
   }
   :root[data-theme="light"] {
     --canvas: #eef3fb; --bg: #ffffff; --panel: #e6eef9; --fg: #13253f;
@@ -66,6 +74,7 @@
     --fill: #2f6fb0; --fill-2: #dbe9f8; --on-fill: #ffffff;
     --ok: #0f7a4a; --warn: #a35a00; --err: #b42318;
     --shadow: 0 1px 2px rgba(14,34,64,.06), 0 6px 20px rgba(14,34,64,.05);
+    --glow: rgba(47,111,176,.4);
   }
   * { box-sizing: border-box; }
   body {
@@ -125,8 +134,20 @@
   /* ---------- layout ---------- */
   .layout { display: flex; height: calc(100vh - 55px); }
   .left {
-    flex: 1 1 60%; overflow-y: auto; padding: 22px; min-width: 0;
+    flex: 1 1 60%; min-width: 0; overflow: hidden;
     display: flex; flex-direction: column;
+  }
+  /* The scrollable region holding the welcome state + the accumulating
+     thread of turns. Split out from `.left` itself so `.composer-dock`
+     can sit permanently at the bottom, outside the scroll, rather than
+     scrolling away with the content above it. */
+  .thread-scroll {
+    flex: 1 1 auto; overflow-y: auto; padding: 22px; min-height: 0;
+    display: flex; flex-direction: column;
+    /* Above the fixed globe band in stacking, so turn content always
+       paints over it where they'd otherwise overlap — the globe only
+       ever shows through genuinely empty space, never under text. */
+    position: relative; z-index: 5;
   }
   .right {
     flex: 1 1 40%; overflow-y: auto; padding: 18px;
@@ -240,23 +261,128 @@
   .export-sec-label { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--fg); cursor: pointer; }
   .export-sec-label input { margin: 0; }
 
-  /* ---------- Filled cards: Main Response / Peers / Citations / Try Next ---------- */
-  .fill-card {
-    background: var(--fill); border-radius: 16px; padding: 8px; margin-bottom: 14px;
+  /* ---------- Conversation turns ---------- */
+  /* One turn = what the user asked + everything the system returned for
+     it, as a single unit. The query bubble matches the composer
+     textarea's own color (--fill/--on-fill) — the same box the words
+     were typed into, carried forward into the thread, so it reads as
+     one continuous object rather than the text landing in a new,
+     unrelated box. */
+  .turn-query {
+    display: flex; justify-content: flex-end; margin-bottom: 8px;
+  }
+  .turn-query span {
+    display: inline-block; max-width: 78%; background: var(--fill); color: var(--on-fill);
+    border-radius: 14px; padding: 10px 15px; font-size: 14.5px; font-weight: 500;
+    text-align: left; line-height: 1.4;
+  }
+  .turn {
+    background: var(--fill); border-radius: 16px; padding: 8px; margin-bottom: 22px;
     box-shadow: var(--shadow);
+    transition: background 200ms ease, padding 200ms ease, box-shadow 300ms ease;
   }
-  .fill-head {
-    display: flex; justify-content: space-between; align-items: center;
-    padding: 10px 14px; color: var(--on-fill);
+  /* While waiting on a response: no border/chrome ring (there's no tab
+     strip yet to fill that space), just a plain white shell with a
+     soft colored glow behind it instead — smaller and softer than a
+     hard outline, reads as "working" without framing an empty box. A
+     slow, gentle pulse (not a hard blink) reinforces that, still. */
+  @keyframes turn-glow-pulse {
+    0%, 100% { box-shadow: var(--shadow), 0 0 13px 0px var(--glow); }
+    50% { box-shadow: var(--shadow), 0 0 21px 3px var(--glow); }
   }
-  .fill-head .title { font-size: 13px; font-weight: 700; letter-spacing: .02em; text-transform: uppercase; }
-  .fill-body { background: var(--bg); border-radius: 12px; padding: 20px 22px; }
+  .turn.turn-loading {
+    background: var(--bg); padding: 0;
+    animation: turn-glow-pulse 2.4s ease-in-out infinite;
+  }
+  .turn.turn-loading .turn-body { border-radius: 16px; padding-top: 14px; padding-bottom: 14px; }
+  @media (prefers-reduced-motion: reduce) {
+    .turn.turn-loading { animation: none; box-shadow: var(--shadow), 0 0 16px 1px var(--glow); }
+  }
+  /* The query and its answer shell arrive together with the same
+     gentle bounce as the globe's warp — a slide, never a fade, so the
+     landing→answer move reads as one continuous motion rather than
+     unrelated elements popping in. Fires once, on insertion, per turn. */
+  @keyframes turn-slide-in {
+    from { transform: translateY(30px); }
+    to { transform: translateY(0); }
+  }
+  .turn-query, .turn { animation: turn-slide-in 620ms var(--ease-bounce); }
+  @media (prefers-reduced-motion: reduce) {
+    .turn-query, .turn { animation: none; }
+  }
+  /* Full-width tab strip replacing the old single static title bar —
+     each tab is sized like a heading (not a small pill button) and
+     stretches evenly across the shell so the row never wraps. */
+  .turn-tabs {
+    display: flex; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none;
+  }
+  .turn-tabs::-webkit-scrollbar { display: none; }
+  .turn-tab {
+    position: relative;
+    flex: 1 1 0; min-width: fit-content; background: transparent; color: var(--on-fill);
+    opacity: .68; border: 0; border-radius: 8px 8px 0 0;
+    padding: 13px 10px 11px; font-size: 15.5px; font-weight: 700;
+    text-transform: uppercase; letter-spacing: .04em;
+    white-space: nowrap; cursor: pointer;
+    transition: opacity 120ms ease, background 120ms ease, color 120ms ease;
+  }
+  .turn-tab:hover { opacity: .88; }
+  /* Binder tab: the active tab is filled with the exact same white as
+     the panel beneath it, with nothing separating them, so that panel
+     reads as continuing straight up into the tab — not two surfaces
+     meeting at a seam, but one surface with a tab standing up from it. */
+  .turn-tab.active { opacity: 1; background: var(--bg); color: var(--ink); }
+  /* Hover feedback: a line grows outward from the center, not a flat
+     underline that just appears — fires on hover alone, no click
+     needed. Light on the still-blue inactive tabs, dark on the active
+     (white) one, so it stays visible against whichever background
+     it's actually drawn on. */
+  .turn-tab::after {
+    content: ""; position: absolute; left: 50%; bottom: 6px; transform: translateX(-50%);
+    width: 0; height: 2px; border-radius: 2px; background: var(--on-fill);
+    transition: width 240ms var(--ease-out-strong);
+  }
+  .turn-tab:hover::after { width: 42%; }
+  .turn-tab.active::after { width: 42%; background: var(--ink); }
+  @media (max-width: 640px) { .turn-tab { font-size: 13px; padding: 12px 7px 10px; } }
+  /* Flat across the top (the active tab already supplies the curve
+     where it meets the body) — only rounded at the bottom, so no tab
+     position ever has to fight the body's own corner radius. */
+  .turn-body { background: var(--bg); border-radius: 0 0 12px 12px; padding: 20px 22px; }
+  .turn-panel-head { display: flex; justify-content: flex-end; margin: -6px 0 4px; }
+  .turn-stage {
+    display: flex; align-items: center; gap: 9px; color: var(--dim);
+    font-size: 13px; font-family: var(--mono); padding: 4px 0;
+  }
+
+  /* ---------- Docked follow-up composer ---------- */
+  /* Doesn't appear until the first answer has actually finished
+     rendering (wired in render(), not the landing→answer morph) — a
+     fade + scale from center, not a slide, so it reads as materializing
+     in place rather than arriving from off-screen. */
+  .composer-dock {
+    flex: none; box-sizing: border-box;
+    padding: 12px 22px 16px; background: var(--canvas);
+    border-top: 1px solid var(--line); position: relative; z-index: 5;
+    opacity: 0; transform: scale(.85); transform-origin: center center;
+    transition: opacity 420ms ease, transform 420ms var(--ease-out-strong);
+  }
+  .composer-dock.visible { opacity: 1; transform: scale(1); }
+  .composer-dock .composer { max-width: 900px; margin: 0 auto; }
 
   .eyebrow { font-size: 12px; color: var(--dim); letter-spacing: .05em; text-transform: uppercase; font-weight: 600; }
   .stat { font-size: 40px; font-weight: 800; letter-spacing: -.01em; margin: 4px 0 2px;
           font-variant-numeric: tabular-nums; color: var(--ink); line-height: 1.05; }
   .stat-label { font-size: 15px; color: var(--dim); }
-  .hero-findings { margin: 16px 0 0; padding-left: 20px; }
+  /* Same divider language as the chart/caveat sections below it
+     (border-top + margin/padding), so the bullet list reads as its own
+     labeled section rather than just running on from the prose. */
+  .findings-head {
+    margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line);
+    font-size: 12px; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .06em; color: var(--dim);
+  }
+  .hero-findings { margin: 8px 0 0; padding-left: 20px; }
   .hero-findings li { margin: 5px 0; font-size: 14.5px; }
   .caveat-line {
     margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--line);
@@ -418,11 +544,25 @@
     padding-bottom: 60px; min-height: 480px;
   }
   #ask-panel.started { padding-bottom: 0; min-height: 0; }
+  /* The welcome content fades+lifts out first (.morphing), THEN gets
+     display:none (.started) once it's already invisible — so the
+     container's own instant height-collapse is imperceptible, and what
+     the user actually sees is a graceful dissolve, not a jump-cut. */
+  #welcome-logo, #welcome-heading, #suggested-chips, #empty-trust, .composer-wrap {
+    transition: opacity 420ms ease, transform 420ms var(--ease-out-strong);
+  }
+  #ask-panel.morphing #welcome-logo,
+  #ask-panel.morphing #welcome-heading,
+  #ask-panel.morphing #suggested-chips,
+  #ask-panel.morphing #empty-trust,
+  #ask-panel.morphing .composer-wrap {
+    opacity: 0; transform: translateY(-16px) scale(.98); pointer-events: none;
+  }
   #ask-panel.started #welcome-logo,
   #ask-panel.started #welcome-heading,
   #ask-panel.started #suggested-chips,
   #ask-panel.started #empty-trust,
-  #ask-panel.started #globe-wrap { display: none; }
+  #ask-panel.started .composer-wrap { display: none; }
   #ask-panel:not(.started) .composer-wrap { max-width: 820px; margin: 0 auto; }
   #welcome-logo { display: block; width: 60px; height: auto; margin: 0 auto 26px; }
   /* Sized against .composer-wrap's own 820px cap — each clamp ceiling
@@ -443,13 +583,22 @@
     position: relative; z-index: 2; box-shadow: var(--shadow);
   }
   #ask-panel:not(.started) .composer { padding: 13px; border-radius: 28px; }
+  /* Every textarea the user types into grows with what's actually
+     typed (autoGrowTextarea(), wired on input) rather than a fixed box
+     or a manual drag-handle — this sets the resting floor and caps how
+     tall it's allowed to grow before it scrolls internally. */
   .composer textarea {
     background: var(--fill); color: var(--on-fill); border: none; border-radius: 14px;
-    padding: 16px 16px 12px; font-size: 15.5px; min-height: 70px; resize: vertical;
+    padding: 16px 16px 12px; font-size: 15.5px; min-height: 70px; resize: none;
+    overflow-y: auto; max-height: 260px;
     caret-color: var(--on-fill);
   }
+  #query-dock {
+    min-height: 0; height: 62px; padding: 18px 16px; line-height: 1.35;
+    max-height: 200px;
+  }
   #ask-panel:not(.started) .composer textarea {
-    border-radius: 20px; padding: 24px 24px 18px; font-size: 21px; min-height: 96px;
+    border-radius: 20px; padding: 18px 24px 14px; font-size: 16.5px; min-height: 62px;
   }
   .composer textarea::placeholder { color: rgba(255,255,255,.72); }
   :root[data-theme="dark"] .composer textarea::placeholder { color: rgba(230,238,251,.55); }
@@ -461,7 +610,6 @@
     padding: 10px 12px 4px; margin-top: 2px; border-top: 1px solid rgba(255,255,255,.22);
   }
   #ask-panel:not(.started) .composer-foot { padding: 14px 16px 6px; }
-  #ask-panel:not(.started) .composer-foot button.secondary { font-size: 15.5px; padding: 11px 19px; }
   :root[data-theme="dark"] .composer-foot { border-top-color: rgba(255,255,255,.14); }
   .send-btn {
     width: 38px; height: 38px; border-radius: 11px; background: var(--bg);
@@ -479,7 +627,6 @@
     transition: border-color 150ms ease, color 150ms ease;
   }
   .chip-btn:hover { border-color: var(--accent); color: var(--accent); }
-  .chip-btn.primary { color: var(--accent); border-color: var(--accent-soft); background: var(--accent-soft); font-weight: 600; }
   #empty-trust { text-align: center; font-size: 15px; color: var(--dim); margin-top: 28px; position: relative; z-index: 2; }
 
   #globe-wrap {
@@ -492,22 +639,17 @@
     position: fixed; left: 0; bottom: 0; transform: translate(-22%, 26%);
     width: clamp(380px, 78vmin, 1100px); height: clamp(380px, 78vmin, 1100px);
     pointer-events: none; z-index: 1; opacity: .9;
+    /* Landing page only — there is no loading-page version of the
+       globe anymore. It simply fades out with the rest of the welcome
+       content once the first question is asked and never returns. */
+    transition: opacity 420ms ease;
   }
+  #globe-wrap.hidden-loading { opacity: 0; }
   #globe-canvas { width: 100%; height: 100%; display: block; }
   @media (max-width: 700px) {
     #globe-wrap { width: clamp(180px, 55vw, 260px); height: clamp(180px, 55vw, 260px); opacity: .6; }
   }
 
-  /* Query echo + live stage, shown once a question is in flight. */
-  #query-echo {
-    background: var(--fill); color: var(--on-fill); border-radius: 12px;
-    padding: 13px 16px; font-size: 14.5px; font-weight: 500; margin-bottom: 10px;
-  }
-  #stage-card {
-    display: flex; align-items: center; gap: 9px; background: var(--panel);
-    border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px;
-    font-size: 13px; color: var(--dim); margin-bottom: 16px; font-family: var(--mono);
-  }
   .stage-dot {
     width: 7px; height: 7px; border-radius: 50%; background: var(--accent); flex: none;
     animation: stage-pulse 1.1s ease-in-out infinite;
@@ -518,12 +660,17 @@
   /* ---------- print ---------- */
   @media print {
     body { background: #fff; color: #000; }
-    header, #ask-panel, #banner, #stage-card, .right, .fill-head button,
-    #export-card, .seg-group { display: none !important; }
+    header, #ask-panel, #banner, .right, .turn-tabs, .composer-dock,
+    [data-panel="export"], .seg-group { display: none !important; }
     .export-hide { display: none !important; }
     .left { padding: 0; overflow: visible; height: auto; }
-    .fill-card { background: #fff !important; border: 1.5px solid #223; box-shadow: none; }
-    .fill-head { color: #223 !important; }
+    .thread-scroll { overflow: visible; padding: 0; }
+    .turn { background: #fff !important; border: 1.5px solid #223; box-shadow: none; }
+    .turn-body { border-radius: 0; }
+    /* Only one tab renders on screen at a time — printing needs every
+       checked section visible regardless of which tab was last active
+       (exportPdf() un-hides them for the duration of the print call). */
+    .turn-panel.hide { display: block !important; }
     .stat { color: #000; }
     details.collapse { border-color: #999; }
     /* Links aren't clickable on paper, so print the URL after the label. */
@@ -583,50 +730,63 @@
 <div class="layout hide dev-hidden" id="main-layout">
   <!-- ============ LEFT: chat ============ -->
   <div class="left">
-    <div id="ask-panel">
-      <div class="composer-wrap">
-        <img id="welcome-logo" src="/static/ia-logo.png" alt="ia">
-        <h2 id="welcome-heading" style="text-transform:none;letter-spacing:normal;color:inherit">
-          <span class="welcome-line">Welcome</span>
-          <span class="welcome-line">What can I help you with today?</span>
-        </h2>
-        <div class="composer">
-          <textarea id="query" rows="2"
-            placeholder="Ask about a geography, trend, disparity, or need — e.g. median household income in Buckhead"></textarea>
-          <div class="composer-foot">
-            <span class="row" style="gap:10px">
-              <button id="ask" class="send-btn" type="button" aria-label="Ask" title="Ask (Enter) — Shift+Enter for a new line">
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
-              </button>
-              <button id="resynth" class="secondary" disabled
-                title="Re-run only the synthesizer against the same numbers (~3s)">
-                Re-synthesize</button>
-              <button id="rerender" class="secondary" disabled
-                title="Re-apply presentation config only (instant, free)">
-                Re-render</button>
-            </span>
+    <div class="thread-scroll" id="thread-scroll">
+      <div id="ask-panel">
+        <div class="composer-wrap">
+          <img id="welcome-logo" src="/static/ia-logo.png" alt="ia">
+          <h2 id="welcome-heading" style="text-transform:none;letter-spacing:normal;color:inherit">
+            <span class="welcome-line">Welcome</span>
+            <span class="welcome-line">What can I help you with today?</span>
+          </h2>
+          <div class="composer">
+            <textarea id="query" rows="2"
+              placeholder="Ask about a geography, trend, disparity, or need — e.g. median household income in Buckhead"></textarea>
+            <div class="composer-foot">
+              <span class="row" style="gap:10px">
+                <button id="ask" class="send-btn" type="button" aria-label="Ask" title="Ask (Enter) — Shift+Enter for a new line">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                </button>
+              </span>
+            </div>
+          </div>
+          <div id="suggested-chips">
+            <button class="chip-btn" type="button" data-q="Compare Atlanta with peer communities on housing and poverty">Compare Atlanta with peer communities</button>
+            <button class="chip-btn" type="button" data-q="How has mortgage denial changed in Fulton County over time?">Mortgage denial trends in Fulton County</button>
+            <button class="chip-btn" type="button" data-q="What evidence supports the need for affordable housing investment in Southwest Atlanta?">Evidence for affordable housing need</button>
+          </div>
+          <div id="empty-trust">
+            Answers are grounded in public Census and HMDA data and paired
+            with citations for review.
           </div>
         </div>
-        <div id="suggested-chips">
-          <button class="chip-btn primary" type="button" data-q="Compare Atlanta with peer communities on housing and poverty">Compare Atlanta with peer communities</button>
-          <button class="chip-btn" type="button" data-q="How has mortgage denial changed in Fulton County over time?">Mortgage denial trends in Fulton County</button>
-          <button class="chip-btn" type="button" data-q="What evidence supports the need for affordable housing investment in Southwest Atlanta?">Evidence for affordable housing need</button>
-        </div>
-        <div id="empty-trust">
-          Answers are grounded in public Census and HMDA data and paired
-          with citations for review.
+        <div id="globe-wrap" aria-hidden="true">
+          <canvas id="globe-canvas" width="360" height="360"></canvas>
         </div>
       </div>
-      <div id="globe-wrap" aria-hidden="true">
-        <canvas id="globe-canvas" width="360" height="360"></canvas>
-      </div>
+
+      <div id="banner" class="banner hide"></div>
+      <div id="output"></div>
     </div>
 
-    <div id="query-echo" class="hide"></div>
-    <div id="stage-card" class="hide"><span class="stage-dot"></span><span id="stage-text">starting…</span></div>
-
-    <div id="banner" class="banner hide"></div>
-    <div id="output"></div>
+    <div class="composer-dock hide" id="composer-dock">
+      <div class="composer">
+        <textarea id="query-dock" rows="1"
+          placeholder="Ask a follow-up…"></textarea>
+        <div class="composer-foot">
+          <span class="row" style="gap:10px">
+            <button id="ask-dock" class="send-btn" type="button" aria-label="Ask" title="Ask (Enter) — Shift+Enter for a new line">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+            </button>
+            <button id="resynth-dock" class="secondary" disabled
+              title="Re-run only the synthesizer against the same numbers (~3s)">
+              Re-synthesize</button>
+            <button id="rerender-dock" class="secondary" disabled
+              title="Re-apply presentation config only (instant, free)">
+              Re-render</button>
+          </span>
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- ============ RIGHT: developer ============ -->
@@ -713,6 +873,13 @@ let currentRunId = null;
 let currentResponse = null;
 let currentEventSource = null;
 let busy = false;
+// Each question asked (live or reopened from History) becomes one
+// numbered "turn" appended to the growing thread — turnCounter mints
+// unique per-turn DOM ids so multiple turns' tabs, charts, and export
+// controls never collide; lastTurnId is what resynth/rerender (which
+// don't know about turns) update in place.
+let turnCounter = 0;
+let lastTurnId = null;
 
 // ---------- theme ----------
 const THEME_KEY = "gc-theme";
@@ -806,14 +973,16 @@ function renderHistoryList() {
       <div class="history-meta dim small">${esc(fmtHistoryTime(e.ts))}</div>
     </button>`).join("");
   body.querySelectorAll("[data-hist]").forEach(btn => {
-    btn.onclick = () => {
+    btn.onclick = async () => {
       const entry = list[+btn.dataset.hist];
       if (!entry) return;
-      $("ask-panel").classList.add("started");
-      $("query").value = entry.query;
-      $("query-echo").textContent = entry.query;
-      $("query-echo").classList.remove("hide");
-      render(entry.response);
+      const dockActive = $("ask-panel").classList.contains("started");
+      if (!dockActive) await morphToAnswerLayout();
+      // Reopening a saved session appends it as a new turn on the
+      // current thread — same shape as asking live, just skipping the
+      // streaming phase since the full response is already saved.
+      const turnId = appendTurnShell(entry.query || "");
+      render(entry.response, turnId);
       setHistoryVisible(false);
     };
   });
@@ -843,18 +1012,25 @@ $("history-clear").onclick = () => {
   const ctx = canvas.getContext("2d");
   const DPR = Math.min(window.devicePixelRatio || 1, 2);
   // Backing-store size tracks the CSS box (itself viewport-scaled via
-  // clamp()), so the sphere's resolution and dot layout stay sharp and
-  // centered at any window size instead of being fixed at load time.
-  let CSS_SIZE = 360, R = CSS_SIZE / 2 - 4, CX = CSS_SIZE / 2, CY = CSS_SIZE / 2;
-  function resize(measuredWidth) {
-    const size = Math.round(measuredWidth || wrap.getBoundingClientRect().width) || CSS_SIZE;
-    if (size === CSS_SIZE) return;
-    CSS_SIZE = size;
-    canvas.width = CSS_SIZE * DPR;
-    canvas.height = CSS_SIZE * DPR;
+  // clamp() on the landing page, or the full-width loading-band size
+  // once a query is in flight), so dot resolution stays sharp at any
+  // size. The box is square on the landing page (Rx≈Ry → a circle) and
+  // short-and-wide during loading (Rx≫Ry → the same sphere projected
+  // into a flattened, stretched band) — one projection, driven purely
+  // by whatever CSS box it's currently sized into, so there is no
+  // separate "loading globe" to keep visually in sync with this one.
+  let CSS_W = 360, CSS_H = 360, Rx = CSS_W / 2 - 4, Ry = CSS_H / 2 - 4, CX = CSS_W / 2, CY = CSS_H / 2;
+  function resize(measuredWidth, measuredHeight) {
+    const rect = wrap.getBoundingClientRect();
+    const w = Math.round(measuredWidth || rect.width) || CSS_W;
+    const h = Math.round(measuredHeight || rect.height) || CSS_H;
+    if (w === CSS_W && h === CSS_H) return;
+    CSS_W = w; CSS_H = h;
+    canvas.width = CSS_W * DPR;
+    canvas.height = CSS_H * DPR;
     ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
-    R = CSS_SIZE / 2 - 4;
-    CX = CSS_SIZE / 2; CY = CSS_SIZE / 2;
+    Rx = CSS_W / 2 - 4; Ry = CSS_H / 2 - 4;
+    CX = CSS_W / 2; CY = CSS_H / 2;
   }
   resize();
 
@@ -923,27 +1099,36 @@ $("history-clear").onclick = () => {
   let last = null;
   const SPEED = (2 * Math.PI) / 60; // one full turn per 60s (was 90s — ~33% faster)
 
+  // One rotation, one axis, always — the loading band is the exact same
+  // spin as the landing circle (dots sliding side to side, "on its own
+  // axis"), never a different one. What changes for the band is only
+  // the silhouette: a true half-ellipse (see draw()), not this math.
+  function project(lon, lat) {
+    const phi = lat * Math.PI / 180;
+    const theta = lon * Math.PI / 180 + rotation;
+    const x = Math.cos(phi) * Math.sin(theta);
+    const z = Math.cos(phi) * Math.cos(theta);
+    const y = Math.sin(phi);
+    return {x, y, z};
+  }
+
   function draw() {
-    ctx.clearRect(0, 0, CSS_SIZE, CSS_SIZE);
-    const sphereGrad = ctx.createRadialGradient(CX - R * .35, CY - R * .35, R * .1, CX, CY, R);
+    ctx.clearRect(0, 0, CSS_W, CSS_H);
+    const sphereGrad = ctx.createRadialGradient(CX - Rx * .35, CY - Ry * .35, Math.min(Rx, Ry) * .1, CX, CY, Math.max(Rx, Ry));
     sphereGrad.addColorStop(0, "rgba(120,150,190,.22)");
     sphereGrad.addColorStop(1, "rgba(10,20,40,.05)");
     ctx.beginPath();
-    ctx.arc(CX, CY, R, 0, Math.PI * 2);
+    ctx.ellipse(CX, CY, Math.max(Rx, 0), Math.max(Ry, 0), 0, 0, Math.PI * 2);
     ctx.fillStyle = sphereGrad;
     ctx.fill();
 
     const dotColor = getComputedStyle(document.documentElement).getPropertyValue("--accent").trim() || "#1d5fd6";
     for (const [lon, lat] of DOTS) {
-      const phi = lat * Math.PI / 180;
-      const theta = lon * Math.PI / 180 + rotation;
-      const x = Math.cos(phi) * Math.sin(theta);
-      const z = Math.cos(phi) * Math.cos(theta);
-      const y = Math.sin(phi);
+      const {x, y, z} = project(lon, lat);
       if (z < -0.08) continue;
       const depth = Math.max(0, Math.min(1, (z + 0.08) / 1.08));
-      const px = CX + x * R;
-      const py = CY - y * R;
+      const px = CX + x * Rx;
+      const py = CY - y * Ry;
       ctx.beginPath();
       ctx.arc(px, py, 0.7 + depth * 1.1, 0, Math.PI * 2);
       ctx.globalAlpha = 0.25 + depth * 0.65;
@@ -958,15 +1143,11 @@ $("history-clear").onclick = () => {
     CITIES.forEach(([lon, lat], i) => {
       const scale = pinScale(i, elapsedMs);
       if (scale <= 0.001) return;
-      const phi = lat * Math.PI / 180;
-      const theta = lon * Math.PI / 180 + rotation;
-      const x = Math.cos(phi) * Math.sin(theta);
-      const z = Math.cos(phi) * Math.cos(theta);
-      const y = Math.sin(phi);
+      const {x, y, z} = project(lon, lat);
       if (z < -0.08) return;
       const depth = Math.max(0, Math.min(1, (z + 0.08) / 1.08));
-      const px = CX + x * R;
-      const py = CY - y * R; // the pin's tip anchors exactly here
+      const px = CX + x * Rx;
+      const py = CY - y * Ry; // the pin's tip anchors exactly here
       const headR = 3 * scale, tipLen = 7.5 * scale;
       const headCY = py - tipLen;
       ctx.globalAlpha = (0.35 + depth * 0.65) * scale;
@@ -1002,8 +1183,8 @@ $("history-clear").onclick = () => {
   // too, so the globe always matches the box it's actually in.
   if (window.ResizeObserver) {
     new ResizeObserver((entries) => {
-      const w = entries[0] && entries[0].contentRect && entries[0].contentRect.width;
-      resize(w);
+      const rect = entries[0] && entries[0].contentRect;
+      resize(rect && rect.width, rect && rect.height);
       if (reduceMotion) draw();
     }).observe(wrap);
   } else {
@@ -1281,11 +1462,22 @@ function banner(msg, isError) {
 function setBusy(state, label) {
   busy = state;
   $("ask").disabled = state;
-  $("resynth").disabled = state || !currentRunId;
-  $("rerender").disabled = state || !currentRunId;
+  $("ask-dock").disabled = state;
+  $("resynth-dock").disabled = state || !currentRunId;
+  $("rerender-dock").disabled = state || !currentRunId;
   $("prompt-try").disabled = state || !currentRunId;
-  $("stage-card").classList.toggle("hide", !state);
-  if (label) $("stage-text").textContent = label;
+}
+
+// The globe shows only once, for the very first question's wait — it
+// retires for good the moment that first answer lands and never
+// reappears for follow-ups. retireGlobe() is idempotent and safe to
+// call from every render(), but only ever does anything the first time.
+let globeRetired = false;
+function retireGlobe() {
+  if (globeRetired) return;
+  globeRetired = true;
+  const globe = $("globe-wrap");
+  if (globe) globe.classList.add("hidden-loading");
 }
 
 // ---------- rendering ----------
@@ -1332,7 +1524,7 @@ function fmtTrendVal(t, v) {
 
 let currentTrend = null;
 
-function trendCardHtml(t) {
+function trendCardHtml(t, turnId) {
   const checks = t.points.map((p, i) =>
     `<label class="year-chk"><input type="checkbox" checked data-idx="${i}"> ${p.year}</label>`).join("");
   return `<div class="chart-card">
@@ -1340,8 +1532,8 @@ function trendCardHtml(t) {
       <div><b>${esc(t.concept)}</b><span class="dim small"> — ${esc(t.geo)}</span></div>
       <div class="year-checks">${checks}</div>
     </div>
-    <div class="chart-wrap" id="trend-wrap"></div>
-    <div class="small dim chart-summary" id="trend-summary"></div>
+    <div class="chart-wrap" id="trend-wrap-${turnId}"></div>
+    <div class="small dim chart-summary" id="trend-summary-${turnId}"></div>
   </div>`;
 }
 
@@ -1351,7 +1543,7 @@ const TREND_H = 170, TREND_PL = 8, TREND_PR = 8, TREND_PT = 10, TREND_PB = 22;
 // the viewBox must match the rendered box 1:1, or the default
 // "xMidYMid meet" scaling letterboxes the chart into the middle third
 // of its own container instead of filling it.
-function drawTrend(t, activeIdx, width) {
+function drawTrend(t, activeIdx, width, turnId) {
   let shown = t.points.filter((_, i) => activeIdx[i]);
   if (shown.length < 2) shown = t.points;
   const vals = shown.map(p => p.value);
@@ -1370,30 +1562,30 @@ function drawTrend(t, activeIdx, width) {
     <line class="axis" x1="${TREND_PL}" y1="${TREND_H - TREND_PB}" x2="${width - TREND_PR}" y2="${TREND_H - TREND_PB}"/>
     <polyline class="area" points="${areaPts}"/>
     <polyline class="line" points="${linePts}"/>
-    <line class="crosshair hide" id="trend-crosshair" x1="0" y1="${TREND_PT}" x2="0" y2="${TREND_H - TREND_PB}"/>
+    <line class="crosshair hide" id="trend-crosshair-${turnId}" x1="0" y1="${TREND_PT}" x2="0" y2="${TREND_H - TREND_PB}"/>
     ${shown.map((p, i) => `<circle class="pt${i === lastIdx ? " pt-end" : ""}" data-i="${i}"
         cx="${x(i).toFixed(1)}" cy="${y(p.value).toFixed(1)}" r="${i === lastIdx ? 4.5 : 3.4}"/>`).join("")}
     ${shown.map((p, i) => `<text class="axis-label" x="${x(i).toFixed(1)}" y="${TREND_H - 6}"
         text-anchor="${i === 0 ? "start" : (i === lastIdx ? "end" : "middle")}">${p.year}</text>`).join("")}
-  </svg><div class="chart-tooltip hide" id="chart-tip"></div>`;
+  </svg><div class="chart-tooltip hide" id="chart-tip-${turnId}"></div>`;
   return {svg, shown, x, y};
 }
 
-function wireTrendChart() {
-  if (!currentTrend) return;
-  const t = currentTrend;
+function wireTrendChart(turnId, trend) {
+  if (!trend) return;
+  const t = trend;
   const active = t.points.map(() => true);
-  const host = $("trend-wrap");
-  const summary = $("trend-summary");
+  const host = $("trend-wrap-" + turnId);
+  const summary = $("trend-summary-" + turnId);
   if (!host) return;
 
   function redraw() {
     const width = host.clientWidth || 560;
-    const {svg, shown, x, y} = drawTrend(t, active, width);
+    const {svg, shown, x, y} = drawTrend(t, active, width, turnId);
     host.innerHTML = svg;
     const svgEl = host.querySelector("svg");
-    const tip = host.querySelector("#chart-tip");
-    const crosshair = host.querySelector("#trend-crosshair");
+    const tip = host.querySelector("#chart-tip-" + turnId);
+    const crosshair = host.querySelector("#trend-crosshair-" + turnId);
     const pts = [...host.querySelectorAll(".pt")];
 
     const vals = shown.map(p => p.value);
@@ -1433,7 +1625,8 @@ function wireTrendChart() {
     });
   }
 
-  document.querySelectorAll(".year-chk input").forEach(cb => {
+  const chartCard = host.closest(".chart-card");
+  (chartCard ? chartCard.querySelectorAll(".year-chk input") : []).forEach(cb => {
     cb.onchange = () => {
       const i = +cb.dataset.idx;
       active[i] = cb.checked;
@@ -1448,15 +1641,15 @@ function wireTrendChart() {
 // A grant writer scans for three things, in order: the number, the
 // source, something to paste. The lead value gets a stat line of its
 // own; everything else stays present but ordered below it.
-function render(r) {
+function render(r, turnId) {
+  turnId = turnId || lastTurnId;
+  const turnEl = turnId ? $("turn-" + turnId) : null;
+  if (!turnEl) return;
+  lastTurnId = turnId;
   currentRunId = r.run_id || null;
   currentResponse = r;
   banner(r.config_warning || r.error, !!r.error);
-  // Deliberately left visible here (not hidden) — the user should still
-  // see what they asked at the top once the answer is in, not just
-  // while it's in flight.
 
-  const out = [];
   const lints = r.lints || [];
   const errorLints = lints.filter(l => l.severity === "error");
   const otherLints = lints.filter(l => l.severity !== "error");
@@ -1475,15 +1668,16 @@ function render(r) {
     ...(r.anomalies || []).map(anomalyCaveatText)];
 
   const trends = buildTrends(r.values);
-  currentTrend = trends[0] || null;
+  const trend = trends[0] || null;
+  currentTrend = trend;
   // For a trend series, the headline stat is the most recent year, not
   // whichever row happens to come first in `values` — the chart below
   // it is what shows the full history.
   let lead = null;
-  if (currentTrend) {
-    const lastYear = currentTrend.points[currentTrend.points.length - 1].year;
+  if (trend) {
+    const lastYear = trend.points[trend.points.length - 1].year;
     lead = (r.values || []).find(v =>
-      v.geo === currentTrend.geo && v.concept === currentTrend.concept && v.year === lastYear) || null;
+      v.geo === trend.geo && v.concept === trend.concept && v.year === lastYear) || null;
   }
   if (!lead) {
     lead = (r.values && r.values.find(v => v.role === "primary")) ||
@@ -1491,51 +1685,90 @@ function render(r) {
   }
   const leadGeo = lead && r.geos ? r.geos.find(g => g.name === lead.geo) : null;
 
-  if (r.prose || (r.key_findings && r.key_findings.length) || lead) {
-    out.push('<div class="fill-card" data-section="main">');
-    out.push(`<div class="fill-head"><span class="title">Main Response</span>
-      <button class="ghost copy" id="copy-answer" type="button">Copy</button></div>`);
-    out.push('<div class="fill-body">');
-    if (lead) {
-      out.push(`<div class="eyebrow">${esc(lead.geo)}${lead.year ? " · " + esc(lead.year) : ""}</div>`);
-      out.push(`<div class="stat">${fmtValue(lead)}</div>`);
-      out.push(`<div class="stat-label">${esc(lead.concept)}</div>`);
-    }
-    if (leadGeo || (r.geos && r.geos.length)) {
-      const g = leadGeo || r.geos[0];
-      out.push('<div class="geo-row">');
-      if (g.geo_level || g.confidence !== null) {
-        const confLabel = g.confidence !== null && g.confidence !== undefined
-          ? (g.confidence >= 0.75 ? "high confidence" : g.confidence >= 0.4 ? "medium confidence" : "low confidence")
-          : "";
-        out.push(`<span class="badge"><span class="dot"></span> ${esc(g.geo_level || "geography")}${confLabel ? " · " + confLabel : ""}</span>`);
+  // ---- Panels: each turn is one shell with a full-width tab strip;
+  // only one panel is visible at a time (switched via the tabs wired
+  // below), which is what keeps a turn compact once several are
+  // stacked in the thread instead of dumping every section open at once.
+  const panels = [];
+
+  {
+    const hasMain = !!(r.prose || (r.key_findings && r.key_findings.length) || lead);
+    let body = "";
+    if (hasMain) {
+      body += `<div class="turn-panel-head"><button class="ghost copy" id="copy-answer-${turnId}" type="button">Copy</button></div>`;
+      body += '<div data-section="main">';
+      if (lead) {
+        body += `<div class="eyebrow">${esc(lead.geo)}${lead.year ? " · " + esc(lead.year) : ""}</div>`;
+        body += `<div class="stat">${fmtValue(lead)}</div>`;
+        body += `<div class="stat-label">${esc(lead.concept)}</div>`;
       }
-      if (g.tract_count) out.push(`<span class="badge dim">${g.tract_count} tract(s)</span>`);
-      out.push('</div>');
+      if (leadGeo || (r.geos && r.geos.length)) {
+        const g = leadGeo || r.geos[0];
+        body += '<div class="geo-row">';
+        if (g.geo_level || g.confidence !== null) {
+          const confLabel = g.confidence !== null && g.confidence !== undefined
+            ? (g.confidence >= 0.75 ? "high confidence" : g.confidence >= 0.4 ? "medium confidence" : "low confidence")
+            : "";
+          body += `<span class="badge"><span class="dot"></span> ${esc(g.geo_level || "geography")}${confLabel ? " · " + confLabel : ""}</span>`;
+        }
+        if (g.tract_count) body += `<span class="badge dim" title="${esc(g.name || "This area")} isn't a single official Census boundary — this combines data from the ${g.tract_count} census tracts that overlap it.">${g.tract_count} tract(s)</span>`;
+        body += '</div>';
+      }
+      if (r.prose) body += `<div class="prose mt">${esc(r.prose)}</div>`;
+      // Older cached runs (or a stale synthesizer prompt) can still have
+      // "Try next: ..." lines baked into key_findings — that content
+      // belongs only in the dedicated Try Next section below, never
+      // duplicated here. Filtered, not guessed: this drops exact
+      // "Try next:"-prefixed strings, it doesn't rewrite anything.
+      const findings = (r.key_findings || []).filter(k => !/^try next:/i.test(k.trim()));
+      if (findings.length) {
+        body += '<div class="findings-head">Key Findings</div>';
+        body += '<ul class="hero-findings">';
+        for (const k of findings) body += `<li>${esc(k)}</li>`;
+        body += '</ul>';
+      }
+      if (trend) body += trendCardHtml(trend, turnId);
+      if (allCaveats.length) {
+        body += `<div class="caveat-line"><b>Read with care:</b> ${esc(allCaveats[0])}` +
+          (allCaveats.length > 1 ? ` <span class="dim">(+${allCaveats.length - 1} more below)</span>` : "") +
+          `</div>`;
+      }
+      body += '</div>';
     }
-    if (r.prose) out.push(`<div class="prose mt">${esc(r.prose)}</div>`);
-    // Older cached runs (or a stale synthesizer prompt) can still have
-    // "Try next: ..." lines baked into key_findings — that content
-    // belongs only in the dedicated Try Next section below, never
-    // duplicated here. Filtered, not guessed: this drops exact
-    // "Try next:"-prefixed strings, it doesn't rewrite anything.
-    const findings = (r.key_findings || []).filter(k => !/^try next:/i.test(k.trim()));
-    if (findings.length) {
-      out.push('<ul class="hero-findings">');
-      for (const k of findings) out.push(`<li>${esc(k)}</li>`);
-      out.push('</ul>');
+    if (r.anomalies && r.anomalies.length) {
+      body += `<details class="collapse"><summary>Flagged <span class="count">(${r.anomalies.length})</span></summary>
+        <div class="collapse-body">`;
+      for (const a of r.anomalies) {
+        body += `<div class="lint warning"><span class="rule">${esc(a.kind || "anomaly")}</span><br>
+          ${esc(a.concept)} — ${esc(a.geo)}${a.magnitude !== null && a.magnitude !== undefined ? ` (${fmtNum(a.magnitude)})` : ""}
+          ${a.context ? `<div class="detail">${esc(a.context)}</div>` : ""}</div>`;
+      }
+      body += '</div></details>';
     }
-    if (currentTrend) out.push(trendCardHtml(currentTrend));
     if (allCaveats.length) {
-      out.push(`<div class="caveat-line"><b>Read with care:</b> ${esc(allCaveats[0])}` +
-        (allCaveats.length > 1 ? ` <span class="dim">(+${allCaveats.length - 1} more below)</span>` : "") +
-        `</div>`);
+      body += `<details class="collapse"><summary>All caveats
+        <span class="count">(${allCaveats.length})</span></summary>
+        <div class="collapse-body"><ul>`;
+      for (const c of allCaveats) body += `<li>${esc(c)}</li>`;
+      body += '</ul></div></details>';
     }
-    out.push('</div></div>');
+    if (otherLints.length) {
+      body += `<details class="collapse"><summary>Output checks
+        <span class="count">(${otherLints.length})</span></summary>
+        <div class="collapse-body">`;
+      for (const l of otherLints) body += lintHtml(l);
+      body += '</div></details>';
+    }
+    if (!r.prose && !r.error) {
+      body += '<div class="card dim">This question is outside what public Census and HMDA data ' +
+               'can answer, or no matching data was found. Check the retrieved values and the trace, ' +
+               'or try a more specific geography or concept.</div>';
+    }
+    panels.push({key: "main", label: "Answer", html: body});
   }
 
   if (r.peer_groups && r.peer_groups.length) {
-    out.push(`<div class="fill-card" data-section="peers"><div class="fill-head"><span class="title">Peers</span></div><div class="fill-body">`);
+    let out = [];
     const anchorName = r.peer_groups.find(g => g.anchor_geo_name)?.anchor_geo_name;
     if (anchorName) {
       out.push(`<div class="peers-anchor">Comparators below are chosen against <b>${esc(anchorName)}</b>.</div>`);
@@ -1634,7 +1867,7 @@ function render(r) {
           </div>
           ${badges.length ? `<div class="peer-badges">${badges.map(b =>
             `<span class="peer-badge">${esc(b.charAt(0).toUpperCase() + b.slice(1))}</span>`).join("")}</div>` : ""}
-          ${commonKeys.length ? `<div class="peer-metrics" id="peer-metrics-${gi}-${g.year}-${pi}">
+          ${commonKeys.length ? `<div class="peer-metrics" id="peer-metrics-${turnId}-${gi}-${g.year}-${pi}">
             ${matchedClause ? `<div class="peer-match-caption">${esc(matchedClause.charAt(0).toUpperCase() + matchedClause.slice(1))}
               <span class="peer-match-caption-arrow">&#8595;</span></div>` : ""}
             <table class="peer-metric-table"><thead><tr>
@@ -1643,7 +1876,7 @@ function render(r) {
             <tbody>${metricTableRows(shownKeys)}</tbody>
             <tbody class="peer-metrics-rest hide">${metricTableRows(restKeys)}</tbody>
             </table>
-            ${restKeys.length ? `<button type="button" class="peer-metrics-more" data-more="peer-metrics-${gi}-${g.year}-${pi}">+${restKeys.length} more compared metric${restKeys.length > 1 ? "s" : ""}</button>` : ""}
+            ${restKeys.length ? `<button type="button" class="peer-metrics-more" data-more="peer-metrics-${turnId}-${gi}-${g.year}-${pi}">+${restKeys.length} more compared metric${restKeys.length > 1 ? "s" : ""}</button>` : ""}
           </div>` : ""}
         </div>`);
       });
@@ -1651,76 +1884,41 @@ function render(r) {
     });
       out.push('</div>'); // .peer-group
     });
-    out.push('</div></div>');
+    panels.push({key: "peers", label: "Peers", html: `<div data-section="peers">${out.join("\n")}</div>`});
+  }
+
+  if (r.values && r.values.length) {
+    let numTbl = '<div data-section="numbers"><div class="card" style="overflow-x:auto"><table>';
+    numTbl += '<tr><th>Geography</th><th>Concept</th><th>Year</th>' +
+             '<th class="num">Value</th><th class="num">Ratio</th></tr>';
+    for (const v of r.values) {
+      numTbl += `<tr><td>${esc(v.geo)}</td><td>${esc(v.concept)}</td>
+        <td>${esc(v.year ?? "")}</td>
+        <td class="num">${v.value === null || v.value === undefined ? "—" : fmtByUnits(v.value, v.units)}</td>
+        <td class="num">${v.ratio === null || v.ratio === undefined
+          ? "—" : (v.ratio * 100).toFixed(1) + "%"}</td></tr>`;
+    }
+    numTbl += '</table></div></div>';
+    panels.push({key: "numbers", label: "Raw Numbers", html: numTbl});
   }
 
   if (r.citations && r.citations.length) {
-    out.push(`<div class="fill-card" data-section="citations"><div class="fill-head"><span class="title">Citations</span></div>
-      <div class="fill-body">
+    panels.push({key: "citations", label: "Citations", html: `<div data-section="citations">
         <div class="seg-group" role="tablist" aria-label="Group citations by">
           <button type="button" class="seg-btn active" data-citmode="category" role="tab" aria-selected="true">By category</button>
           <button type="button" class="seg-btn" data-citmode="year" role="tab" aria-selected="false">By year</button>
         </div>
-        <div id="citations-list">${citationsBodyHtml(r.citations, "category")}</div>
-      </div></div>`);
+        <div id="citations-list-${turnId}">${citationsBodyHtml(r.citations, "category")}</div>
+      </div>`});
   }
 
   if (r.followups && r.followups.length) {
-    out.push(`<div class="fill-card" data-section="followups"><div class="fill-head"><span class="title">Try next</span></div>
-      <div class="fill-body">`);
+    let fu = "";
     r.followups.forEach((f, i) => {
-      out.push(`<button class="followup-btn" type="button" data-followup="${i}">${esc(f.question)}
-        ${f.rationale ? `<span class="rationale">${esc(f.rationale)}</span>` : ""}</button>`);
+      fu += `<button class="followup-btn" type="button" data-followup="${i}">${esc(f.question)}
+        ${f.rationale ? `<span class="rationale">${esc(f.rationale)}</span>` : ""}</button>`;
     });
-    out.push('</div></div>');
-  }
-
-  if (r.values && r.values.length) {
-    out.push(`<details class="collapse" data-section="numbers"><summary>The numbers <span class="count">(${r.values.length})</span></summary>
-      <div class="collapse-body"><div class="card" style="overflow-x:auto"><table>`);
-    out.push('<tr><th>Geography</th><th>Concept</th><th>Year</th>' +
-             '<th class="num">Value</th><th class="num">Ratio</th></tr>');
-    for (const v of r.values) {
-      out.push(`<tr><td>${esc(v.geo)}</td><td>${esc(v.concept)}</td>
-        <td>${esc(v.year ?? "")}</td>
-        <td class="num">${v.value === null || v.value === undefined ? "—" : fmtByUnits(v.value, v.units)}</td>
-        <td class="num">${v.ratio === null || v.ratio === undefined
-          ? "—" : (v.ratio * 100).toFixed(1) + "%"}</td></tr>`);
-    }
-    out.push('</table></div></div></details>');
-  }
-
-  if (r.anomalies && r.anomalies.length) {
-    out.push(`<details class="collapse"><summary>Flagged <span class="count">(${r.anomalies.length})</span></summary>
-      <div class="collapse-body">`);
-    for (const a of r.anomalies) {
-      out.push(`<div class="lint warning"><span class="rule">${esc(a.kind || "anomaly")}</span><br>
-        ${esc(a.concept)} — ${esc(a.geo)}${a.magnitude !== null && a.magnitude !== undefined ? ` (${fmtNum(a.magnitude)})` : ""}
-        ${a.context ? `<div class="detail">${esc(a.context)}</div>` : ""}</div>`);
-    }
-    out.push('</div></details>');
-  }
-
-  if (allCaveats.length) {
-    out.push(`<details class="collapse"><summary>All caveats
-      <span class="count">(${allCaveats.length})</span></summary>
-      <div class="collapse-body"><ul>`);
-    for (const c of allCaveats) out.push(`<li>${esc(c)}</li>`);
-    out.push('</ul></div></details>');
-  }
-
-  if (otherLints.length) {
-    out.push(`<details class="collapse"><summary>Output checks
-      <span class="count">(${otherLints.length})</span></summary>
-      <div class="collapse-body">`);
-    for (const l of otherLints) out.push(lintHtml(l));
-    out.push('</div></details>');
-  }
-
-  if (!r.prose && !r.error) {
-    out.push('<div class="card dim">This question is outside what public Census and HMDA data ' +
-             'can answer, or no matching data was found. Check the retrieved values and the trace, ' +
-             'or try a more specific geography or concept.</div>');
+    panels.push({key: "followups", label: "Try Next", html: `<div data-section="followups">${fu}</div>`});
   }
 
   // Export picker — only offers sections that actually rendered above,
@@ -1730,34 +1928,54 @@ function render(r) {
     { key: "peers", label: "Peers", present: !!(r.peer_groups && r.peer_groups.length) },
     { key: "citations", label: "Citations", present: !!(r.citations && r.citations.length) },
     { key: "followups", label: "Try next", present: !!(r.followups && r.followups.length) },
-    { key: "numbers", label: "The numbers", present: !!(r.values && r.values.length) },
+    { key: "numbers", label: "Raw numbers", present: !!(r.values && r.values.length) },
   ].filter(s => s.present);
   if (exportableSections.length) {
-    out.push(`<div class="fill-card" id="export-card"><div class="fill-head"><span class="title">Export</span></div>
-      <div class="fill-body">
+    panels.push({key: "export", label: "Export", html: `
         <div class="dim small">Choose what to include — leave everything checked to export the entire result.</div>
         <div class="export-sections mt">
           ${exportableSections.map(s => `<label class="export-sec-label">
             <input type="checkbox" class="export-sec" value="${esc(s.key)}" checked> ${esc(s.label)}</label>`).join("")}
         </div>
         <div class="row mt">
-          <button id="export-word" class="secondary" type="button">Export as Word (.doc)</button>
-          <button id="export-pdf" class="secondary" type="button">Export as PDF</button>
-        </div>
-      </div></div>`);
+          <button id="export-word-${turnId}" class="secondary" type="button">Export as Word (.doc)</button>
+          <button id="export-pdf-${turnId}" class="secondary" type="button">Export as PDF</button>
+        </div>`});
   }
 
-  $("output").innerHTML = out.join("\n");
-  const copyBtn = $("copy-answer");
-  if (copyBtn) copyBtn.onclick = () => copyAnswer(r);
-  document.querySelectorAll("[data-more]").forEach(btn => {
+  // ---- Assemble: tab strip + one panel per section, only the first shown.
+  const tabsHtml = panels.map((p, i) =>
+    `<button type="button" class="turn-tab${i === 0 ? " active" : ""}" data-panel="${p.key}" role="tab" aria-selected="${i === 0}">${esc(p.label)}</button>`
+  ).join("");
+  const panelsHtml = panels.map((p, i) =>
+    `<div class="turn-panel${i === 0 ? "" : " hide"}" data-panel="${p.key}">${p.html}</div>`
+  ).join("");
+  $(`turn-${turnId}-tabs`).innerHTML = tabsHtml;
+  $(`turn-${turnId}-body`).innerHTML = panelsHtml;
+  turnEl.classList.remove("turn-loading");
+
+  turnEl.querySelectorAll(".turn-tab").forEach(btn => {
+    btn.onclick = () => {
+      turnEl.querySelectorAll(".turn-tab").forEach(b => {
+        b.classList.toggle("active", b === btn);
+        b.setAttribute("aria-selected", String(b === btn));
+      });
+      turnEl.querySelectorAll(".turn-panel").forEach(panel => {
+        panel.classList.toggle("hide", panel.dataset.panel !== btn.dataset.panel);
+      });
+    };
+  });
+
+  const copyBtn = $("copy-answer-" + turnId);
+  if (copyBtn) copyBtn.onclick = () => copyAnswer(r, turnId);
+  turnEl.querySelectorAll("[data-more]").forEach(btn => {
     btn.onclick = () => {
       const container = $(btn.dataset.more);
       if (container) container.querySelector(".peer-metrics-rest").classList.remove("hide");
       btn.remove();
     };
   });
-  document.querySelectorAll(".year-tab").forEach(btn => {
+  turnEl.querySelectorAll(".year-tab").forEach(btn => {
     btn.onclick = () => {
       // Scoped to this tab's own axis group so switching one axis's
       // year never touches another axis's tabs sitting lower on the page.
@@ -1772,31 +1990,32 @@ function render(r) {
       });
     };
   });
-  document.querySelectorAll('[data-citmode]').forEach(btn => {
+  turnEl.querySelectorAll('[data-citmode]').forEach(btn => {
     btn.onclick = () => {
-      document.querySelectorAll('[data-citmode]').forEach(b => {
+      turnEl.querySelectorAll('[data-citmode]').forEach(b => {
         b.classList.toggle("active", b === btn);
         b.setAttribute("aria-selected", String(b === btn));
       });
-      $("citations-list").innerHTML = citationsBodyHtml(r.citations, btn.dataset.citmode);
+      $("citations-list-" + turnId).innerHTML = citationsBodyHtml(r.citations, btn.dataset.citmode);
     };
   });
-  const exportWordBtn = $("export-word");
-  if (exportWordBtn) exportWordBtn.onclick = () => exportWord(r);
-  const exportPdfBtn = $("export-pdf");
-  if (exportPdfBtn) exportPdfBtn.onclick = () => exportPdf();
-  document.querySelectorAll("[data-followup]").forEach(btn => {
+  const exportWordBtn = $("export-word-" + turnId);
+  if (exportWordBtn) exportWordBtn.onclick = () => exportWord(r, turnId);
+  const exportPdfBtn = $("export-pdf-" + turnId);
+  if (exportPdfBtn) exportPdfBtn.onclick = () => exportPdf(turnId);
+  turnEl.querySelectorAll("[data-followup]").forEach(btn => {
     btn.onclick = () => {
       const f = r.followups[+btn.dataset.followup];
-      $("query").value = followupQueryText(f, r);
-      ask();
+      ask(followupQueryText(f, r));
     };
   });
-  wireTrendChart();
+  wireTrendChart(turnId, trend);
   renderTrace(r.trace);
   renderUpstream(r.upstream, r.metrics);
   if (!r.error) saveHistoryEntry(r);
   setBusy(false, "");
+  retireGlobe();
+  revealComposerDock();
 }
 
 function answerText(r) {
@@ -1828,9 +2047,9 @@ function answerText(r) {
 }
 
 // Plain text, not HTML — this is what lands in a Word doc, not a browser.
-function copyAnswer(r) {
+function copyAnswer(r, turnId) {
   navigator.clipboard.writeText(answerText(r)).then(() => {
-    const btn = $("copy-answer");
+    const btn = $("copy-answer-" + turnId);
     if (!btn) return;
     const orig = btn.textContent;
     btn.textContent = "Copied";
@@ -1842,8 +2061,10 @@ function exportSlug(r) {
   return (r.query || "grant-copilot-answer").toLowerCase()
     .replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "").slice(0, 60) || "answer";
 }
-function getSelectedSections() {
-  return [...document.querySelectorAll(".export-sec:checked")].map(el => el.value);
+function getSelectedSections(turnId) {
+  const scope = $("turn-" + turnId);
+  if (!scope) return [];
+  return [...scope.querySelectorAll(".export-sec:checked")].map(el => el.value);
 }
 // Clones the LIVE rendered node so the export matches exactly what's on
 // screen (same rule as everywhere else here: no re-deriving, no
@@ -1880,10 +2101,15 @@ ${bodyHtml}
 // this app has no library for — this is the well-established
 // zero-dependency alternative: Word recognizes HTML tagged with its own
 // XML namespaces and opens/edits it like a native document.
-function exportWord(r) {
-  const keys = getSelectedSections();
+function exportWord(r, turnId) {
+  const keys = getSelectedSections(turnId);
   if (!keys.length) return;
-  const nodes = keys.map(k => document.querySelector(`#output [data-section="${k}"]`)).filter(Boolean);
+  const scope = $("turn-" + turnId);
+  if (!scope) return;
+  // cloneNode() copies the DOM regardless of which tab is currently
+  // active — a section hidden behind an inactive tab still exports
+  // correctly, since this never depends on what's visually on screen.
+  const nodes = keys.map(k => scope.querySelector(`[data-section="${k}"]`)).filter(Boolean);
   if (!nodes.length) return;
   const bodyHtml = nodes.map(n => cleanNodeForExport(n).outerHTML).join("\n");
   const doc = buildWordDocument(r.query || "Grant Copilot result", bodyHtml);
@@ -1900,13 +2126,24 @@ function exportWord(r) {
 // Reuses the browser's own print-to-PDF pipeline (real pagination, no
 // hand-rolled PDF writer) — just hides the unselected sections first,
 // via the same @media print rules already used for "Print".
-function exportPdf() {
-  const keys = getSelectedSections();
+function exportPdf(turnId) {
+  const keys = getSelectedSections(turnId);
   if (!keys.length) return;
-  const tagged = document.querySelectorAll("#output [data-section]");
+  const scope = $("turn-" + turnId);
+  if (!scope) return;
+  // A section sitting behind an inactive tab is display:none right now
+  // — the @media print rule for .turn-panel.hide forces it visible for
+  // the print pass, so no DOM mutation is needed here to reveal it.
+  const tagged = scope.querySelectorAll("[data-section]");
   tagged.forEach(el => el.classList.toggle("export-hide", !keys.includes(el.dataset.section)));
+  // "Export as PDF" on one turn should print just that turn, not the
+  // whole thread — hide every other turn's query bubble and shell for
+  // the duration of the print pass only.
+  const others = document.querySelectorAll(`#output [data-turn]:not([data-turn="${turnId}"])`);
+  others.forEach(el => el.classList.add("export-hide"));
   const restore = () => {
     tagged.forEach(el => el.classList.remove("export-hide"));
+    others.forEach(el => el.classList.remove("export-hide"));
     window.removeEventListener("afterprint", restore);
   };
   window.addEventListener("afterprint", restore);
@@ -2008,14 +2245,83 @@ function followupQueryText(f, r) {
 }
 
 // ---------- actions ----------
-async function ask() {
-  const q = $("query").value.trim();
+// A new turn = the query bubble (shown instantly) + an empty shell that
+// render() fills in once the answer arrives. Appended to #output, never
+// replacing what's already there, so earlier turns stay on the page as
+// the thread grows.
+function appendTurnShell(queryText) {
+  const turnId = ++turnCounter;
+  lastTurnId = turnId;
+  const html = `
+    <div class="turn-query" id="turn-${turnId}-query" data-turn="${turnId}"><span>${esc(queryText)}</span></div>
+    <div class="turn turn-loading" id="turn-${turnId}" data-turn="${turnId}">
+      <div class="turn-tabs" id="turn-${turnId}-tabs"></div>
+      <div class="turn-body" id="turn-${turnId}-body">
+        <div class="turn-stage"><span class="stage-dot"></span><span id="turn-${turnId}-stage-text">starting…</span></div>
+      </div>
+    </div>`;
+  $("output").insertAdjacentHTML("beforeend", html);
+  // Scroll to the QUERY bubble, not the answer shell below it — the
+  // whole point is to see your own question land at the top first,
+  // with the loading box visible right underneath, not have the query
+  // scroll past out of view above the fold.
+  $("turn-" + turnId + "-query").scrollIntoView({behavior: "smooth", block: "start"});
+  return turnId;
+}
+
+// Landing -> answer, once, on the very first question: the welcome
+// content (including the globe) fades out together. The globe never
+// appears again after this — no loading-page version of it. The
+// docked composer does NOT appear here — it only shows once the first
+// answer has actually finished rendering (see revealComposerDock(),
+// called from render()). Every later follow-up on this thread is
+// already in the .started state and skips straight to appendTurnShell.
+const FIRST_MORPH_MS = 620;
+function morphToAnswerLayout() {
+  return new Promise((resolve) => {
+    const panel = $("ask-panel");
+    const reduceMotion = window.matchMedia &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    panel.classList.add("morphing");
+    $("globe-wrap").classList.add("hidden-loading");
+    const finish = () => {
+      panel.classList.add("started");
+      panel.classList.remove("morphing");
+      resolve();
+    };
+    setTimeout(finish, reduceMotion ? 0 : FIRST_MORPH_MS);
+  });
+}
+
+// Shown only after the first answer is actually on screen — fades in
+// and scales up from center, never a slide, so it reads as
+// materializing in place rather than sliding in from off-screen.
+// Idempotent: later renders (follow-ups) are already visible and no-op.
+function revealComposerDock() {
+  const dock = $("composer-dock");
+  if (dock.classList.contains("visible")) return;
+  dock.classList.remove("hide");
+  // Two-step reveal (remove .hide, then add .visible on the next
+  // frame) so the browser paints the opacity:0/scale(.85) starting
+  // frame before transitioning — collapsing both into one tick skips
+  // the transition entirely.
+  requestAnimationFrame(() => requestAnimationFrame(() => dock.classList.add("visible")));
+}
+
+async function ask(presetText) {
+  const dockActive = $("ask-panel").classList.contains("started");
+  const input = dockActive ? $("query-dock") : $("query");
+  const q = (presetText !== undefined ? presetText : input.value).trim();
   if (!q || busy) return;
-  $("ask-panel").classList.add("started");
   banner(null);
-  $("output").innerHTML = "";
-  $("query-echo").textContent = q;
-  $("query-echo").classList.remove("hide");
+  $("query").value = "";
+  $("query-dock").value = "";
+  autoGrowTextarea($("query"));
+  autoGrowTextarea($("query-dock"));
+
+  if (!dockActive) await morphToAnswerLayout();
+
+  const turnId = appendTurnShell(q);
   setBusy(true, "starting…");
 
   const es = new EventSource("/chat/stream?q=" + encodeURIComponent(q));
@@ -2023,40 +2329,62 @@ async function ask() {
   es.onmessage = (ev) => {
     const msg = JSON.parse(ev.data);
     if (msg.type === "stage") {
-      $("stage-text").textContent = msg.stage + (msg.detail ? " · " + msg.detail : "");
+      const stageText = $("turn-" + turnId + "-stage-text");
+      if (stageText) stageText.textContent = msg.stage + (msg.detail ? " · " + msg.detail : "");
     } else if (msg.type === "result") {
       es.close();
       currentEventSource = null;
-      render(msg.response);
+      render(msg.response, turnId);
     } else if (msg.type === "error") {
       es.close();
       currentEventSource = null;
+      const body = $("turn-" + turnId + "-body");
+      if (body) body.innerHTML = `<div class="banner err">${esc(msg.error)}</div>`;
+      $("turn-" + turnId)?.classList.remove("turn-loading");
       banner(msg.error, true);
       setBusy(false, "");
+      retireGlobe();
+      revealComposerDock();
     }
   };
   es.onerror = () => {
     es.close();
     currentEventSource = null;
-    if (busy) { banner("Connection lost.", true); setBusy(false, ""); }
+    if (busy) {
+      const body = $("turn-" + turnId + "-body");
+      if (body) body.innerHTML = `<div class="banner err">Connection lost.</div>`;
+      $("turn-" + turnId)?.classList.remove("turn-loading");
+      banner("Connection lost.", true);
+      setBusy(false, "");
+      retireGlobe();
+      revealComposerDock();
+    }
   };
 }
 
 // Returning to the landing page: clear the in-progress state (closing
 // any still-streaming request so it can't call render() after the view
-// has reset), the query box, and the last result, back to a fresh load.
+// has reset), the query box, and the whole thread, back to a fresh load.
 function goHome() {
   if (currentEventSource) { currentEventSource.close(); currentEventSource = null; }
-  $("ask-panel").classList.remove("started");
+  $("ask-panel").classList.remove("started", "morphing");
   $("query").value = "";
-  $("query-echo").textContent = "";
-  $("query-echo").classList.add("hide");
+  $("query-dock").value = "";
+  autoGrowTextarea($("query"));
+  autoGrowTextarea($("query-dock"));
+  const dock = $("composer-dock");
+  dock.classList.add("hide");
+  dock.classList.remove("visible");
+  const globe = $("globe-wrap");
+  globe.classList.remove("band", "hidden-loading");
+  globeRetired = false;
   $("output").innerHTML = "";
-  $("stage-card").classList.add("hide");
   banner(null);
   currentRunId = null;
   currentResponse = null;
   currentTrend = null;
+  turnCounter = 0;
+  lastTurnId = null;
   setBusy(false, "");
   setHistoryVisible(false);
 }
@@ -2149,9 +2477,10 @@ async function loadVariants() {
 }
 
 // ---------- wiring ----------
-$("ask").onclick = ask;
-$("resynth").onclick = () => resynth();
-$("rerender").onclick = rerender;
+$("ask").onclick = () => ask();
+$("ask-dock").onclick = () => ask();
+$("resynth-dock").onclick = () => resynth();
+$("rerender-dock").onclick = rerender;
 $("prompt-save").onclick = savePrompt;
 $("prompt-reload").onclick = loadPrompt;
 $("prompt-try").onclick = () => resynth($("prompt-text").value);
@@ -2165,11 +2494,26 @@ $("variant-save").onclick = async () => {
   loadVariants();
 };
 
-$("query").addEventListener("keydown", (e) => {
-  if (e.key !== "Enter" || e.shiftKey) return; // Shift+Enter: let the textarea insert a newline
-  e.preventDefault();
-  ask();
-});
+function wireEnterToSend(textarea) {
+  textarea.addEventListener("keydown", (e) => {
+    if (e.key !== "Enter" || e.shiftKey) return; // Shift+Enter: let the textarea insert a newline
+    e.preventDefault();
+    ask();
+  });
+}
+wireEnterToSend($("query"));
+wireEnterToSend($("query-dock"));
+
+// Grows only as far as what's actually been typed — reset to the CSS
+// floor height first (so deleting text shrinks it back down, not just
+// growing one-way), then measure the real content height and cap it.
+function autoGrowTextarea(el) {
+  el.style.height = "auto";
+  const max = parseFloat(getComputedStyle(el).maxHeight) || Infinity;
+  el.style.height = Math.min(el.scrollHeight, max) + "px";
+}
+$("query-dock").addEventListener("input", () => autoGrowTextarea($("query-dock")));
+$("query").addEventListener("input", () => autoGrowTextarea($("query")));
 document.querySelectorAll("#suggested-chips [data-q]").forEach(btn => {
   btn.onclick = () => { $("query").value = btn.dataset.q; ask(); };
 });
@@ -2364,6 +2708,11 @@ $("hydrate-cancel").onclick = async () => {
           .map(a => `${a.ok ? "✓" : "✗"} ${a.name}: ${a.detail}`).join("\n");
       }
       $("ask").disabled = false;
+      $("ask-dock").disabled = false;
+      // Ready for input the moment the page is usable — the landing
+      // page's whole point is a single composer, so put the cursor
+      // there without making the user click first.
+      if (!$("ask-panel").classList.contains("started")) $("query").focus();
       loadPrompt(); loadPres(); loadVariants();
       return;                       // ready: stop polling
     }
