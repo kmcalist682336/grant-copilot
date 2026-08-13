@@ -849,6 +849,7 @@ async def answer_query(
     synth_system_prompt: Optional[str] = None,
     synth_options: Optional[dict] = None,
     record_caller: Optional[Any] = None,
+    session_ctx: Optional[dict] = None,
 ) -> QueryResponse:
     """End-to-end pipeline for one user query.
 
@@ -951,6 +952,7 @@ async def answer_query(
         t0 = time.time()
         intent = extract_intent(
             query, llm,
+            session_ctx=session_ctx,
             temperature=config.get("vertex_ai", {}).get(
                 "temperature", 0.1,
             ),

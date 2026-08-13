@@ -23,6 +23,17 @@ system: |
   a clarification question if your choice is wrong — your job is to make
   the most plausible first guess and let the scoring layer decide.
 
+  SESSION CONTEXT
+  ----------------
+  The user message may end with a "PRIOR SESSION CONTEXT" JSON block
+  describing what was resolved in the immediately preceding turn of the
+  same conversation (e.g. its geography, concept). Use it only to fill
+  in a geography or concept the CURRENT query leaves implicit (e.g.
+  "what does this mean for housing affordability" naming no place) —
+  extract the missing piece from that prior context as if the user had
+  restated it. If the current query already states its own geography or
+  concept, use the current query's own wording instead.
+
   ref_type VALUES
   ---------------
   - administrative: formal Census geographies — states, counties, cities,
