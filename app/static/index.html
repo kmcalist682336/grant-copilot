@@ -321,7 +321,7 @@
     position: relative;
     flex: 1 1 0; min-width: fit-content; background: transparent; color: var(--on-fill);
     opacity: .68; border: 0; border-radius: 8px 8px 0 0;
-    padding: 13px 10px 11px; font-size: 15.5px; font-weight: 700;
+    padding: 13px 10px 11px; font-size: 13.5px; font-weight: 700;
     text-transform: uppercase; letter-spacing: .04em;
     white-space: nowrap; cursor: pointer;
     transition: opacity 120ms ease, background 120ms ease, color 120ms ease;
@@ -593,12 +593,17 @@
     overflow-y: auto; max-height: 260px;
     caret-color: var(--on-fill);
   }
+  /* No fixed height here — a hand-picked px value drifts out of sync
+     with real font metrics and ends up a couple px short, which is
+     exactly what forced the stray scrollbar. autoGrowTextarea() sets
+     the real height from scrollHeight instead (see revealComposerDock
+     and the input listener), this is only the floor before JS runs. */
   #query-dock {
-    min-height: 0; height: 62px; padding: 18px 16px; line-height: 1.35;
+    height: auto; min-height: 56px; padding: 17px 16px; line-height: 1.35;
     max-height: 200px;
   }
   #ask-panel:not(.started) .composer textarea {
-    border-radius: 20px; padding: 18px 24px 14px; font-size: 16.5px; min-height: 62px;
+    border-radius: 20px; padding: 18px 24px 14px; font-size: 16px; min-height: 62px;
   }
   .composer textarea::placeholder { color: rgba(255,255,255,.72); }
   :root[data-theme="dark"] .composer textarea::placeholder { color: rgba(230,238,251,.55); }
@@ -627,7 +632,72 @@
     transition: border-color 150ms ease, color 150ms ease;
   }
   .chip-btn:hover { border-color: var(--accent); color: var(--accent); }
-  #empty-trust { text-align: center; font-size: 15px; color: var(--dim); margin-top: 28px; position: relative; z-index: 2; }
+  /* Pinned to the very bottom of the page, centered on the full page
+     width — not just the composer column — and sharing the exact same
+     bottom offset + height as #help-btn so the two sit on one shared
+     vertical center line instead of being independently eyeballed. */
+  #empty-trust {
+    position: fixed; left: 0; right: 0; bottom: 26px; height: 46px;
+    display: flex; align-items: center; justify-content: center;
+    padding: 0 100px; text-align: center; font-size: 15px; color: var(--dim);
+    z-index: 2; pointer-events: none;
+  }
+  @media (max-width: 560px) { #empty-trust { padding: 0 16px; bottom: 74px; } }
+
+  /* ---------- Help (landing page only) ---------- */
+  #help-btn {
+    position: fixed; right: 26px; bottom: 26px; z-index: 50;
+    width: 46px; height: 46px; border-radius: 50%;
+    background: var(--fill); color: var(--on-fill); border: none;
+    display: flex; align-items: center; justify-content: center; padding: 0;
+    box-shadow: var(--shadow); cursor: pointer;
+    transition: transform 150ms var(--ease-out-strong), box-shadow 150ms ease;
+  }
+  #help-btn:hover { transform: scale(1.06); box-shadow: var(--shadow), 0 0 14px 1px var(--glow); }
+  #help-btn:active { transform: scale(.96); }
+  #help-btn svg { width: 23px; height: 23px; }
+  /* At rest it's just the icon — hovering is what spells out what it
+     does, a small label sliding in next to it rather than a button
+     that already shouts "HELP" all the time. */
+  #help-btn .help-label {
+    position: absolute; right: 56px; top: 50%; transform: translateY(-50%) translateX(6px);
+    background: var(--ink); color: var(--bg); font-size: 12.5px; font-weight: 600;
+    padding: 6px 11px; border-radius: 7px; white-space: nowrap;
+    opacity: 0; pointer-events: none;
+    transition: opacity 150ms ease, transform 150ms var(--ease-out-strong);
+  }
+  #help-btn:hover .help-label { opacity: 1; transform: translateY(-50%) translateX(0); }
+  #help-popup {
+    position: fixed; right: 26px; bottom: 84px; z-index: 51;
+    width: min(380px, calc(100vw - 52px)); max-height: 68vh; overflow-y: auto;
+    background: var(--bg); border-radius: 16px; padding: 22px 22px 18px;
+    /* Same glow language as the loading state's box-shadow — just
+       static here, since nothing is actually in progress. */
+    box-shadow: var(--shadow), 0 0 20px 2px var(--glow);
+    transform-origin: bottom right;
+    opacity: 0; transform: scale(.92) translateY(10px); pointer-events: none;
+    transition: opacity 200ms ease, transform 220ms var(--ease-out-strong);
+  }
+  #help-popup.visible { opacity: 1; transform: scale(1) translateY(0); pointer-events: auto; }
+  #help-popup h3 { margin: 4px 28px 10px 0; font-size: 16px; color: var(--ink); }
+  #help-popup .help-intro { font-size: 13.5px; color: var(--dim); line-height: 1.5; margin: 0 0 16px; }
+  #help-close { position: absolute; right: 10px; top: 10px; width: 30px; height: 30px; }
+  .help-examples { display: flex; flex-direction: column; gap: 12px; }
+  .help-example-label {
+    font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em;
+    color: var(--dim); margin-bottom: 4px;
+  }
+  .help-example-q {
+    display: block; width: 100%; text-align: left; background: var(--panel);
+    border: 1px solid transparent; border-radius: 9px; padding: 9px 11px;
+    color: var(--fg); font-size: 13px; font-weight: 500; line-height: 1.4; cursor: pointer;
+    transition: border-color 150ms ease, background 150ms ease;
+  }
+  .help-example-q:hover { border-color: var(--accent); background: var(--accent-soft); }
+  @media (max-width: 560px) {
+    #help-btn { right: 16px; bottom: 16px; }
+    #help-popup { right: 16px; left: 16px; width: auto; bottom: 76px; }
+  }
 
   #globe-wrap {
     /* Positioned against the viewport (not #ask-panel) so the sphere
@@ -789,6 +859,41 @@
     </div>
   </div>
 
+  <!-- Landing page only — hidden once a question has been asked. -->
+  <button id="help-btn" type="button" aria-label="Help" aria-haspopup="dialog" aria-expanded="false">
+    <span class="help-label">Help</span>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="9.5"/><line x1="12" y1="11" x2="12" y2="16.5"/><circle cx="12" cy="7.5" r="0.25" fill="currentColor" stroke-width="1.6"/>
+    </svg>
+  </button>
+  <div id="help-popup" role="dialog" aria-label="How to use Grant Copilot">
+    <button id="help-close" class="icon-btn" type="button" aria-label="Close">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="5" y1="5" x2="19" y2="19"/><line x1="19" y1="5" x2="5" y2="19"/></svg>
+    </button>
+    <h3>How to use Grant Copilot</h3>
+    <p class="help-intro">Ask about a geography, a trend over time, a comparison, or a
+      need — every answer is grounded in real Census and HMDA data. A few
+      example query types, with real questions you can ask right now:</p>
+    <div class="help-examples">
+      <div class="help-example-group">
+        <div class="help-example-label">A number for a place</div>
+        <button class="help-example-q" type="button" data-q="What is the median household income in Buckhead?">What is the median household income in Buckhead?</button>
+      </div>
+      <div class="help-example-group">
+        <div class="help-example-label">A trend over time</div>
+        <button class="help-example-q" type="button" data-q="How has mortgage denial changed in Fulton County over time?">How has mortgage denial changed in Fulton County over time?</button>
+      </div>
+      <div class="help-example-group">
+        <div class="help-example-label">Compared to peer communities</div>
+        <button class="help-example-q" type="button" data-q="Compare Atlanta with peer communities on housing and poverty">Compare Atlanta with peer communities on housing and poverty</button>
+      </div>
+      <div class="help-example-group">
+        <div class="help-example-label">Evidence for a need</div>
+        <button class="help-example-q" type="button" data-q="What evidence supports the need for affordable housing investment in Southwest Atlanta?">What evidence supports the need for affordable housing investment in Southwest Atlanta?</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ============ RIGHT: developer ============ -->
   <div class="right">
     <div class="tabs">
@@ -880,6 +985,13 @@ let busy = false;
 // don't know about turns) update in place.
 let turnCounter = 0;
 let lastTurnId = null;
+// Real short-term session memory: the pipeline itself now accepts
+// session_ctx (scripts/chatbot/orchestrator.py + extractor.py), so the
+// most recently resolved geo/concept is sent — not just prefixed onto
+// the visible query text (that's followupQueryText(), a separate,
+// narrower fix for "Try Next" buttons specifically) — letting the LLM
+// resolve implicit references like "this county" on its own.
+let lastTurnContext = null;
 
 // ---------- theme ----------
 const THEME_KEY = "gc-theme";
@@ -998,6 +1110,39 @@ $("history-clear").onclick = () => {
   localStorage.removeItem(HISTORY_KEY);
   renderHistoryList();
 };
+
+// ---------- help (landing page only) ----------
+function setHelpPopupOpen(open) {
+  // No .hide toggle here on purpose — opacity/transform/pointer-events
+  // (in the base #help-popup rule) already fully cover the closed
+  // state, and toggling display:none would cut the close transition
+  // off before it can play.
+  $("help-popup").classList.toggle("visible", open);
+  $("help-btn").setAttribute("aria-expanded", String(open));
+}
+// Controls the button itself, not just the popup — leaving the landing
+// page (or coming back to it via goHome()) hides/shows both together.
+function setHelpVisible(visible) {
+  $("help-btn").classList.toggle("hide", !visible);
+  if (!visible) setHelpPopupOpen(false);
+}
+$("help-btn").onclick = () =>
+  setHelpPopupOpen(!$("help-popup").classList.contains("visible"));
+$("help-close").onclick = () => setHelpPopupOpen(false);
+document.addEventListener("click", (e) => {
+  if (!$("help-popup").classList.contains("visible")) return;
+  if (e.target.closest("#help-popup") || e.target.closest("#help-btn")) return;
+  setHelpPopupOpen(false);
+});
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && $("help-popup").classList.contains("visible")) setHelpPopupOpen(false);
+});
+document.querySelectorAll(".help-example-q").forEach(btn => {
+  btn.onclick = () => {
+    setHelpPopupOpen(false);
+    ask(btn.dataset.q);
+  };
+});
 
 // ---------- globe ----------
 // A genuine rotating dot-sphere (Canvas, orthographic projection), built
@@ -2013,6 +2158,13 @@ function render(r, turnId) {
   renderTrace(r.trace);
   renderUpstream(r.upstream, r.metrics);
   if (!r.error) saveHistoryEntry(r);
+  // What the NEXT question (if any) can lean on to resolve implicit
+  // references — only when this turn actually resolved something real.
+  lastTurnContext = (!r.error && (lead || leadGeo)) ? {
+    prior_query: r.query || "",
+    prior_geo: (leadGeo && leadGeo.name) || (lead && lead.geo) || null,
+    prior_concept: (lead && lead.concept) || null,
+  } : lastTurnContext;
   setBusy(false, "");
   retireGlobe();
   revealComposerDock();
@@ -2284,6 +2436,7 @@ function morphToAnswerLayout() {
       window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     panel.classList.add("morphing");
     $("globe-wrap").classList.add("hidden-loading");
+    setHelpVisible(false);
     const finish = () => {
       panel.classList.add("started");
       panel.classList.remove("morphing");
@@ -2301,6 +2454,9 @@ function revealComposerDock() {
   const dock = $("composer-dock");
   if (dock.classList.contains("visible")) return;
   dock.classList.remove("hide");
+  // Real scrollHeight, not a guessed CSS px value — needs layout
+  // (which .hide was blocking), so this only works now that it's gone.
+  autoGrowTextarea($("query-dock"));
   // Two-step reveal (remove .hide, then add .visible on the next
   // frame) so the browser paints the opacity:0/scale(.85) starting
   // frame before transitioning — collapsing both into one tick skips
@@ -2324,7 +2480,11 @@ async function ask(presetText) {
   const turnId = appendTurnShell(q);
   setBusy(true, "starting…");
 
-  const es = new EventSource("/chat/stream?q=" + encodeURIComponent(q));
+  let streamUrl = "/chat/stream?q=" + encodeURIComponent(q);
+  if (lastTurnContext) {
+    streamUrl += "&session_ctx=" + encodeURIComponent(JSON.stringify(lastTurnContext));
+  }
+  const es = new EventSource(streamUrl);
   currentEventSource = es;
   es.onmessage = (ev) => {
     const msg = JSON.parse(ev.data);
@@ -2385,8 +2545,10 @@ function goHome() {
   currentTrend = null;
   turnCounter = 0;
   lastTurnId = null;
+  lastTurnContext = null;
   setBusy(false, "");
   setHistoryVisible(false);
+  setHelpVisible(true);
 }
 $("brand-home").addEventListener("click", goHome);
 $("brand-home").addEventListener("keydown", (e) => {
