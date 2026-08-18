@@ -41,6 +41,11 @@
     --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
     --shadow: 0 1px 2px rgba(14,34,64,.06), 0 6px 20px rgba(14,34,64,.05);
     --glow: rgba(47,111,176,.4);
+    /* Same idea as --glow, but light instead of blue — for the one
+       spot (the active tab) that sits directly against the blue
+       shell, where a same-color glow would disappear. */
+    --tab-glow: rgba(255,255,255,.65);
+    --scrim: rgba(14,34,64,.35);
     --ease-out-strong: cubic-bezier(.23,1,.32,1);
     /* A gentle back-out — overshoots slightly, then settles. Used for
        the globe's landing→band warp and each new turn sliding in, so
@@ -56,6 +61,8 @@
       --ok: #34d399; --warn: #fbbf24; --err: #f87171;
       --shadow: 0 1px 2px rgba(0,0,0,.3), 0 10px 30px rgba(0,0,0,.35);
       --glow: rgba(110,168,250,.38);
+      --tab-glow: rgba(238,243,251,.5);
+      --scrim: rgba(2,6,14,.6);
     }
   }
   :root[data-theme="dark"] {
@@ -66,6 +73,8 @@
     --ok: #34d399; --warn: #fbbf24; --err: #f87171;
     --shadow: 0 1px 2px rgba(0,0,0,.3), 0 10px 30px rgba(0,0,0,.35);
     --glow: rgba(110,168,250,.38);
+    --tab-glow: rgba(238,243,251,.5);
+    --scrim: rgba(2,6,14,.6);
   }
   :root[data-theme="light"] {
     --canvas: #eef3fb; --bg: #ffffff; --panel: #e6eef9; --fg: #13253f;
@@ -75,6 +84,8 @@
     --ok: #0f7a4a; --warn: #a35a00; --err: #b42318;
     --shadow: 0 1px 2px rgba(14,34,64,.06), 0 6px 20px rgba(14,34,64,.05);
     --glow: rgba(47,111,176,.4);
+    --tab-glow: rgba(255,255,255,.65);
+    --scrim: rgba(14,34,64,.35);
   }
   * { box-sizing: border-box; }
   body {
@@ -276,9 +287,17 @@
     border-radius: 14px; padding: 10px 15px; font-size: 14.5px; font-weight: 500;
     text-align: left; line-height: 1.4;
   }
+  /* The inset glow traces the whole inner boundary where blue meets
+     white — a thin, subtle rim light around the ENTIRE white answer
+     space (tab included, since this lives on the outer shell, not on
+     any one tab), giving it a soft raised/3-D look. Being inset (drawn
+     inward from .turn's own edge, following its border-radius) it can
+     never be clipped or cut off the way an outer glow on a child
+     element could — it's simply part of this box's own paint, full
+     stop, including right above the tab. */
   .turn {
     background: var(--fill); border-radius: 16px; padding: 8px; margin-bottom: 22px;
-    box-shadow: var(--shadow);
+    box-shadow: var(--shadow), inset 0 0 9px -2px var(--tab-glow);
     transition: background 200ms ease, padding 200ms ease, box-shadow 300ms ease;
   }
   /* While waiting on a response: no border/chrome ring (there's no tab
@@ -328,22 +347,28 @@
   }
   .turn-tab:hover { opacity: .88; }
   /* Binder tab: the active tab is filled with the exact same white as
-     the panel beneath it, with nothing separating them, so that panel
-     reads as continuing straight up into the tab — not two surfaces
-     meeting at a seam, but one surface with a tab standing up from it. */
-  .turn-tab.active { opacity: 1; background: var(--bg); color: var(--ink); }
+     the panel beneath it, with NOTHING separating them at the seam —
+     same flat bottom edge on the tab as the flat top edge on
+     .turn-body right below it, so the two read as one continuous
+     white surface with a tab standing up from it, not two shapes that
+     happen to be touching. Only the top corners round (inherited from
+     the base .turn-tab rule); the bottom stays flush on purpose. */
+  .turn-tab.active {
+    opacity: 1; background: var(--bg); color: var(--ink);
+  }
   /* Hover feedback: a line grows outward from the center, not a flat
      underline that just appears — fires on hover alone, no click
      needed. Light on the still-blue inactive tabs, dark on the active
      (white) one, so it stays visible against whichever background
-     it's actually drawn on. */
-  .turn-tab::after {
+     it's actually drawn on. A real element, not ::before/::after, so
+     it doesn't interfere with the tab's own corner radius. */
+  .turn-tab-underline {
     content: ""; position: absolute; left: 50%; bottom: 6px; transform: translateX(-50%);
     width: 0; height: 2px; border-radius: 2px; background: var(--on-fill);
-    transition: width 240ms var(--ease-out-strong);
+    transition: width 240ms var(--ease-out-strong); pointer-events: none;
   }
-  .turn-tab:hover::after { width: 42%; }
-  .turn-tab.active::after { width: 42%; background: var(--ink); }
+  .turn-tab:hover .turn-tab-underline { width: 42%; }
+  .turn-tab.active .turn-tab-underline { width: 42%; background: var(--ink); }
   @media (max-width: 640px) { .turn-tab { font-size: 13px; padding: 12px 7px 10px; } }
   /* Flat across the top (the active tab already supplies the curve
      where it meets the body) — only rounded at the bottom, so no tab
@@ -680,23 +705,50 @@
   }
   #help-popup.visible { opacity: 1; transform: scale(1) translateY(0); pointer-events: auto; }
   #help-popup h3 { margin: 4px 28px 10px 0; font-size: 16px; color: var(--ink); }
-  #help-popup .help-intro { font-size: 13.5px; color: var(--dim); line-height: 1.5; margin: 0 0 16px; }
+  #help-popup .help-intro { font-size: 13.5px; color: var(--dim); line-height: 1.5; margin: 0 0 12px; }
   #help-close { position: absolute; right: 10px; top: 10px; width: 30px; height: 30px; }
-  .help-examples { display: flex; flex-direction: column; gap: 12px; }
-  .help-example-label {
+  /* Boundary information, not phrasing advice — this tells people what's
+     out of scope so they don't hit a confusing dead end, without
+     modeling any particular way to ask (see help-intro above, which
+     deliberately gives no example queries at all). */
+  .help-limits {
+    margin-top: 4px; padding-top: 14px; border-top: 1px solid var(--line);
+  }
+  .help-limits-label {
     font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em;
-    color: var(--dim); margin-bottom: 4px;
+    color: var(--dim); margin-bottom: 6px;
   }
-  .help-example-q {
-    display: block; width: 100%; text-align: left; background: var(--panel);
-    border: 1px solid transparent; border-radius: 9px; padding: 9px 11px;
-    color: var(--fg); font-size: 13px; font-weight: 500; line-height: 1.4; cursor: pointer;
-    transition: border-color 150ms ease, background 150ms ease;
-  }
-  .help-example-q:hover { border-color: var(--accent); background: var(--accent-soft); }
+  .help-limits ul { margin: 0; padding-left: 18px; }
+  .help-limits li { font-size: 13px; color: var(--dim); line-height: 1.5; margin: 4px 0; }
   @media (max-width: 560px) {
     #help-btn { right: 16px; bottom: 16px; }
     #help-popup { right: 16px; left: 16px; width: auto; bottom: 76px; }
+  }
+
+  /* ---------- Confirm dialog (in-app, replaces window.confirm) ---------- */
+  .confirm-overlay {
+    position: fixed; inset: 0; z-index: 90;
+    display: flex; align-items: center; justify-content: center; padding: 24px;
+    background: var(--scrim);
+    backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px);
+    opacity: 0; pointer-events: none;
+    transition: opacity 180ms ease;
+  }
+  .confirm-overlay.visible { opacity: 1; pointer-events: auto; }
+  .confirm-dialog {
+    width: min(360px, 100%); background: var(--bg); border-radius: 16px; padding: 22px;
+    box-shadow: var(--shadow), 0 20px 50px -12px rgba(0,0,0,.35);
+    /* Centered in the viewport, not anchored to a trigger, so it scales
+       from its own middle rather than a corner. */
+    transform-origin: center; transform: scale(.94);
+    transition: transform 200ms var(--ease-out-strong);
+  }
+  .confirm-overlay.visible .confirm-dialog { transform: scale(1); }
+  #confirm-message { margin: 0 0 18px; font-size: 14.5px; color: var(--fg); line-height: 1.5; }
+  .confirm-actions { display: flex; justify-content: flex-end; gap: 8px; }
+  @media (prefers-reduced-motion: reduce) {
+    .confirm-overlay, .confirm-dialog { transition: opacity 120ms ease; }
+    .confirm-dialog { transform: none !important; }
   }
 
   #globe-wrap {
@@ -871,25 +923,35 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="5" y1="5" x2="19" y2="19"/><line x1="19" y1="5" x2="5" y2="19"/></svg>
     </button>
     <h3>How to use Grant Copilot</h3>
-    <p class="help-intro">Ask about a geography, a trend over time, a comparison, or a
-      need — every answer is grounded in real Census and HMDA data. A few
-      example query types, with real questions you can ask right now:</p>
-    <div class="help-examples">
-      <div class="help-example-group">
-        <div class="help-example-label">A number for a place</div>
-        <button class="help-example-q" type="button" data-q="What is the median household income in Buckhead?">What is the median household income in Buckhead?</button>
-      </div>
-      <div class="help-example-group">
-        <div class="help-example-label">A trend over time</div>
-        <button class="help-example-q" type="button" data-q="How has mortgage denial changed in Fulton County over time?">How has mortgage denial changed in Fulton County over time?</button>
-      </div>
-      <div class="help-example-group">
-        <div class="help-example-label">Compared to peer communities</div>
-        <button class="help-example-q" type="button" data-q="Compare Atlanta with peer communities on housing and poverty">Compare Atlanta with peer communities on housing and poverty</button>
-      </div>
-      <div class="help-example-group">
-        <div class="help-example-label">Evidence for a need</div>
-        <button class="help-example-q" type="button" data-q="What evidence supports the need for affordable housing investment in Southwest Atlanta?">What evidence supports the need for affordable housing investment in Southwest Atlanta?</button>
+    <p class="help-intro">Grant Copilot answers questions about U.S. places using real,
+      sourced data — U.S. Census Bureau statistics (demographic, economic,
+      housing, transportation, health insurance, and education indicators)
+      and HMDA mortgage-lending records. Every number comes with a citation
+      back to its source.</p>
+    <p class="help-intro">People use it for all kinds of things — building the evidence
+      section of a grant application, researching a community, or just
+      understanding how a place compares to others.</p>
+    <p class="help-intro">Ask about a place, a trend over time, or how two areas compare —
+      in your own words. There's no special format required.</p>
+    <div class="help-limits">
+      <div class="help-limits-label">Limits to know</div>
+      <ul>
+        <li>Only Census and HMDA data — no other sources, and no opinions or recommendations.</li>
+        <li>Census estimates are multi-year averages, not real-time — the most recent data can lag by a few years.</li>
+        <li>Ambiguous place names default to a Georgia reading unless another state is named.</li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- In-app replacement for window.confirm() — centered, blurred
+       backdrop, themed like the rest of the app. Hidden by default;
+       confirmDialog() fills in the message/labels and shows it. -->
+  <div id="confirm-overlay" class="confirm-overlay">
+    <div id="confirm-dialog" class="confirm-dialog" role="alertdialog" aria-modal="true" aria-labelledby="confirm-message">
+      <p id="confirm-message"></p>
+      <div class="confirm-actions">
+        <button id="confirm-cancel" class="secondary" type="button"></button>
+        <button id="confirm-ok" type="button"></button>
       </div>
     </div>
   </div>
@@ -1136,12 +1198,6 @@ document.addEventListener("click", (e) => {
 });
 document.addEventListener("keydown", (e) => {
   if (e.key === "Escape" && $("help-popup").classList.contains("visible")) setHelpPopupOpen(false);
-});
-document.querySelectorAll(".help-example-q").forEach(btn => {
-  btn.onclick = () => {
-    setHelpPopupOpen(false);
-    ask(btn.dataset.q);
-  };
 });
 
 // ---------- globe ----------
@@ -2090,7 +2146,7 @@ function render(r, turnId) {
 
   // ---- Assemble: tab strip + one panel per section, only the first shown.
   const tabsHtml = panels.map((p, i) =>
-    `<button type="button" class="turn-tab${i === 0 ? " active" : ""}" data-panel="${p.key}" role="tab" aria-selected="${i === 0}">${esc(p.label)}</button>`
+    `<button type="button" class="turn-tab${i === 0 ? " active" : ""}" data-panel="${p.key}" role="tab" aria-selected="${i === 0}">${esc(p.label)}<span class="turn-tab-underline"></span></button>`
   ).join("");
   const panelsHtml = panels.map((p, i) =>
     `<div class="turn-panel${i === 0 ? "" : " hide"}" data-panel="${p.key}">${p.html}</div>`
@@ -2151,7 +2207,16 @@ function render(r, turnId) {
   turnEl.querySelectorAll("[data-followup]").forEach(btn => {
     btn.onclick = () => {
       const f = r.followups[+btn.dataset.followup];
-      ask(followupQueryText(f, r));
+      const text = followupQueryText(f, r);
+      // Lands in the visible box for a second look/edit, never sends on
+      // its own — the prefixed geo is a guess and guesses can be wrong.
+      const dockActive = $("ask-panel").classList.contains("started");
+      const input = dockActive ? $("query-dock") : $("query");
+      input.value = text;
+      autoGrowTextarea(input);
+      input.focus();
+      input.setSelectionRange(text.length, text.length);
+      input.scrollIntoView({behavior: "smooth", block: "center"});
     };
   });
   wireTrendChart(turnId, trend);
@@ -2522,10 +2587,60 @@ async function ask(presetText) {
   };
 }
 
+// In-app stand-in for window.confirm() — centered, blurred backdrop,
+// themed like the rest of the app rather than a browser-chrome
+// interruption. Resolves true/false; Escape and a backdrop click both
+// count as cancel. Focus defaults to Cancel so an accidental Enter
+// never confirms the destructive path.
+function confirmDialog(message, {confirmLabel = "Continue", cancelLabel = "Cancel"} = {}) {
+  return new Promise((resolve) => {
+    const overlay = $("confirm-overlay");
+    const okBtn = $("confirm-ok");
+    const cancelBtn = $("confirm-cancel");
+    $("confirm-message").textContent = message;
+    okBtn.textContent = confirmLabel;
+    cancelBtn.textContent = cancelLabel;
+    const returnFocusTo = document.activeElement;
+    const settle = (result) => {
+      overlay.classList.remove("visible");
+      document.removeEventListener("keydown", onKeydown);
+      overlay.removeEventListener("mousedown", onBackdrop);
+      okBtn.onclick = null;
+      cancelBtn.onclick = null;
+      if (returnFocusTo && returnFocusTo.focus) returnFocusTo.focus();
+      resolve(result);
+    };
+    const onKeydown = (e) => {
+      if (e.key === "Escape") { settle(false); return; }
+      if (e.key === "Tab") {
+        // Only two focusable elements — trap between them rather than
+        // letting Tab escape to whatever sits behind the backdrop.
+        e.preventDefault();
+        (document.activeElement === cancelBtn ? okBtn : cancelBtn).focus();
+      }
+    };
+    const onBackdrop = (e) => { if (e.target === overlay) settle(false); };
+    okBtn.onclick = () => settle(true);
+    cancelBtn.onclick = () => settle(false);
+    document.addEventListener("keydown", onKeydown);
+    overlay.addEventListener("mousedown", onBackdrop);
+    overlay.classList.add("visible");
+    cancelBtn.focus();
+  });
+}
+
 // Returning to the landing page: clear the in-progress state (closing
 // any still-streaming request so it can't call render() after the view
 // has reset), the query box, and the whole thread, back to a fresh load.
-function goHome() {
+async function goHome() {
+  if (turnCounter > 0) {
+    const ok = busy
+      ? await confirmDialog("A question is still in progress. Leave anyway? It won't be saved.",
+          {confirmLabel: "Leave anyway", cancelLabel: "Stay"})
+      : await confirmDialog("Start a new conversation? This one is saved in History.",
+          {confirmLabel: "Start new", cancelLabel: "Stay"});
+    if (!ok) return;
+  }
   if (currentEventSource) { currentEventSource.close(); currentEventSource = null; }
   $("ask-panel").classList.remove("started", "morphing");
   $("query").value = "";
