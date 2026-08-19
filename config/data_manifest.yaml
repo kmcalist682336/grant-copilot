@@ -12,22 +12,22 @@ artifacts:
 - name: embeddings
   hf_path: embeddings.faiss
   dest: data/metadata/embeddings.faiss
-  sha256: 614a66b0aa3e714f2338db90eca43f834683bd1e3c33e97f1064a229edf116fa
-  size_bytes_approx: 4377640751
+  sha256: 3d001cf8f718109783030c4809507cb332b86e2b24283e4cd5107d5dda94944f
+  size_bytes_approx: 4430901011
   description: FAISS HNSW index over ~2.4 M Census-metadata cards (table questions,
     variable-label cards, negatives).  Drives the semantic-router tier.
 - name: search_index
   hf_path: search_index.db
   dest: data/metadata/search_index.db
-  sha256: 98fd0fb7e29ff3c71212b8a5db89a636752296f75f841597847c22c1d1d1b5a4
-  size_bytes_approx: 3380162560
+  sha256: f4003635aacabc777f5c242c5a0fbe81214e416e9a5b12122b42adea1f05c8a8
+  size_bytes_approx: 3380609024
   description: "SQLite metadata index carrying every ACS table + variable with coverage\
     \ (years \xD7 geo levels).  Backs variable label lookups and FTS5 fallback searches."
 - name: peer_features
   hf_path: peer_features.sqlite
   dest: data/metadata/peer_features.sqlite
-  sha256: 0197d6d2fa075115ff1b8e339aa172cd6c254d9e6bfd40a71d16994359834445
-  size_bytes_approx: 162406400
+  sha256: dc2de3a3b484bbc1f998497a40719323c422fe35c53b9bffa719d1d36349c967
+  size_bytes_approx: 807727104
   description: 108-feature peer-comparison catalog for ~13 K places, counties, MSAs,
     and 248 curated Atlanta neighborhoods.
 - name: universe_embeddings
