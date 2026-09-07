@@ -12,15 +12,15 @@ artifacts:
 - name: embeddings
   hf_path: embeddings.faiss
   dest: data/metadata/embeddings.faiss
-  sha256: 614a66b0aa3e714f2338db90eca43f834683bd1e3c33e97f1064a229edf116fa
-  size_bytes_approx: 4377640751
+  sha256: fb6b457412b9e1b4b8fddd95fefbdf1662303c3c3c3eac2fa4a6f7bdb59e8d94
+  size_bytes_approx: 4379599739
   description: FAISS HNSW index over ~2.4 M Census-metadata cards (table questions,
     variable-label cards, negatives).  Drives the semantic-router tier.
 - name: search_index
   hf_path: search_index.db
   dest: data/metadata/search_index.db
-  sha256: 98fd0fb7e29ff3c71212b8a5db89a636752296f75f841597847c22c1d1d1b5a4
-  size_bytes_approx: 3380162560
+  sha256: ad1c97f48a3d24aacb5e2a9ea5797b716e1c0aef086ee19a0d71b78eaf5ce6e7
+  size_bytes_approx: 3380609024
   description: "SQLite metadata index carrying every ACS table + variable with coverage\
     \ (years \xD7 geo levels).  Backs variable label lookups and FTS5 fallback searches."
 - name: peer_features
