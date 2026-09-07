@@ -68,6 +68,12 @@ class PeerOut(BaseModel):
     geo_name: str = ""
     population: Optional[int] = None
     match_explanation: str = ""
+    # The real numbers behind match_explanation's prose — whichever of
+    # the axis's features PeerRef actually populated for this peer, so
+    # the UI can show e.g. "Median family income: $65,200" instead of
+    # just naming the feature. Never a guess: same dict the pipeline
+    # itself scored the match on.
+    feature_values: dict[str, float] = Field(default_factory=dict)
 
 
 class PeerGroupOut(BaseModel):
@@ -75,6 +81,15 @@ class PeerGroupOut(BaseModel):
     axis_description: str = ""
     anchor_geo_name: str = ""
     peers: list[PeerOut] = Field(default_factory=list)
+    # The anchor's own values for this axis's features — the benchmark
+    # every peer in `peers` is actually being compared against.
+    anchor_feature_values: dict[str, float] = Field(default_factory=dict)
+    # The ACS vintage this comparison actually ran against — reported by
+    # PeerContext.anchor_vintage, which the pipeline resolves against
+    # data/metadata/peer_features.sqlite's own `vintage` column at query
+    # time. Read straight through, never inferred or hardcoded here;
+    # None when the pipeline itself couldn't resolve one.
+    year: Optional[int] = None
 
 
 class AnomalyOut(BaseModel):
@@ -182,6 +197,11 @@ class ChatResponse(BaseModel):
 
 class ChatRequest(BaseModel):
     query: str
+    # Prior-turn context (geo/concept the previous answer resolved), so a
+    # follow-up like "what does this mean for housing affordability here"
+    # can resolve "here" without restating the geography. Optional and
+    # additive — omitting it is exactly today's stateless behavior.
+    session_ctx: Optional[dict] = None
 
 
 class ResynthesizeRequest(BaseModel):
@@ -322,18 +342,27 @@ def to_public(
 
     if shown("peer_contexts"):
         for ctx in _attr(resp, "peer_contexts", []) or []:
+            ctx_peers = _attr(ctx, "peers", []) or []
             out.peer_groups.append(PeerGroupOut(
                 axis=str(_attr(ctx, "axis", "") or ""),
                 axis_description=str(_attr(ctx, "axis_description", "") or ""),
                 anchor_geo_name=str(_attr(ctx, "anchor_geo_name", "") or ""),
+                anchor_feature_values=dict(
+                    _attr(ctx, "anchor_feature_values", {}) or {}),
+                # The pipeline now resolves and reports the ACS vintage
+                # it actually queried against (PeerContext.anchor_vintage)
+                # — read straight through, never re-derived here.
+                year=_attr(ctx, "anchor_vintage"),
                 peers=[
                     PeerOut(
                         geo_name=str(_attr(p, "geo_name", "") or ""),
                         population=_attr(p, "population"),
                         match_explanation=str(
                             _attr(p, "match_explanation", "") or ""),
+                        feature_values=dict(
+                            _attr(p, "feature_values", {}) or {}),
                     )
-                    for p in (_attr(ctx, "peers", []) or [])
+                    for p in ctx_peers
                 ],
             ))
 

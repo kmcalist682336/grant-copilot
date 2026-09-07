@@ -184,6 +184,7 @@ def _run_pipeline(
     query: str,
     pres: pres_mod.PresentationConfig,
     progress_cb: Any = None,
+    session_ctx: Optional[dict] = None,
 ) -> StoredRun:
     """Execute the full pipeline synchronously and store the result."""
     options = dict(pres.bundle_options)
@@ -205,6 +206,7 @@ def _run_pipeline(
         ask_user=None,           # clarifier degrades to "proceed" over HTTP
         progress_cb=progress_cb,
         synth_options=options,
+        session_ctx=session_ctx,
     )
 
     # Rebuild the bundle the orchestrator used, so re-synthesis and the
@@ -364,7 +366,10 @@ async def chat(req: ChatRequest) -> ChatResponse:
         raise HTTPException(400, "Query is empty.")
     pres = pres_mod.load()
     try:
-        run = await _on_pipeline_thread(_run_pipeline, ctx, req.query, pres)
+        run = await _on_pipeline_thread(
+            _run_pipeline, ctx, req.query, pres,
+            session_ctx=req.session_ctx,
+        )
     except Exception as e:
         # The orchestrator normally returns a partial QueryResponse rather
         # than raising, so reaching here means something outside its own
@@ -376,7 +381,11 @@ async def chat(req: ChatRequest) -> ChatResponse:
 
 
 @app.get("/chat/stream")
-async def chat_stream(q: str = Query(..., description="User query")):
+async def chat_stream(
+    q: str = Query(..., description="User query"),
+    session_ctx: Optional[str] = Query(
+        None, description="JSON-encoded prior-turn context, for follow-ups"),
+):
     """Same pipeline, streamed as SSE stage events.
 
     The pipeline takes 15-25 s; without progress the UI looks hung.
@@ -387,6 +396,16 @@ async def chat_stream(q: str = Query(..., description="User query")):
         raise HTTPException(400, "Query is empty.")
     pres = pres_mod.load()
 
+    parsed_session_ctx: Optional[dict] = None
+    if session_ctx:
+        try:
+            parsed_session_ctx = json.loads(session_ctx)
+        except (ValueError, TypeError):
+            # A malformed blob shouldn't fail the whole query — the
+            # pipeline just resolves the follow-up on its own text,
+            # same as before this existed.
+            logger.warning("ignoring malformed session_ctx: %r", session_ctx)
+
     events: "queue.Queue[Optional[dict]]" = queue.Queue()
 
     def progress_cb(stage: str, detail: Optional[str] = None) -> None:
@@ -396,7 +415,7 @@ async def chat_stream(q: str = Query(..., description="User query")):
 
     def worker() -> None:
         try:
-            run = _run_pipeline(ctx, q, pres, progress_cb)
+            run = _run_pipeline(ctx, q, pres, progress_cb, parsed_session_ctx)
             result["response"] = render_run(run, pres, config_warning=pres.error)
         except Exception as e:
             logger.exception("pipeline failed")
