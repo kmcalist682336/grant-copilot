@@ -359,6 +359,23 @@ def cancel_hydrate() -> dict:
 # Chat
 # ---------------------------------------------------------------------
 
+def _public_error_message(e: Exception) -> str:
+    """Plain-language translation for the client.
+
+    Reached only when something breaks outside the orchestrator's own
+    error handling (which normally returns a partial QueryResponse
+    instead of raising). The real exception is already on its way to
+    the log via logger.exception; this is what the user sees.
+    """
+    if isinstance(e, (TimeoutError, asyncio.TimeoutError)):
+        return "That took too long to answer. Try again in a moment."
+    if isinstance(e, (ConnectionError, OSError)):
+        return "Couldn't reach a data source just now. Try again in a moment."
+    if isinstance(e, json.JSONDecodeError):
+        return "Got back something we couldn't read. Try rephrasing the question."
+    return "Something went wrong answering that. Try rephrasing, or try again in a moment."
+
+
 @app.post("/chat", response_model=ChatResponse)
 async def chat(req: ChatRequest) -> ChatResponse:
     ctx = _require_ctx()
@@ -375,7 +392,8 @@ async def chat(req: ChatRequest) -> ChatResponse:
         # than raising, so reaching here means something outside its own
         # error handling broke. Report it in the contract's shape.
         logger.exception("pipeline raised")
-        return ChatResponse(status="error", query=req.query, error=str(e),
+        return ChatResponse(status="error", query=req.query,
+                            error=_public_error_message(e),
                             config_warning=pres.error)
     return render_run(run, pres, config_warning=pres.error)
 
@@ -419,7 +437,7 @@ async def chat_stream(
             result["response"] = render_run(run, pres, config_warning=pres.error)
         except Exception as e:
             logger.exception("pipeline failed")
-            result["error"] = str(e)
+            result["error"] = _public_error_message(e)
         finally:
             events.put(None)
 

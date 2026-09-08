@@ -40,17 +40,15 @@
     --ok: #0f7a4a; --warn: #a35a00; --err: #b42318;
     --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
     --shadow: 0 1px 2px rgba(14,34,64,.06), 0 6px 20px rgba(14,34,64,.05);
-    --glow: rgba(47,111,176,.4);
+    /* Dialed back from an earlier, more saturated pass — enough to read
+       as "alive," not enough to read as a glowing halo. */
+    --glow: rgba(47,111,176,.22);
     /* Same idea as --glow, but light instead of blue — for the one
        spot (the active tab) that sits directly against the blue
        shell, where a same-color glow would disappear. */
     --tab-glow: rgba(255,255,255,.65);
     --scrim: rgba(14,34,64,.35);
     --ease-out-strong: cubic-bezier(.23,1,.32,1);
-    /* A gentle back-out — overshoots slightly, then settles. Used for
-       the globe's landing→band warp and each new turn sliding in, so
-       both read as a soft physical bounce rather than a plain glide. */
-    --ease-bounce: cubic-bezier(.34, 1.56, .64, 1);
   }
   @media (prefers-color-scheme: dark) {
     :root {
@@ -60,7 +58,7 @@
       --fill: #1c3f5f; --fill-2: #142943; --on-fill: #eef3fb;
       --ok: #34d399; --warn: #fbbf24; --err: #f87171;
       --shadow: 0 1px 2px rgba(0,0,0,.3), 0 10px 30px rgba(0,0,0,.35);
-      --glow: rgba(110,168,250,.38);
+      --glow: rgba(110,168,250,.2);
       --tab-glow: rgba(238,243,251,.5);
       --scrim: rgba(2,6,14,.6);
     }
@@ -72,7 +70,7 @@
     --fill: #1c3f5f; --fill-2: #142943; --on-fill: #eef3fb;
     --ok: #34d399; --warn: #fbbf24; --err: #f87171;
     --shadow: 0 1px 2px rgba(0,0,0,.3), 0 10px 30px rgba(0,0,0,.35);
-    --glow: rgba(110,168,250,.38);
+    --glow: rgba(110,168,250,.2);
     --tab-glow: rgba(238,243,251,.5);
     --scrim: rgba(2,6,14,.6);
   }
@@ -83,7 +81,7 @@
     --fill: #2f6fb0; --fill-2: #dbe9f8; --on-fill: #ffffff;
     --ok: #0f7a4a; --warn: #a35a00; --err: #b42318;
     --shadow: 0 1px 2px rgba(14,34,64,.06), 0 6px 20px rgba(14,34,64,.05);
-    --glow: rgba(47,111,176,.4);
+    --glow: rgba(47,111,176,.22);
     --tab-glow: rgba(255,255,255,.65);
     --scrim: rgba(14,34,64,.35);
   }
@@ -177,6 +175,16 @@
     border: 1px solid var(--line); border-radius: 8px; padding: 9px 11px;
     font-family: inherit; font-size: 14px;
   }
+  /* Signals "nothing to send" on an empty Ask click — otherwise the
+     click just silently does nothing, with no feedback at all. */
+  @keyframes input-shake {
+    10%, 90% { transform: translateX(-1px); }
+    20%, 80% { transform: translateX(2px); }
+    30%, 50%, 70% { transform: translateX(-4px); }
+    40%, 60% { transform: translateX(4px); }
+  }
+  .shake { animation: input-shake 400ms ease; }
+  @media (prefers-reduced-motion: reduce) { .shake { animation: none; } }
   textarea.code { font-family: var(--mono); font-size: 12.5px; line-height: 1.5; }
   button {
     background: var(--accent-btn); color: #fff; border: 0; border-radius: 8px;
@@ -306,26 +314,28 @@
      hard outline, reads as "working" without framing an empty box. A
      slow, gentle pulse (not a hard blink) reinforces that, still. */
   @keyframes turn-glow-pulse {
-    0%, 100% { box-shadow: var(--shadow), 0 0 13px 0px var(--glow); }
-    50% { box-shadow: var(--shadow), 0 0 21px 3px var(--glow); }
+    0%, 100% { box-shadow: var(--shadow), 0 0 10px 0px var(--glow); }
+    50% { box-shadow: var(--shadow), 0 0 15px 1px var(--glow); }
   }
   .turn.turn-loading {
     background: var(--bg); padding: 0;
-    animation: turn-glow-pulse 2.4s ease-in-out infinite;
+    animation: turn-glow-pulse 3.2s ease-in-out infinite;
   }
   .turn.turn-loading .turn-body { border-radius: 16px; padding-top: 14px; padding-bottom: 14px; }
   @media (prefers-reduced-motion: reduce) {
-    .turn.turn-loading { animation: none; box-shadow: var(--shadow), 0 0 16px 1px var(--glow); }
+    .turn.turn-loading { animation: none; box-shadow: var(--shadow), 0 0 11px 1px var(--glow); }
   }
-  /* The query and its answer shell arrive together with the same
-     gentle bounce as the globe's warp — a slide, never a fade, so the
-     landing→answer move reads as one continuous motion rather than
-     unrelated elements popping in. Fires once, on insertion, per turn. */
+  /* The query and its answer shell arrive together as one settling
+     motion — a slide, never a fade, so the landing→answer move reads
+     as continuous rather than unrelated elements popping in. A plain
+     decelerate, no overshoot: calmer than a bounce, and every turn on
+     a growing thread gets this, not just the first one. Fires once,
+     on insertion, per turn. */
   @keyframes turn-slide-in {
-    from { transform: translateY(30px); }
+    from { transform: translateY(18px); }
     to { transform: translateY(0); }
   }
-  .turn-query, .turn { animation: turn-slide-in 620ms var(--ease-bounce); }
+  .turn-query, .turn { animation: turn-slide-in 620ms var(--ease-out-strong); }
   @media (prefers-reduced-motion: reduce) {
     .turn-query, .turn { animation: none; }
   }
@@ -660,7 +670,9 @@
   /* Pinned to the very bottom of the page, centered on the full page
      width — not just the composer column — and sharing the exact same
      bottom offset + height as #help-btn so the two sit on one shared
-     vertical center line instead of being independently eyeballed. */
+     vertical center line instead of being independently eyeballed.
+     Holds above the 560px breakpoint only — the mobile media query
+     below moves each independently and the shared line no longer applies. */
   #empty-trust {
     position: fixed; left: 0; right: 0; bottom: 26px; height: 46px;
     display: flex; align-items: center; justify-content: center;
@@ -678,7 +690,7 @@
     box-shadow: var(--shadow); cursor: pointer;
     transition: transform 150ms var(--ease-out-strong), box-shadow 150ms ease;
   }
-  #help-btn:hover { transform: scale(1.06); box-shadow: var(--shadow), 0 0 14px 1px var(--glow); }
+  #help-btn:hover { transform: scale(1.06); box-shadow: var(--shadow), 0 0 9px 1px var(--glow); }
   #help-btn:active { transform: scale(.96); }
   #help-btn svg { width: 23px; height: 23px; }
   /* At rest it's just the icon — hovering is what spells out what it
@@ -696,9 +708,9 @@
     position: fixed; right: 26px; bottom: 84px; z-index: 51;
     width: min(380px, calc(100vw - 52px)); max-height: 68vh; overflow-y: auto;
     background: var(--bg); border-radius: 16px; padding: 22px 22px 18px;
-    /* Same glow language as the loading state's box-shadow — just
-       static here, since nothing is actually in progress. */
-    box-shadow: var(--shadow), 0 0 20px 2px var(--glow);
+    /* Same glow language as the loading state's box-shadow, just
+       static, since nothing is actually in progress. */
+    box-shadow: var(--shadow), 0 0 13px 1px var(--glow);
     transform-origin: bottom right;
     opacity: 0; transform: scale(.92) translateY(10px); pointer-events: none;
     transition: opacity 200ms ease, transform 220ms var(--ease-out-strong);
@@ -812,7 +824,7 @@
       <svg id="theme-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="4.5"/><path d="M12 2.5v2.5M12 19v2.5M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M2.5 12H5M19 12h2.5M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8"/></svg>
     </button>
     <button id="toggle-history" class="secondary" type="button" aria-haspopup="true" aria-expanded="false">History</button>
-    <button id="toggle-dev" class="secondary" type="button">Developer</button>
+    <button id="toggle-dev" class="secondary" type="button" title="Raw pipeline internals, not needed to read an answer">Developer</button>
   </div>
 </header>
 
@@ -855,17 +867,17 @@
     <div class="thread-scroll" id="thread-scroll">
       <div id="ask-panel">
         <div class="composer-wrap">
-          <img id="welcome-logo" src="/static/ia-logo.png" alt="ia">
+          <img id="welcome-logo" src="/static/ia-logo.png" alt="Grant Copilot">
           <h2 id="welcome-heading" style="text-transform:none;letter-spacing:normal;color:inherit">
             <span class="welcome-line">Welcome</span>
             <span class="welcome-line">What can I help you with today?</span>
           </h2>
           <div class="composer">
             <textarea id="query" rows="2"
-              placeholder="Ask about a geography, trend, disparity, or need — e.g. median household income in Buckhead"></textarea>
+              placeholder="Ask about a geography, trend, disparity, or need (e.g. median household income in Buckhead)"></textarea>
             <div class="composer-foot">
               <span class="row" style="gap:10px">
-                <button id="ask" class="send-btn" type="button" aria-label="Ask" title="Ask (Enter) — Shift+Enter for a new line">
+                <button id="ask" class="send-btn" type="button" aria-label="Ask" title="Ask (Enter); Shift+Enter for a new line">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
                 </button>
               </span>
@@ -886,7 +898,7 @@
         </div>
       </div>
 
-      <div id="banner" class="banner hide"></div>
+      <div id="banner" class="banner hide" role="alert"></div>
       <div id="output"></div>
     </div>
 
@@ -896,7 +908,7 @@
           placeholder="Ask a follow-up…"></textarea>
         <div class="composer-foot">
           <span class="row" style="gap:10px">
-            <button id="ask-dock" class="send-btn" type="button" aria-label="Ask" title="Ask (Enter) — Shift+Enter for a new line">
+            <button id="ask-dock" class="send-btn" type="button" aria-label="Ask" title="Ask (Enter); Shift+Enter for a new line">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
             </button>
             <button id="resynth-dock" class="secondary" disabled
@@ -924,20 +936,19 @@
     </button>
     <h3>How to use Grant Copilot</h3>
     <p class="help-intro">Grant Copilot answers questions about U.S. places using real,
-      sourced data — U.S. Census Bureau statistics (demographic, economic,
+      sourced data: U.S. Census Bureau statistics (demographic, economic,
       housing, transportation, health insurance, and education indicators)
       and HMDA mortgage-lending records. Every number comes with a citation
       back to its source.</p>
-    <p class="help-intro">People use it for all kinds of things — building the evidence
+    <p class="help-intro">People use it for all kinds of things: building the evidence
       section of a grant application, researching a community, or just
       understanding how a place compares to others.</p>
-    <p class="help-intro">Ask about a place, a trend over time, or how two areas compare —
-      in your own words. There's no special format required.</p>
+    <p class="help-intro">Ask about a place, a trend over time, or how two areas compare.</p>
     <div class="help-limits">
       <div class="help-limits-label">Limits to know</div>
       <ul>
-        <li>Only Census and HMDA data — no other sources, and no opinions or recommendations.</li>
-        <li>Census estimates are multi-year averages, not real-time — the most recent data can lag by a few years.</li>
+        <li>Only Census and HMDA data. No other sources, and no opinions or recommendations.</li>
+        <li>Both sources lag behind real time. Census estimates are multi-year averages, and HMDA records typically run a year or two behind, so the most recent period may not be available yet.</li>
         <li>Ambiguous place names default to a Georgia reading unless another state is named.</li>
       </ul>
     </div>
@@ -1145,7 +1156,12 @@ function renderHistoryList() {
     <button type="button" class="history-item" data-hist="${i}">
       <div class="history-q">${esc(e.query || "(untitled query)")}</div>
       <div class="history-meta dim small">${esc(fmtHistoryTime(e.ts))}</div>
-    </button>`).join("");
+    </button>`).join("") +
+    // Only shown once the cap is actually reached — no point warning
+    // someone with 3 saved sessions about a limit they're nowhere near.
+    (list.length >= HISTORY_MAX
+      ? `<div class="dim small" style="padding:10px 14px;">Showing your most recent ${HISTORY_MAX}. Older sessions aren't kept.</div>`
+      : "");
   body.querySelectorAll("[data-hist]").forEach(btn => {
     btn.onclick = async () => {
       const entry = list[+btn.dataset.hist];
@@ -1182,11 +1198,12 @@ function setHelpPopupOpen(open) {
   $("help-popup").classList.toggle("visible", open);
   $("help-btn").setAttribute("aria-expanded", String(open));
 }
-// Controls the button itself, not just the popup — leaving the landing
-// page (or coming back to it via goHome()) hides/shows both together.
-function setHelpVisible(visible) {
-  $("help-btn").classList.toggle("hide", !visible);
-  if (!visible) setHelpPopupOpen(false);
+// Help now stays up for the whole session (see morphToAnswerLayout()),
+// so this exists only to restore the button — and make sure its popup
+// isn't left open — when the user returns to the landing page.
+function showHelp() {
+  $("help-btn").classList.remove("hide");
+  setHelpPopupOpen(false);
 }
 $("help-btn").onclick = () =>
   setHelpPopupOpen(!$("help-popup").classList.contains("visible"));
@@ -1730,7 +1747,7 @@ function trendCardHtml(t, turnId) {
     `<label class="year-chk"><input type="checkbox" checked data-idx="${i}"> ${p.year}</label>`).join("");
   return `<div class="chart-card">
     <div class="chart-head">
-      <div><b>${esc(t.concept)}</b><span class="dim small"> — ${esc(t.geo)}</span></div>
+      <div><b>${esc(t.concept)}</b><span class="dim small"> · ${esc(t.geo)}</span></div>
       <div class="year-checks">${checks}</div>
     </div>
     <div class="chart-wrap" id="trend-wrap-${turnId}"></div>
@@ -1792,7 +1809,7 @@ function wireTrendChart(turnId, trend) {
     const vals = shown.map(p => p.value);
     const lo = Math.min(...vals), hi = Math.max(...vals);
     const loYear = shown[vals.indexOf(lo)].year, hiYear = shown[vals.indexOf(hi)].year;
-    summary.textContent = `${t.geo} — ${t.concept} ranged from ${fmtTrendVal(t, lo)} ` +
+    summary.textContent = `${t.geo}: ${t.concept} ranged from ${fmtTrendVal(t, lo)} ` +
       `in ${loYear} to ${fmtTrendVal(t, hi)} in ${hiYear}.`;
 
     function showTip(i) {
@@ -1912,7 +1929,7 @@ function render(r, turnId) {
             : "";
           body += `<span class="badge"><span class="dot"></span> ${esc(g.geo_level || "geography")}${confLabel ? " · " + confLabel : ""}</span>`;
         }
-        if (g.tract_count) body += `<span class="badge dim" title="${esc(g.name || "This area")} isn't a single official Census boundary — this combines data from the ${g.tract_count} census tracts that overlap it.">${g.tract_count} tract(s)</span>`;
+        if (g.tract_count) body += `<span class="badge dim" title="${esc(g.name || "This area")} isn't a single official Census boundary. This combines data from the ${g.tract_count} census tracts that overlap it.">${g.tract_count} tract(s)</span>`;
         body += '</div>';
       }
       if (r.prose) body += `<div class="prose mt">${esc(r.prose)}</div>`;
@@ -1941,7 +1958,7 @@ function render(r, turnId) {
         <div class="collapse-body">`;
       for (const a of r.anomalies) {
         body += `<div class="lint warning"><span class="rule">${esc(a.kind || "anomaly")}</span><br>
-          ${esc(a.concept)} — ${esc(a.geo)}${a.magnitude !== null && a.magnitude !== undefined ? ` (${fmtNum(a.magnitude)})` : ""}
+          ${esc(a.concept)} · ${esc(a.geo)}${a.magnitude !== null && a.magnitude !== undefined ? ` (${fmtNum(a.magnitude)})` : ""}
           ${a.context ? `<div class="detail">${esc(a.context)}</div>` : ""}</div>`;
       }
       body += '</div></details>';
@@ -1988,9 +2005,9 @@ function render(r, turnId) {
     const anyMultiYear = axisOrder.some(k =>
       new Set(byAxis.get(k).map(v => v.year).filter(y => y != null)).size > 1);
     out.push(`<div class="peers-note">
-        <b>Peers are ranked closest match first</b> — each card's position reflects how
+        <b>Peers are ranked closest match first.</b> Each card's position reflects how
         statistically similar it is to ${anchorName ? esc(anchorName) : "the anchor"} on that axis, not alphabetical or random order.
-        ${anyMultiYear ? `<br><b>Switching years can change which cities appear</b> — peers are
+        ${anyMultiYear ? `<br><b>Switching years can change which cities appear.</b> Peers are
         re-ranked independently for each year using that year's real data, so the closest
         match in 2020 isn't always the closest match in 2022.` : ""}
       </div>`);
@@ -2133,7 +2150,7 @@ function render(r, turnId) {
   ].filter(s => s.present);
   if (exportableSections.length) {
     panels.push({key: "export", label: "Export", html: `
-        <div class="dim small">Choose what to include — leave everything checked to export the entire result.</div>
+        <div class="dim small">Choose what to include. Leave everything checked to export the entire result.</div>
         <div class="export-sections mt">
           ${exportableSections.map(s => `<label class="export-sec-label">
             <input type="checkbox" class="export-sec" value="${esc(s.key)}" checked> ${esc(s.label)}</label>`).join("")}
@@ -2474,7 +2491,7 @@ function appendTurnShell(queryText) {
     <div class="turn turn-loading" id="turn-${turnId}" data-turn="${turnId}">
       <div class="turn-tabs" id="turn-${turnId}-tabs"></div>
       <div class="turn-body" id="turn-${turnId}-body">
-        <div class="turn-stage"><span class="stage-dot"></span><span id="turn-${turnId}-stage-text">starting…</span></div>
+        <div class="turn-stage" role="status"><span class="stage-dot"></span><span id="turn-${turnId}-stage-text">starting…</span></div>
       </div>
     </div>`;
   $("output").insertAdjacentHTML("beforeend", html);
@@ -2501,7 +2518,9 @@ function morphToAnswerLayout() {
       window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     panel.classList.add("morphing");
     $("globe-wrap").classList.add("hidden-loading");
-    setHelpVisible(false);
+    // Help stays up through the whole session now — it's exactly what
+    // explains an unexpected result (an odd geo match, a caveat), which
+    // is at least as likely mid-conversation as before the first ask.
     const finish = () => {
       panel.classList.add("started");
       panel.classList.remove("morphing");
@@ -2533,7 +2552,14 @@ async function ask(presetText) {
   const dockActive = $("ask-panel").classList.contains("started");
   const input = dockActive ? $("query-dock") : $("query");
   const q = (presetText !== undefined ? presetText : input.value).trim();
-  if (!q || busy) return;
+  if (busy) return;
+  if (!q) {
+    input.classList.remove("shake");
+    void input.offsetWidth; // restart the animation if triggered again quickly
+    input.classList.add("shake");
+    input.focus();
+    return;
+  }
   banner(null);
   $("query").value = "";
   $("query-dock").value = "";
@@ -2564,7 +2590,7 @@ async function ask(presetText) {
       es.close();
       currentEventSource = null;
       const body = $("turn-" + turnId + "-body");
-      if (body) body.innerHTML = `<div class="banner err">${esc(msg.error)}</div>`;
+      if (body) body.innerHTML = `<div class="banner err" role="alert">${esc(msg.error)}</div>`;
       $("turn-" + turnId)?.classList.remove("turn-loading");
       banner(msg.error, true);
       setBusy(false, "");
@@ -2577,7 +2603,7 @@ async function ask(presetText) {
     currentEventSource = null;
     if (busy) {
       const body = $("turn-" + turnId + "-body");
-      if (body) body.innerHTML = `<div class="banner err">Connection lost.</div>`;
+      if (body) body.innerHTML = `<div class="banner err" role="alert">Connection lost.</div>`;
       $("turn-" + turnId)?.classList.remove("turn-loading");
       banner("Connection lost.", true);
       setBusy(false, "");
@@ -2663,7 +2689,7 @@ async function goHome() {
   lastTurnContext = null;
   setBusy(false, "");
   setHistoryVisible(false);
-  setHelpVisible(true);
+  showHelp();
 }
 $("brand-home").addEventListener("click", goHome);
 $("brand-home").addEventListener("keydown", (e) => {
@@ -2909,8 +2935,8 @@ function applyStatus(d) {
     // identical checks would skip re-rendering and leave this message up.
     setupSignature = null;
     $("setup-checks").innerHTML =
-      '<div class="card">Loading artifacts — the FAISS index is ~4.4 GB, ' +
-      'this takes a minute. The page will switch over on its own.</div>';
+      '<div class="card">Loading artifacts. The FAISS index is ~4.4 GB, ' +
+      'so this takes a minute. The page will switch over on its own.</div>';
     $("setup-msg").textContent = "";
   } else {
     renderSetup(d);
