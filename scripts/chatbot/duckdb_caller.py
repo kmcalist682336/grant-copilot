@@ -195,7 +195,7 @@ class DuckDBCaller:
         geography_select = ""
         if plan.geo_prefixes:
             geography_select = (
-                ', MAX(CAST("census_tract" AS VARCHAR)) AS "__geo_filter"'
+                f', MAX(CAST({self._quote_identifier(plan.record_geography_column)} AS VARCHAR)) AS "__geo_filter"'
             )
         numerator_conditions = []
         numerator_params: list[Any] = []
@@ -240,13 +240,7 @@ class DuckDBCaller:
             for _, condition_params in conditions:
                 params.extend(condition_params)
         if plan.geo_prefixes:
-            geo_conditions = [
-                'LEFT("__geo_filter", ?) = ?'
-                for _ in plan.geo_prefixes
-            ]
-            geo_params: list[Any] = []
-            for prefix in plan.geo_prefixes:
-                geo_params.extend([len(prefix), prefix])
+            geo_conditions, geo_params = self._geography_predicates(plan)
             # A geography can expand to many census tracts.  A record belongs
             # to one tract, so those alternatives must be ORed together;
             # joining them with AND makes every multi-tract geography empty.
@@ -304,14 +298,11 @@ class DuckDBCaller:
             f"{self._variable_path_prefix()}variable=*/{self.file_glob}"
         )
         variable_placeholders = ", ".join("?" for _ in plan.variables)
-        geo_conditions = [
-            'LEFT("__geo_filter", ?) = ?'
-            for _ in plan.geo_prefixes
-        ]
+        geo_conditions, geo_params = self._geography_predicates(plan)
         sql = (
             "WITH pivoted AS ("
             f" SELECT {record_col}, {value_columns}, "
-            'MAX(CAST("census_tract" AS VARCHAR)) AS "__geo_filter" '
+            f'MAX(CAST({self._quote_identifier(plan.record_geography_column)} AS VARCHAR)) AS "__geo_filter" '
             "FROM read_parquet(?, hive_partitioning=true) "
             f"WHERE variable IN ({variable_placeholders}) "
             f"GROUP BY {record_col}) "
@@ -323,11 +314,19 @@ class DuckDBCaller:
             + f" ORDER BY {record_col}"
         )
         params: list[Any] = [*plan.variables, path, *plan.variables]
-        for prefix in plan.geo_prefixes:
-            params.extend([len(prefix), prefix])
+        params.extend(geo_params)
         cursor = self._con.execute(sql, params)
         headers = [column[0] for column in (cursor.description or [])]
         return [dict(zip(headers, row)) for row in cursor.fetchall()]
+
+    def _geography_predicates(self, plan: APIPlanCall):
+        if plan.record_geography_match == "exact":
+            return ['"__geo_filter" = ?' for _ in plan.geo_prefixes], list(plan.geo_prefixes)
+        if plan.record_geography_match != "prefix":
+            raise ValueError("Unsupported record geography matching mode")
+        conditions = ['LEFT("__geo_filter", ?) = ?' for _ in plan.geo_prefixes]
+        params = [item for prefix in plan.geo_prefixes for item in (len(prefix), prefix)]
+        return conditions, params
 
     def _record_filter_predicates(
         self, filters: list[RecordFilter],

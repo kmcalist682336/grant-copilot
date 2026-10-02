@@ -106,7 +106,7 @@ def test_get_prompt(client):
     assert r.status_code == 200
     body = r.json()
     assert body["path"] == "prompts/v1/synthesizer.yaml"
-    assert "Census data synthesizer" in body["text"]
+    assert "multi-dataset data synthesizer" in body["text"]
 
 
 def test_put_prompt_rejects_empty(client):

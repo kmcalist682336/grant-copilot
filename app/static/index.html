@@ -1869,7 +1869,19 @@ function render(r, turnId) {
     ...(r.anomalies || []).map(anomalyCaveatText)];
 
   const trends = buildTrends(r.values);
-  const trend = trends[0] || null;
+  // Prefer the measure explicitly requested, then retain the stable order
+  // for broad evidence questions. Frame context must not take its place.
+  const requested = (r.query || "").toLowerCase();
+  const relevance = t => {
+    const words = (t.concept || "").toLowerCase().split(/\W+/)
+      .filter(w => w.length > 3 && !["rate", "median", "household"].includes(w));
+    return words.filter(w => requested.includes(w)).length;
+  };
+  const primaryTrends = trends.filter(t => (r.values || []).some(v =>
+    v.geo === t.geo && v.concept === t.concept && v.role === "primary"));
+  const rankedTrends = primaryTrends.length ? primaryTrends : trends;
+  rankedTrends.sort((a, b) => relevance(b) - relevance(a));
+  const trend = rankedTrends[0] || null;
   currentTrend = trend;
   // For a trend series, the headline stat is the most recent year, not
   // whichever row happens to come first in `values` — the chart below
@@ -2375,7 +2387,11 @@ function renderUpstream(items, metrics) {
       total ${metrics.total_s.toFixed(1)}s · synth ${metrics.synthesize_s.toFixed(1)}s ·
       ${metrics.llm_calls} LLM calls · $${metrics.llm_cost_usd.toFixed(4)} ·
       ${metrics.census_calls_total} Census calls (${metrics.census_cache_hits} cached,
-      ${metrics.census_failures} failed)</div>`;
+      ${metrics.census_failures} failed) ·
+      Census retrieval ${(metrics.census_fetch_s || 0).toFixed(1)}s ·
+      record retrieval ${(metrics.record_fetch_s || 0).toFixed(1)}s
+      (${metrics.record_calls_total || 0} calls, ${metrics.record_cache_hits || 0} cached,
+      ${metrics.record_failures || 0} failed)</div>`;
   } else {
     metricsBox.classList.add("hide");
   }

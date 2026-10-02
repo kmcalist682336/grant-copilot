@@ -71,6 +71,8 @@ class APIPlanCall:
     # two-digit state FIPS or five-digit county FIPS.  Census calls leave
     # this empty; record callers translate it into parameterized SQL.
     geo_prefixes: list[str] = field(default_factory=list)
+    record_geography_column: str = "census_tract"
+    record_geography_match: str = "prefix"
 
     @property
     def cache_key(self) -> str:
@@ -109,6 +111,10 @@ class APIPlanCall:
         if self.geo_prefixes:
             prefixes = json.dumps(sorted(self.geo_prefixes), separators=(",", ":"))
             suffix += f"/geo_prefixes={prefixes}"
+            suffix += "/geography=" + json.dumps(
+                [self.record_geography_column, self.record_geography_match],
+                separators=(",", ":"),
+            )
         return f"{base}{suffix}"
 
 

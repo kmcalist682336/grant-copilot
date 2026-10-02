@@ -11,6 +11,9 @@ CASES = [
     ("hmda", "hmda", ["applicant race"], "38ad9c360a98"),
     ("hmda", "hmda", ["applicant ethnicity"], "b4588a673468"),
     ("hmda", "hmda", ["application status"], "906bb78b0f70"),
+    ("hmda", "hmda", ["denial reason"], "2742b6bb64c3"),
+    ("hmda", "hmda", ["primary denial reason"], "2742b6bb64c3"),
+    ("hmda", "hmda", ["credit score denial reason"], "2742b6bb64c3"),
 ]
 
 

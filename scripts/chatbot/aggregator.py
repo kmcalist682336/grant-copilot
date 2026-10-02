@@ -97,6 +97,7 @@ class AggregatedValue(BaseModel):
                     "(e.g., population-weighted mean of tract medians).",
     )
     notes: list[str] = Field(default_factory=list)
+    source_context: list[dict] = Field(default_factory=list)
 
 
 class AggregatedResult(BaseModel):
@@ -340,7 +341,17 @@ def aggregate_results(
             "is_tract_aggregation": planned.api_call.geo_level == "tract"
                                     and bool(planned.tract_filter),
             "tract_filter": [],
+            "source_context": [],
         })
+        source = {
+            "dataset": planned.api_call.dataset,
+            "table_id": planned.api_call.table_id,
+            "variables": planned.variables.model_dump(),
+            "record_filters": [vars(f) for f in planned.api_call.record_filters],
+            "numerator_filters": [vars(f) for f in planned.api_call.record_numerator_filters],
+        }
+        if source not in bucket["source_context"]:
+            bucket["source_context"].append(source)
         if planned.tract_filter:
             bucket["tract_filter"].extend(planned.tract_filter)
         if not result.succeeded:
@@ -402,6 +413,7 @@ def aggregate_results(
             value=value, ratio=ratio, components=components,
             sample_size=sample, rows_aggregated=rows_used,
             aggregation_caveat=caveat, notes=notes,
+            source_context=b["source_context"],
         ))
 
     return AggregatedResult(values=values, fetch_failures=failures)

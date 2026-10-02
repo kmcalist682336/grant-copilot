@@ -291,6 +291,31 @@ def test_lint_accepts_percent_rendering_of_a_ratio():
     assert "forbid_unsourced_numbers" not in rules
 
 
+def test_lint_accepts_magnitude_trend_percent():
+    """Trend percentages produced by the pipeline are sourced too."""
+    geo = _geo("Atlanta city")
+    concept = ExtractedConcept(text="poverty rate")
+    agg = AggregatedResult(values=[
+        AggregatedValue(geo=geo, concept=concept, year=2024,
+                        ratio=0.169, rows_aggregated=1),
+        AggregatedValue(geo=geo, concept=concept, year=2021,
+                        ratio=0.185, rows_aggregated=1),
+    ])
+    answer = SynthesizedAnswer(
+        prose="In 2024 the rate was 16.9%, down 8.6% from 2021.",
+        key_findings=[], caveats=[], citations=[],
+    )
+    magnitude_framings = [{"trend_pct": -0.08571914994785289}]
+    found = {l.rule for l in lints.run_all(
+        answer,
+        agg,
+        None,
+        {"forbid_unsourced_numbers": True, "require_year_mentioned": True},
+        magnitude_framings,
+    )}
+    assert "forbid_unsourced_numbers" not in found
+
+
 def test_lint_requires_year(scenario):
     _, _, aggregated = scenario
     assert "require_year_mentioned" in _lint_rules(

@@ -227,7 +227,8 @@ def test_session_ctx_appended_to_user_message():
     assert "SD004" in captured["user_text"]  # from the session_ctx dict
     # The session-ctx marker must only live on the user-message side so
     # the system prompt (and its cache) stays stable across turns.
-    assert "SESSION CONTEXT" not in captured["system_prompt"]
+    # Instructions may explain SESSION CONTEXT; actual session data must
+    # stay out of the shared system prompt.
     assert "SD004" not in captured["system_prompt"]
 
 

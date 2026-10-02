@@ -44,7 +44,8 @@ from scripts.chatbot.models import (
 from scripts.chatbot.geo_resolver import resolve_intent
 from scripts.chatbot.gazetteer_db import open_spatialite
 from scripts.chatbot.record_connector import build_record_caller
-from scripts.chatbot.record_planner import _record_geo_prefixes, plan_record_query
+from scripts.chatbot.hmda_adapter import _record_geo_prefixes
+from scripts.chatbot.record_planner import plan_record_query
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -62,6 +63,16 @@ ETHNICITY = "b4588a673468"
 APPROVED_ACTIONS = ["Loan originated", "Application approved but not accepted"]
 DENIED_ACTIONS = ["Application denied"]
 ORIGINATED_ACTIONS = ["Loan originated"]
+COMPLETED_APPLICATION_ACTIONS = [
+    "Loan originated",
+    "Application approved but not accepted",
+    "Application denied",
+]
+APPLICATION_ACTIONS = [
+    *COMPLETED_APPLICATION_ACTIONS,
+    "Application withdrawn by applicant",
+    "File closed for incompleteness",
+]
 
 
 @dataclass(frozen=True)
@@ -103,12 +114,23 @@ METRICS: dict[str, dict[str, Any]] = {
         "measure_hint": "mortgage origination rate",
         "variable_id": ACTION,
         "numerator": [FilterSpec(ACTION, "application status", ORIGINATED_ACTIONS, "in")],
+        "oracle_filters": [
+            FilterSpec(
+                ACTION,
+                "application status",
+                COMPLETED_APPLICATION_ACTIONS,
+                "in",
+            ),
+        ],
     },
     "application_count": {
         "operation": "count",
         "measure_text": "mortgage applications",
         "measure_hint": "loan applications",
         "variable_id": ACTION,
+        "oracle_filters": [
+            FilterSpec(ACTION, "application status", APPLICATION_ACTIONS, "in"),
+        ],
     },
     "denied_count": {
         "operation": "count",
@@ -322,7 +344,8 @@ def direct_value(
 ) -> tuple[Optional[float], int]:
     metric = METRICS[case.metric]
     metric_filters = list(metric.get("filters", []))
-    filters = [*metric_filters, *case.filters]
+    oracle_filters = list(metric.get("oracle_filters", []))
+    filters = [*metric_filters, *oracle_filters, *case.filters]
     numerator_filters = list(metric.get("numerator", []))
     selected_vars = sorted({
         metric["variable_id"],
@@ -427,7 +450,7 @@ async def planner_value(
     plan = plan_record_query(
         intent,
         [resolved_geo],
-        semantic_router=None,
+        dataset="hmda", semantic_router=None,
         geo_db=geo_db,
         metadata_db=metadata_db,
     )

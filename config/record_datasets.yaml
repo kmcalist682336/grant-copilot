@@ -1,0 +1,28 @@
+# Dataset capabilities are data, not per-dataset Python subclasses.
+# Field aliases and stored category definitions may be supplied here or in the
+# existing dataset-scoped record_variable_aliases/value_registry files.
+datasets:
+  hmda:
+    table_id: hmda
+    supported_years: [2024, 2023, 2022, 2021, 2020, 2019, 2018]
+    coverage_level: tract
+    geography_column: census_tract
+    geography_match: prefix
+    geography_strategy: tract_prefix
+    default_geography_spec:
+      geo_id: '13'
+      geo_level: state
+      geo_type: state
+      display_name: Georgia
+      tract_geoids: []
+      county_geoid: null
+      api_for_clause: 'state:13'
+      api_in_clause: ''
+      confidence: 0.8
+      assumption_notes:
+        - No geography was specified; defaulted HMDA record query to Georgia statewide because the local HMDA record store is Georgia-focused.
+      data_level_available: state
+      source_ref: {text: Georgia, ref_type: administrative}
+    ambiguous_terms:
+      age: [middle aged, middle-aged, working age, working-age, adult, adults]
+    ambiguous_filter_help: "use an explicit age category from the dataset definition"

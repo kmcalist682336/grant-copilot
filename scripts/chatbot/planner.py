@@ -1105,6 +1105,13 @@ def _calls_for_resolved_concept(
     tiers that haven't found a concrete (table, dataset) yet
     (tier_3_llm_fallback, needs_llm_decomposition, unresolved).
     """
+    # These are policy goals, not Census measurements. A nearest-neighbor
+    # hit cannot establish spending, investment, or subsidized-unit counts.
+    if resolution.concept.text.strip().lower() in {
+        "affordable housing", "affordable housing investment",
+        "affordable housing investments", "affordable housing funding",
+    }:
+        return []
     data_level = data_level_for(geo)
 
     # K.5 — semantic-router resolutions take a different composer path.

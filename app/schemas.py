@@ -154,6 +154,8 @@ class MetricsOut(BaseModel):
     resolve_s: float = 0.0
     plan_s: float = 0.0
     fetch_s: float = 0.0
+    census_fetch_s: float = 0.0
+    record_fetch_s: float = 0.0
     synthesize_s: float = 0.0
     llm_calls: int = 0
     llm_cost_usd: float = 0.0
@@ -406,6 +408,8 @@ def to_public(
                 resolve_s=_attr(m, "resolve_s", 0.0) or 0.0,
                 plan_s=_attr(m, "plan_s", 0.0) or 0.0,
                 fetch_s=_attr(m, "fetch_s", 0.0) or 0.0,
+                census_fetch_s=_attr(m, "census_fetch_s", 0.0) or 0.0,
+                record_fetch_s=_attr(m, "record_fetch_s", 0.0) or 0.0,
                 synthesize_s=_attr(m, "synthesize_s", 0.0) or 0.0,
                 llm_calls=_attr(m, "llm_calls", 0) or 0,
                 llm_cost_usd=_attr(m, "llm_cost_usd", 0.0) or 0.0,

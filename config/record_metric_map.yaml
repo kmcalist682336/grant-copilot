@@ -62,11 +62,13 @@ metrics:
     units: percent
     notes: Approval rate counts originated loans plus applications approved but not accepted. Use origination rate when only originated loans should count.
 
-  - canonical: mortgage origination rate
+  - canonical: mortgage origination rate among completed applications
     aliases:
       - origination rate
       - mortgage origination rate
       - loan origination rate
+      - origination rate among completed applications
+      - completed application origination rate
       - share of applications originated
       - percent of applications originated
       - percentage of applications originated
@@ -83,9 +85,18 @@ metrics:
         canonical_hint: application status
         operator: equals
         value: Loan originated
-    denominator_description: all mortgage application records matching the selected geography, year, and user-supplied filters
+    record_filters:
+      - variable_id: 906bb78b0f70
+        dimension: application status
+        canonical_hint: application status
+        operator: in
+        value:
+          - Loan originated
+          - Application approved but not accepted
+          - Application denied
+    denominator_description: completed applications receiving an origination, approval-not-accepted, or denial decision
     units: percent
-    notes: Origination rate is Loan originated divided by all matching application records.
+    notes: Origination rate is Loan originated divided by completed applications with a lending decision; withdrawn, incomplete, purchased-loan, and preapproval-only records are excluded.
 
   - canonical: mortgage withdrawal rate
     aliases:
@@ -107,8 +118,20 @@ metrics:
         canonical_hint: application status
         operator: equals
         value: Application withdrawn by applicant
-    denominator_description: all mortgage application records matching the selected geography, year, and user-supplied filters
+    record_filters:
+      - variable_id: 906bb78b0f70
+        dimension: application status
+        canonical_hint: application status
+        operator: in
+        value:
+          - Loan originated
+          - Application approved but not accepted
+          - Application denied
+          - Application withdrawn by applicant
+          - File closed for incompleteness
+    denominator_description: applications with an originated, approval-not-accepted, denied, withdrawn, or incomplete-file outcome
     units: percent
+    notes: Purchased loans and preapproval-only outcomes are excluded from the application universe.
 
   - canonical: incomplete mortgage application rate
     aliases:
@@ -129,8 +152,52 @@ metrics:
         canonical_hint: application status
         operator: equals
         value: File closed for incompleteness
-    denominator_description: all mortgage application records matching the selected geography, year, and user-supplied filters
+    record_filters:
+      - variable_id: 906bb78b0f70
+        dimension: application status
+        canonical_hint: application status
+        operator: in
+        value:
+          - Loan originated
+          - Application approved but not accepted
+          - Application denied
+          - Application withdrawn by applicant
+          - File closed for incompleteness
+    denominator_description: applications with an originated, approval-not-accepted, denied, withdrawn, or incomplete-file outcome
     units: percent
+    notes: Purchased loans and preapproval-only outcomes are excluded from the application universe.
+
+  - canonical: preapproval denial rate
+    aliases:
+      - mortgage preapproval denial rate
+      - preapproval request denial rate
+      - share of preapproval requests denied
+      - percent of preapproval requests denied
+      - percentage of preapproval requests denied
+    dataset: hmda
+    table_id: hmda
+    operation: percentage
+    measure:
+      text: application status
+      canonical_hint: application status
+      variable_id: 906bb78b0f70
+    numerator_filters:
+      - variable_id: 906bb78b0f70
+        dimension: application status
+        canonical_hint: application status
+        operator: equals
+        value: Preapproval request denied
+    record_filters:
+      - variable_id: 906bb78b0f70
+        dimension: application status
+        canonical_hint: application status
+        operator: in
+        value:
+          - Preapproval request denied
+          - Preapproval request approved but not accepted
+    denominator_description: preapproval requests receiving a denied or approved-but-not-accepted preapproval outcome
+    units: percent
+    notes: This metric uses HMDA action outcomes for preapproval requests and does not include applications that proceeded to another final action.
 
   - canonical: mortgage application count
     aliases:
@@ -148,8 +215,20 @@ metrics:
       text: application status
       canonical_hint: application status
       variable_id: 906bb78b0f70
-    denominator_description: matching mortgage application records
+    record_filters:
+      - variable_id: 906bb78b0f70
+        dimension: application status
+        canonical_hint: application status
+        operator: in
+        value:
+          - Loan originated
+          - Application approved but not accepted
+          - Application denied
+          - Application withdrawn by applicant
+          - File closed for incompleteness
+    denominator_description: matching application records with statuses 1 through 5
     units: count
+    notes: Purchased loans and preapproval-only outcomes are excluded; this counts applications, not unique applicants.
 
   - canonical: denied mortgage application count
     aliases:

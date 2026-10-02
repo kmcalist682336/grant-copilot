@@ -112,6 +112,7 @@ from scripts.chatbot.nodes.trend import prior_period_calls
 from scripts.chatbot.planner import (
     ConceptResolution, PlanResult, data_level_for, plan_query,
 )
+from scripts.chatbot.record_dataset import record_dataset_definitions
 from scripts.chatbot.record_planner import (
     has_record_analysis, plan_record_query, record_analyses,
     record_metric_recipe_for_analysis,
@@ -216,7 +217,8 @@ def _suppress_frame_conflicting_record_analyses(
     kept: list[ExtractedAnalysis] = []
     dropped: list[str] = []
     for analysis in intent.analyses:
-        if record_metric_recipe_for_analysis(analysis) is not None:
+        if analysis.measure is not None and record_metric_recipe_for_analysis(
+            analysis, dataset=analysis.measure.dataset_hint) is not None:
             kept.append(analysis)
             continue
         measure = analysis.measure
@@ -269,20 +271,45 @@ def _operation_for_record_text(text: str) -> str:
 
 
 def _looks_record_level_query(text: str) -> bool:
+    from scripts.chatbot.record_dataset import record_dataset_definitions
     key = _key(text)
-    return any(token in key for token in (
-        "hmda", "mortgage", "loan application", "loan applicant",
-        "applicant", "borrower", "denial", "approval", "originat",
+    return any(
+        f" {_key(term)} " in f" {key} "
+        for definition in record_dataset_definitions().values()
+        for recipe in definition.recipes().recipes
+        for term in [recipe.canonical, *recipe.aliases]
+        if term
+    )
+
+
+def _wants_supporting_context(query: str) -> bool:
+    """Broad evidence requests opt into frame-added background indicators."""
+    text = _key(query)
+    return any(phrase in text for phrase in (
+        "evidence", "grant", "needs assessment", "support the need",
+        "justify", "supporting context", "supporting data", "community profile",
+        "data-driven argument", "make a case", "build a case",
     ))
+
+
+def _focused_record_request(query: str, intent: ExtractedIntent) -> bool:
+    record_measure = any(
+        a.measure is not None and a.measure.dataset_hint not in {"census", "unknown", "both"}
+        for a in intent.analyses
+    )
+    return not _wants_supporting_context(query) and (
+        record_measure or _looks_record_level_query(query)
+    )
 
 
 def _record_metric_recipes_cover(intent: ExtractedIntent) -> bool:
     """True when every record analysis can be planned from curated recipes."""
-    analyses = record_analyses(intent)
+    analyses = intent.analyses
     if not analyses:
         return False
     return all(
-        record_metric_recipe_for_analysis(analysis) is not None
+        analysis.measure is not None and record_metric_recipe_for_analysis(
+            analysis, dataset=analysis.measure.dataset_hint) is not None
         for analysis in analyses
     )
 
@@ -316,165 +343,32 @@ def _is_simple_curated_record_lookup(
         return False
     if intent.concepts:
         return False
-    analyses = record_analyses(intent)
+    analyses = intent.analyses
     if not analyses:
         return False
     if any(analysis.groupings for analysis in analyses):
         return False
     if _has_record_filter_cues(query):
-        has_explicit_filters = any(analysis.filters for analysis in analyses)
-        if not has_explicit_filters:
-            return False
+        # One existing filter does not prove every requested filter survived
+        # extraction. Let the single interpretation pass check completeness.
+        return False
+    # Only an exact, unqualified metric can skip filter interpretation across
+    # arbitrary vocabularies. New dataset categories need no keyword branch.
+    if any(a.filters for a in analyses):
+        return False
+    if query and not any(_key(query) == _key(t) for a in analyses if a.measure
+                         for t in (a.measure.text, a.measure.canonical_hint) if t):
+        return False
     return _record_metric_recipes_cover(intent)
 
 
-def _has_hmda_context(*texts: str) -> bool:
-    """Conservative gate for record-level mortgage/HMDA probes.
-
-    We only create normalized HMDA route text when the user's language points
-    at loan applications, applicants/borrowers, lenders, or application
-    outcomes.  This keeps Census phrases such as "households with a mortgage"
-    or "Black women in poverty" on the existing Census path.
-    """
-    key = _key(" ".join(t for t in texts if t))
-    return any(token in key for token in (
-        "hmda",
-        "mortgage applicant", "mortgage application",
-        "loan applicant", "loan application",
-        "borrower", "lender",
-        "approval", "approved", "denial", "denied",
-        "originated", "origination", "withdrawn",
-        "loan amount", "loan purpose", "preapproval",
-    ))
-
-
-def _normalized_hmda_route_texts(
-    query: str,
-    concept: ExtractedConcept,
-) -> list[str]:
-    """Candidate measure strings for dataset routing.
-
-    Raw subgroup-heavy phrases like "average income of Black female mortgage
-    applicants" often route to Census demographic cards.  For the initial
-    dataset choice, route the measure + HMDA population instead; if that maps
-    to HMDA, the record metric interpreter can later recover race/sex/age
-    filters from the original query.
-    """
-    raw = " ".join(
-        part for part in (concept.canonical_hint, concept.text, query) if part
-    )
-    key = _key(raw)
-    out: list[str] = []
-
-    def add(text: str) -> None:
-        clean = " ".join(text.strip().split())
-        if clean and clean.lower() not in {t.lower() for t in out}:
-            out.append(clean)
-
-    if any(t in key for t in ("approval", "approved", "approve")):
-        add("mortgage approval rate")
-        add("loan application outcome")
-    if any(t in key for t in ("denial", "denied", "deny")):
-        add("mortgage denial rate")
-        add("loan application outcome")
-    if "origination" in key or "originated" in key:
-        add("mortgage origination rate")
-        add("loan application outcome")
-    if "loan amount" in key or "mortgage amount" in key:
-        if "median" in key:
-            add("median mortgage loan amount")
-        elif any(t in key for t in ("average", "mean")):
-            add("average mortgage loan amount")
-        else:
-            add("mortgage loan amount")
-    if "income" in key:
-        if "median" in key:
-            add("median income of mortgage applicants")
-        elif any(t in key for t in ("average", "mean")):
-            add("average income of mortgage applicants")
-        else:
-            add("income of mortgage applicants")
-    if "debt" in key and "income" in key:
-        add("debt to income ratio for mortgage applicants")
-    if "loan purpose" in key:
-        add("loan purpose for mortgage applications")
-    if "denial reason" in key or "reasons for denial" in key:
-        add("mortgage denial reasons")
-    if any(t in key for t in ("how many", "number of", "count")):
-        add("mortgage application count")
-
-    add(concept.canonical_hint or concept.text)
-    return out[:6]
-
-
-def _route_text_prefers_hmda(
-    text: str,
-    semantic_router: Optional[object],
-) -> bool:
-    """Return true only when global semantic routing prefers HMDA.
-
-    This deliberately uses the normal cross-dataset router, not
-    ``route_dataset(..., target_dataset='hmda')``.  The question is not merely
-    whether HMDA has *some* match; it is whether HMDA beats the Census cards for
-    the normalized measure text.
-    """
-    if semantic_router is None or not text.strip():
-        return False
-    try:
-        routed = semantic_router.route(text, top_k=8)
-    except Exception:
-        return False
-    candidates = [*routed.top_variables, *routed.top_tables]
-    if not candidates:
-        return False
-    top = candidates[0]
-    top_dataset = getattr(top, "target_dataset", None)
-    if top_dataset == "hmda":
-        return True
-
-    # Allow an HMDA second-place hit only when it is essentially tied with the
-    # top result.  This catches noisy card rankings without hijacking clear
-    # Census concepts.
-    top_score = float(getattr(top, "aggregate_score", 0.0) or 0.0)
-    for candidate in candidates[1:3]:
-        if getattr(candidate, "target_dataset", None) != "hmda":
-            continue
-        score = float(getattr(candidate, "aggregate_score", 0.0) or 0.0)
-        if top_score <= 0 or score >= 0.90 * top_score:
-            return True
-    return False
-
-
-def _concept_routes_to_hmda(
-    concept: ExtractedConcept,
-    semantic_router: Optional[object],
-    *,
-    query: str = "",
-) -> bool:
-    if concept.dataset_hint in {"hmda", "both"}:
-        return True
-    if concept.dataset_hint == "census":
-        return False
-    text = concept.canonical_hint or concept.text
-    if not _has_hmda_context(query, text):
-        return False
-    if semantic_router is None:
-        return _looks_record_level_query(query) and _looks_record_level_query(text)
-    for route_text in _normalized_hmda_route_texts(query, concept):
-        if _route_text_prefers_hmda(route_text, semantic_router):
-            logger.info(
-                "concept promoted to HMDA analysis via normalized route %r",
-                route_text,
-            )
-            return True
-    return False
 
 
 def _analysis_key(analysis: ExtractedAnalysis) -> tuple[str, str, tuple]:
     measure = analysis.measure
     measure_key = (((measure.canonical_hint or measure.text) if measure else "") or "").strip().lower()
     filters = tuple(sorted(_record_filter_key(f) for f in analysis.filters))
-    return (analysis.operation, measure_key, filters)
+    return (measure.dataset_hint if measure else "unknown", analysis.operation, measure_key, filters)
 
 
 def _promote_record_concepts_to_analyses(
@@ -482,16 +376,37 @@ def _promote_record_concepts_to_analyses(
     intent: ExtractedIntent,
     semantic_router: Optional[object],
 ) -> ExtractedIntent:
-    if not intent.concepts:
-        return intent
+    from scripts.chatbot.dataset_selection import select_dataset
+    import re
+    named_sources = {name for name in [*record_dataset_definitions(), "census"]
+                     if re.search(r"(?<!\w)" + re.escape(name) + r"(?!\w)", query, re.IGNORECASE)}
+    requested_source = next(iter(named_sources)) if len(named_sources) == 1 else None
     kept: list[ExtractedConcept] = []
     added: list[ExtractedAnalysis] = []
-    existing = {_analysis_key(a) for a in intent.analyses}
-    for concept in intent.concepts:
-        if not _concept_routes_to_hmda(concept, semantic_router, query=query):
-            kept.append(concept)
+    selected_analyses = []
+    for analysis in intent.analyses:
+        if analysis.measure is None:
             continue
-        measure = concept.model_copy(update={"dataset_hint": "hmda"})
+        selection = select_dataset(analysis.measure, semantic_router, requested_dataset=requested_source)
+        logger.info("Dataset selection: %r -> %s (%s)", analysis.measure.text, selection.dataset, selection.reason)
+        if selection.dataset == "census":
+            # Do not flatten structured filters into an unfiltered Census
+            # lookup, or silently execute them against a record store.
+            from scripts.chatbot.dataset_selection import DatasetSelectionError
+            if analysis.filters or analysis.groupings:
+                raise DatasetSelectionError("The selected Census source needs a Census-specific measure for these filters; please clarify the requested statistic.")
+            kept.append(analysis.measure.model_copy(update={"dataset_hint": "census"}))
+            continue
+        selected_analyses.append(analysis.model_copy(update={
+            "measure": analysis.measure.model_copy(update={"dataset_hint": selection.dataset})}))
+    existing = {_analysis_key(a) for a in selected_analyses}
+    for concept in intent.concepts:
+        selection = select_dataset(concept, semantic_router, requested_dataset=requested_source)
+        logger.info("Dataset selection: %r -> %s (%s)", concept.text, selection.dataset, selection.reason)
+        if selection.dataset == "census":
+            kept.append(concept.model_copy(update={"dataset_hint": "census"}))
+            continue
+        measure = concept.model_copy(update={"dataset_hint": selection.dataset})
         analysis = ExtractedAnalysis(
             operation=_operation_for_record_text(
                 " ".join([query, concept.canonical_hint or concept.text]),
@@ -499,20 +414,15 @@ def _promote_record_concepts_to_analyses(
             measure=measure,
             filters=[],
             groupings=[],
-            population_context=(
-                "mortgage applications" if _looks_record_level_query(query)
-                else None
-            ),
+            population_context=None,
         )
         key = _analysis_key(analysis)
         if key not in existing:
             existing.add(key)
             added.append(analysis)
-    if not added and len(kept) == len(intent.concepts):
-        return intent
     return intent.model_copy(update={
         "concepts": kept,
-        "analyses": list(intent.analyses) + added,
+        "analyses": selected_analyses + added,
     })
 
 
@@ -583,6 +493,8 @@ class StageMetrics(BaseModel):
     plan_decomp_retry_s: float = 0.0
     decompose_s: float = 0.0
     fetch_s: float = 0.0
+    census_fetch_s: float = 0.0
+    record_fetch_s: float = 0.0
     aggregate_s: float = 0.0
     synthesize_s: float = 0.0
     total_s: float = 0.0
@@ -738,48 +650,61 @@ async def _run_fetches(
     *,
     max_concurrent: int = 20,
     record_caller: Optional[Any] = None,
+    timings: Optional[dict[str, float]] = None,
 ) -> list[FetchResult]:
     """Fetch planned calls through the connector for their dataset.
 
     Census remains the default and backward-compatible path. When a
-    record-level caller is supplied, HMDA calls are sent to it while all
-    other calls continue through ``CensusCaller``. Results are restored to
+    record-level caller is supplied, registered record calls are sent to it
+    while Census calls continue through ``CensusCaller``. Results are restored to
     the planner's original order so the existing aggregator is unchanged.
     """
     if not plan.calls:
         return []
     plans = [c.api_call for c in plan.calls]
     if record_caller is None:
+        started = time.perf_counter()
         async with CensusCaller(
             api_key=api_key, cache=api_cache,
             max_concurrent=max_concurrent,
         ) as caller:
-            return await caller.fetch_all(plans)
+            fetched = await caller.fetch_all(plans)
+        if timings is not None:
+            timings["census_fetch_s"] = time.perf_counter() - started
+        return fetched
 
+    from scripts.chatbot.record_dataset import record_dataset_definitions
+    record_sources = record_dataset_definitions()
     indexed = list(enumerate(plans))
     record_items = [(idx, call) for idx, call in indexed
-                    if call.dataset == "hmda"]
+                    if call.dataset in record_sources]
     census_items = [(idx, call) for idx, call in indexed
-                    if call.dataset != "hmda"]
+                    if call.dataset not in record_sources]
     results: list[Optional[FetchResult]] = [None] * len(plans)
 
     async def fetch_census() -> None:
         if not census_items:
             return
+        started = time.perf_counter()
         async with CensusCaller(
             api_key=api_key, cache=api_cache,
             max_concurrent=max_concurrent,
         ) as caller:
             fetched = await caller.fetch_all([call for _, call in census_items])
+        if timings is not None:
+            timings["census_fetch_s"] = time.perf_counter() - started
         for (idx, _), result in zip(census_items, fetched):
             results[idx] = result
 
     async def fetch_records() -> None:
         if not record_items:
             return
+        started = time.perf_counter()
         fetched = await record_caller.fetch_all(
             [call for _, call in record_items]
         )
+        if timings is not None:
+            timings["record_fetch_s"] = time.perf_counter() - started
         for (idx, _), result in zip(record_items, fetched):
             results[idx] = result
 
@@ -918,6 +843,10 @@ async def answer_query(
         try:
             sv = is_in_scope(
                 query, llm,
+                record_sources={name: {
+                    "metrics": [r.canonical for r in definition.recipes().recipes],
+                    "fields": list(definition.vocabulary()[0]),
+                } for name, definition in record_dataset_definitions().items()},
                 temperature=float(sg_cfg.get("temperature", 0.0)),
                 hard_timeout_s=float(sg_cfg.get("hard_timeout_s", 20.0)),
             )
@@ -1043,11 +972,30 @@ async def answer_query(
     # before routing, so they go through the same rewriter+critic loop.
     # Skipped in legacy (no router) mode and when there is no data concept
     # or record analysis to anchor the frame.
+    # Select sources before frame expansion, so a new record source receives
+    # the focused path just like an existing one.
+    from scripts.chatbot.dataset_selection import DatasetSelectionError
+    _progress(progress_cb, "Selecting datasets")
+    selection_started = time.time()
+    try:
+        intent = _promote_record_concepts_to_analyses(query, intent, semantic_router)
+        selected_datasets = {a.measure.dataset_hint for a in intent.analyses if a.measure}
+        if len(selected_datasets) > 1:
+            raise DatasetSelectionError("This query selects multiple record datasets; please ask about one source at a time.")
+    except DatasetSelectionError as exc:
+        metrics.total_s = time.time() - t_start
+        _accumulate_metrics(metrics, llm)
+        return QueryResponse(query=query, intent=intent, resolved_geos=resolved,
+            plan=PlanResult(intent=intent, resolved_geos=resolved, concept_resolutions=[], calls=[]),
+            error=str(exc), metrics=metrics)
+    selected_dataset = next(iter(selected_datasets), None)
+    metrics.decompose_s += time.time() - selection_started
     frame_match: Optional[FrameMatch] = None
     frame: Optional[Frame] = None
     intent_for_routing = intent
     frame_match_concepts = _concepts_for_frame_matching(intent)
-    if semantic_router is not None and frame_match_concepts:
+    focused_record_lookup = _focused_record_request(query, intent)
+    if semantic_router is not None and frame_match_concepts and not focused_record_lookup:
         _progress(progress_cb, "Matching grant-narrative frame")
         registry = frame_registry or load_default_frames()
         t0 = time.time()
@@ -1101,10 +1049,24 @@ async def answer_query(
         )
     )
 
-    if semantic_router is not None:
-        intent_for_routing = _promote_record_concepts_to_analyses(
-            query, intent_for_routing, semantic_router,
-        )
+    # Frames can add declared record analyses. Resolve their sources with the
+    # same selector; never assume a frame's dataset hint is authoritative.
+    if intent_for_routing.analyses != intent.analyses:
+        try:
+            frame_only = intent_for_routing.model_copy(update={"concepts": []})
+            checked = _promote_record_concepts_to_analyses(query, frame_only, semantic_router)
+            selected_datasets = {a.measure.dataset_hint for a in checked.analyses if a.measure}
+            if len(selected_datasets) > 1:
+                raise DatasetSelectionError("This query selects multiple record datasets; please ask about one source at a time.")
+            intent_for_routing = intent_for_routing.model_copy(update={
+                "analyses": checked.analyses, "concepts": intent_for_routing.concepts + checked.concepts})
+            selected_dataset = next(iter(selected_datasets), None)
+        except DatasetSelectionError as exc:
+            metrics.total_s = time.time() - t_start
+            _accumulate_metrics(metrics, llm)
+            return QueryResponse(query=query, intent=intent_for_routing, resolved_geos=resolved,
+                plan=PlanResult(intent=intent_for_routing, resolved_geos=resolved, concept_resolutions=[], calls=[]),
+                error=str(exc), metrics=metrics)
 
     record_metric_notes: list[str] = list(frame_suppression_notes)
     simple_curated_record_lookup = _is_simple_curated_record_lookup(
@@ -1127,18 +1089,26 @@ async def answer_query(
                     query,
                     intent_for_routing,
                     llm,
+                    dataset=selected_dataset,
                     frame=frame,
                     semantic_router=semantic_router,
                     temperature=config.get("vertex_ai", {}).get("temperature", 0.1),
                 )
             except RecordMetricInterpreterError as e:
                 logger.warning(
-                    "record metric interpreter failed (%s); using extracted analyses",
+                    "record metric interpreter failed (%s); stopping unvalidated query",
                     e,
                 )
-                record_metric_notes = [
-                    "record metric interpreter failed; using extracted analyses",
-                ]
+                metrics.decompose_s += time.time() - t0
+                metrics.total_s = time.time() - t_start
+                _accumulate_metrics(metrics, llm)
+                return QueryResponse(
+                    query=query, intent=intent_for_routing, resolved_geos=resolved,
+                    plan=PlanResult(intent=intent_for_routing, resolved_geos=resolved,
+                                    concept_resolutions=[], calls=[]),
+                    error=f"Could not validate the requested record metric and filters: {e}",
+                    metrics=metrics,
+                )
             metrics.decompose_s += time.time() - t0
             intent_for_routing = _merge_missing_concepts(
                 intent_for_routing, frame_protected_concepts,
@@ -1148,6 +1118,9 @@ async def answer_query(
                     note for note in record_metric_notes
                     if note not in frame_suppression_notes
                 ]
+
+    if focused_record_lookup and _record_metric_recipes_cover(intent_for_routing):
+        simple_curated_record_lookup = True
 
     # 4. Agent routing (rewrite → route → critique) -------------------
     # When a SemanticRouter is available, run the Phase 1 agent chain
@@ -1203,7 +1176,13 @@ async def answer_query(
     # Census concepts keep their existing planner.  Record-level analyses
     # use a deterministic dataset planner that produces the same PlanResult
     # contract, so the fetch/aggregate/synthesis stages remain shared.
-    record_mode = has_record_analysis(intent_for_routing)
+    record_mode = selected_dataset is not None and has_record_analysis(intent_for_routing, dataset=selected_dataset)
+    # Legacy callers target the existing HMDA store. New sources must supply
+    # an explicit dataset->connector mapping, never reuse that store by accident.
+    if isinstance(record_caller, dict):
+        record_caller = record_caller.get(selected_dataset)
+    elif selected_dataset not in {None, "hmda"}:
+        record_caller = None
     _progress(
         progress_cb,
         "Planning record and Census requests" if record_mode
@@ -1214,7 +1193,7 @@ async def answer_query(
         record_plan = plan_record_query(
             intent_for_routing,
             resolved,
-            semantic_router=semantic_router,
+            dataset=selected_dataset, semantic_router=semantic_router,
             geo_db=db,
             metadata_db=metadata_db,
             trend_lookback_years=trend_lookback_years,
@@ -1254,6 +1233,11 @@ async def answer_query(
                 "is configured",
             ],
         )
+        metrics.total_s = time.time() - t_start
+        _accumulate_metrics(metrics, llm)
+        return QueryResponse(query=query, intent=intent_for_routing, resolved_geos=resolved,
+            plan=plan, error=f"Dataset {selected_dataset!r} was selected, but no connector is configured for it.",
+            metrics=metrics)
     else:
         plan = plan_query(
             intent_for_routing, resolved, cmap, metadata_db,
@@ -1460,32 +1444,36 @@ async def answer_query(
         f"{len(plan.calls)} call(s)",
     )
     t0 = time.time()
+    fetch_timings: dict[str, float] = {}
     fetch_results = await _run_fetches(
         plan, api_cache, api_key, max_concurrent=fetch_max_concurrent,
         record_caller=record_caller,
+        timings=fetch_timings,
     )
+    metrics.census_fetch_s = fetch_timings.get("census_fetch_s", 0.0)
+    metrics.record_fetch_s = fetch_timings.get("record_fetch_s", 0.0)
     metrics.fetch_s = time.time() - t0
     metrics.census_calls_total = sum(
-        1 for r in fetch_results if r.plan.dataset != "hmda"
+        1 for r in fetch_results if r.plan.dataset != selected_dataset
     )
     metrics.record_calls_total = sum(
-        1 for r in fetch_results if r.plan.dataset == "hmda"
+        1 for r in fetch_results if r.plan.dataset == selected_dataset
     )
     metrics.census_cache_hits = sum(
         1 for r in fetch_results
-        if r.plan.dataset != "hmda" and r.cache_hit
+        if r.plan.dataset != selected_dataset and r.cache_hit
     )
     metrics.record_cache_hits = sum(
         1 for r in fetch_results
-        if r.plan.dataset == "hmda" and r.cache_hit
+        if r.plan.dataset == selected_dataset and r.cache_hit
     )
     metrics.census_failures = sum(
         1 for r in fetch_results
-        if r.plan.dataset != "hmda" and not r.succeeded
+        if r.plan.dataset != selected_dataset and not r.succeeded
     )
     metrics.record_failures = sum(
         1 for r in fetch_results
-        if r.plan.dataset == "hmda" and not r.succeeded
+        if r.plan.dataset == selected_dataset and not r.succeeded
     )
     _progress(
         progress_cb, "Fetches complete",

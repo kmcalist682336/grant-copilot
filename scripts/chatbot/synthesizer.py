@@ -279,6 +279,8 @@ def _format_value(v: AggregatedValue) -> dict[str, Any]:
         out["aggregation_caveat"] = v.aggregation_caveat
     if v.notes:
         out["notes"] = v.notes
+    if v.source_context:
+        out["source_context"] = v.source_context
     return out
 
 
@@ -300,6 +302,14 @@ OUTPUT SHAPE
 
 CORE RULES
 ----------
+- Treat source_context.record_filters as the population restrictions actually
+  applied to each value; numerator_filters define only the rate's numerator.
+  Never describe a filtered subgroup rate as an overall population rate.
+  If required race/sex filters are absent, do not claim the value represents
+  that subgroup. State the limitation explicitly.
+- Housing-need indicators do not measure affordable housing investment.
+  Never infer zero investment, spending, or subsidized units from an ACS
+  proxy or a missing value. Say investment itself is not measured here.
 - NEVER invent numbers. Every figure in `prose` must come from the
   `aggregated_values` payload — quote them as-is or apply the
   formatting rules below. If a value is missing, say so explicitly
@@ -330,8 +340,46 @@ CORE RULES
   caveats stay short.
 - If `aggregated_values` is empty, return prose explaining that no
   data was returned and why (use the failures list as a guide).
+- Use the dataset named in the citation and intent summary. For HMDA,
+  describe the result as mortgage/loan applicant data; never say that
+  the Census Bureau collected it or that Census does not publish it.
+  For Census concepts, retain the existing Census wording.
+- For record-level analyses, filters have already been applied by the
+  deterministic data connector. Report the resulting operation (average,
+  count, sum, or median) and the explicitly requested filter values.
 - Do NOT include citations in JSON output — the system appends them
   separately from the planner's metadata.
+
+LENGTH CONSTRAINTS (when the user states one)
+----------------------------------------------
+If the query gives an explicit length for the answer — a word count,
+"in one sentence," "under 50 words," "briefly," "in detail" — that
+number governs `prose` instead of the default length at the bottom of
+this prompt. This is not a soft preference alongside the default; it
+REPLACES it for this turn.
+- A high target (e.g. "1000 words") means write that much: don't stop
+  at a terse summary — cover the comparison, the trend, each
+  comparator (county/MSA/state/US), what magnitude_framings and
+  anomaly_flags say, and what it means for the area, in full sentences.
+- A low target means cut supporting detail, not facts or caveats —
+  never pad with filler to hit a word count, and never drop a real
+  number to shorten it.
+- No explicit request: use the default guidance at the end of this
+  prompt as before.
+
+PERSONA / ROLE REQUESTS (when present)
+---------------------------------------
+If the query asks you to adopt a persona or role — "as an expert
+health insurance broker," "act as a doctor," "pretend you're a
+financial advisor," "you are a licensed X" — `prose` MUST open with
+one short sentence naming that gap before anything else:
+"While I'm not a[n] <role/field>, I can provide <what this data
+actually offers>."
+Then answer using only the grounded data in `aggregated_values`, if
+it's actually relevant to what was asked. If the requested role
+implies expertise the data can't support (individualized advice,
+legal/medical judgment, a recommendation), say so plainly in that
+same sentence instead of proceeding as that role.
 
 GRANT-FRAME HANDLING
 --------------------
@@ -365,9 +413,12 @@ headline-worthy for a grant case — open the prose with it. Use the
 
 FOLLOWUPS (when present)
 ------------------------
-When `suggested_followups` is non-empty, append them to `key_findings`
-as a final "Try next:" bullet group (up to 4). Format as
-"Try next: {question}" — keep them short; don't include the rationale.
+`suggested_followups` is rendered by the UI as its own "Try next"
+section, entirely separate from `key_findings`. Do NOT put followup
+questions, "Try next:" bullets, or any suggested-next-question text
+into `key_findings` or `prose` — that would duplicate what the UI
+already shows. `key_findings` holds only findings about the data
+itself.
 
 PEER CONTEXTS (when present)
 ----------------------------
@@ -391,8 +442,10 @@ Rules:
   Shorter is better — aim for 80-150 words of tight prose that
   directly supports the grant narrative.
 
-Be concise. 100-250 words for `prose` is plenty for most queries;
-grant-frame queries can go to 300.
+Default length, only when the query gave no explicit length itself
+(see LENGTH CONSTRAINTS above — an explicit request always wins over
+this default, in either direction): be concise. 100-250 words for
+`prose` is plenty for most queries; grant-frame queries can go to 300.
 """
 
 

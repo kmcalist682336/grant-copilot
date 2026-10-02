@@ -13,6 +13,18 @@ from pathlib import Path
 SPATIALITE_EXT = "mod_spatialite"
 
 
+def _try_pragma(conn: sqlite3.Connection, statement: str) -> None:
+    """Apply an optional SQLite tuning pragma when the filesystem permits it."""
+    try:
+        conn.execute(statement)
+    except sqlite3.OperationalError:
+        # Windows/WSL/Docker mounts can reject WAL sidecar creation even when
+        # the database itself is readable.  The gazetteer is read-only in the
+        # app, so failing to apply these performance pragmas must not prevent
+        # startup.
+        pass
+
+
 def open_spatialite(db_path: Path) -> sqlite3.Connection:
     """Open a read/write SpatiaLite DB connection.
 
@@ -22,9 +34,9 @@ def open_spatialite(db_path: Path) -> sqlite3.Connection:
     conn = sqlite3.connect(db_path)
     conn.enable_load_extension(True)
     conn.load_extension(SPATIALITE_EXT)
-    conn.execute("PRAGMA journal_mode=WAL")
-    conn.execute("PRAGMA synchronous=NORMAL")
-    conn.execute("PRAGMA cache_size=-64000")   # 64 MB cache
-    conn.execute("PRAGMA temp_store=MEMORY")
+    _try_pragma(conn, "PRAGMA journal_mode=WAL")
+    _try_pragma(conn, "PRAGMA synchronous=NORMAL")
+    _try_pragma(conn, "PRAGMA cache_size=-64000")   # 64 MB cache
+    _try_pragma(conn, "PRAGMA temp_store=MEMORY")
     conn.row_factory = sqlite3.Row
     return conn

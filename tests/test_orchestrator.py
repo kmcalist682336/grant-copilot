@@ -148,7 +148,7 @@ def test_orchestrator_happy_path_county_query(
             }],
             "intent_type": "exact",
         }),
-        ("Census data synthesizer", {
+        ("multi-dataset data synthesizer", {
             "prose": "DeKalb County's median household income was $72,500.",
             "key_findings": ["$72,500"],
             "caveats": [],
@@ -213,7 +213,7 @@ def test_orchestrator_composite_decomposes_then_replans(
             "confidence": 0.6,
             "rationale": "ACS proxies for food access.",
         }),
-        ("Census data synthesizer", {
+        ("multi-dataset data synthesizer", {
             "prose": "Food access proxies in DeKalb County: SNAP and vehicle access summarized.",
             "key_findings": ["SNAP and vehicles"],
             "caveats": ["Composite proxy estimate."],
@@ -301,7 +301,7 @@ def test_orchestrator_census_500_propagates_to_metrics(
             }],
             "intent_type": "exact",
         }),
-        ("Census data synthesizer", {
+        ("multi-dataset data synthesizer", {
             "prose": "Census did not return data for this query.",
             "key_findings": [],
             "caveats": ["Upstream Census API error."],

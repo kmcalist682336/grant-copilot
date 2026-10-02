@@ -829,9 +829,9 @@ def run_one(
     _render_geo_resolution(resolved)
     _render_concept_lookup(intent, resolved, cmap, metadata_db)
     if show_plan:
-        if has_record_analysis(intent) and record_caller is not None:
+        if has_record_analysis(intent, dataset="hmda") and record_caller is not None:
             plan = plan_record_query(
-                intent, resolved, semantic_router=semantic_router,
+                intent, resolved, dataset="hmda", semantic_router=semantic_router,
                 geo_db=db,
                 metadata_db=metadata_db,
             )

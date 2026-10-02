@@ -1,0 +1,23 @@
+datasets:
+  pantry:
+    table_id: visits
+    supported_years: [2022, 2025]
+    geography_column: service_area
+    geography_levels: [county]
+    aliases:
+      outcome: decision
+      household type: segment
+      food weight: kg
+    categories:
+      segment: {families: F, individuals: S}
+      decision: {fulfilled: Y, declined: N, pending: P}
+    variables:
+      kg: {description: Weight of food distributed, value_type: numeric}
+    metrics:
+      - canonical: fulfillment rate
+        operation: percentage
+        measure: {text: outcome, variable_id: decision}
+        record_filters:
+          - {dimension: outcome, variable_id: decision, operator: in, value: [Y, N]}
+        numerator_filters:
+          - {dimension: outcome, variable_id: decision, value: Y}

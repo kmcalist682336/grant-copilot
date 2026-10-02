@@ -50,7 +50,7 @@ TemporalIntent = Literal["latest", "change", "trend"]
 # being inferred later from a table hit.  This lets the pipeline keep Census
 # concepts on the existing path while record-level datasets can be planned
 # with their own deterministic filter logic.
-DatasetHint = Literal["census", "hmda", "both", "unknown"]
+DatasetHint = str  # Concrete registered dataset IDs, or census/both/unknown.
 
 AnalysisOperation = Literal[
     "value", "count", "sum", "average", "median", "percentage",

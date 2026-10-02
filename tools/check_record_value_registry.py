@@ -21,6 +21,16 @@ CASES = [
         "approved",
         ["Loan originated", "Application approved but not accepted"],
     ),
+    ("hmda", "hmda", "2742b6bb64c3", "credit score", "Credit history"),
+    ("hmda", "hmda", "2742b6bb64c3", "credit history", "Credit history"),
+    ("hmda", "hmda", "2742b6bb64c3", "dti", "Debt-to-income ratio"),
+    (
+        "hmda",
+        "hmda",
+        "2742b6bb64c3",
+        "down payment",
+        "Insufficient cash (downpayment, closing costs)",
+    ),
 ]
 
 
