@@ -375,6 +375,8 @@ def _promote_record_concepts_to_analyses(
     query: str,
     intent: ExtractedIntent,
     semantic_router: Optional[object],
+    *,
+    cmap: Optional[ConceptMap] = None,
 ) -> ExtractedIntent:
     from scripts.chatbot.dataset_selection import select_dataset
     import re
@@ -387,7 +389,7 @@ def _promote_record_concepts_to_analyses(
     for analysis in intent.analyses:
         if analysis.measure is None:
             continue
-        selection = select_dataset(analysis.measure, semantic_router, requested_dataset=requested_source)
+        selection = select_dataset(analysis.measure, semantic_router, cmap=cmap, requested_dataset=requested_source)
         logger.info("Dataset selection: %r -> %s (%s)", analysis.measure.text, selection.dataset, selection.reason)
         if selection.dataset == "census":
             # Do not flatten structured filters into an unfiltered Census
@@ -401,7 +403,7 @@ def _promote_record_concepts_to_analyses(
             "measure": analysis.measure.model_copy(update={"dataset_hint": selection.dataset})}))
     existing = {_analysis_key(a) for a in selected_analyses}
     for concept in intent.concepts:
-        selection = select_dataset(concept, semantic_router, requested_dataset=requested_source)
+        selection = select_dataset(concept, semantic_router, cmap=cmap, requested_dataset=requested_source)
         logger.info("Dataset selection: %r -> %s (%s)", concept.text, selection.dataset, selection.reason)
         if selection.dataset == "census":
             kept.append(concept.model_copy(update={"dataset_hint": "census"}))
@@ -978,7 +980,7 @@ async def answer_query(
     _progress(progress_cb, "Selecting datasets")
     selection_started = time.time()
     try:
-        intent = _promote_record_concepts_to_analyses(query, intent, semantic_router)
+        intent = _promote_record_concepts_to_analyses(query, intent, semantic_router, cmap=cmap)
         selected_datasets = {a.measure.dataset_hint for a in intent.analyses if a.measure}
         if len(selected_datasets) > 1:
             raise DatasetSelectionError("This query selects multiple record datasets; please ask about one source at a time.")
@@ -995,7 +997,17 @@ async def answer_query(
     intent_for_routing = intent
     frame_match_concepts = _concepts_for_frame_matching(intent)
     focused_record_lookup = _focused_record_request(query, intent)
-    if semantic_router is not None and frame_match_concepts and not focused_record_lookup:
+    # A resolved Census lookup must not acquire unrelated record analyses
+    # merely because a narrative frame shares a keyword (e.g. homeownership).
+    focused_census_lookup = (
+        bool(intent.concepts)
+        and not intent.analyses
+        and all(c.dataset_hint == "census" for c in intent.concepts)
+        and not _wants_supporting_context(query)
+    )
+    if semantic_router is not None and frame_match_concepts and not (
+        focused_record_lookup or focused_census_lookup
+    ):
         _progress(progress_cb, "Matching grant-narrative frame")
         registry = frame_registry or load_default_frames()
         t0 = time.time()
@@ -1054,7 +1066,7 @@ async def answer_query(
     if intent_for_routing.analyses != intent.analyses:
         try:
             frame_only = intent_for_routing.model_copy(update={"concepts": []})
-            checked = _promote_record_concepts_to_analyses(query, frame_only, semantic_router)
+            checked = _promote_record_concepts_to_analyses(query, frame_only, semantic_router, cmap=cmap)
             selected_datasets = {a.measure.dataset_hint for a in checked.analyses if a.measure}
             if len(selected_datasets) > 1:
                 raise DatasetSelectionError("This query selects multiple record datasets; please ask about one source at a time.")

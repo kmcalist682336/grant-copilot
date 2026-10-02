@@ -15,8 +15,15 @@ class DatasetSelection:
     reason: str
 
 
-def select_dataset(concept, semantic_router, *, requested_dataset=None, min_score=0.05, ambiguity_ratio=0.90):
-    """Prefer exact declared metrics, otherwise compare global semantic scores.
+def is_census_dataset(dataset):
+    """Recognize supported Census API families, including their subproducts."""
+    return isinstance(dataset, str) and dataset.split("/", 1)[0] in {
+        "census", "acs", "dec", "pep", "popest",
+    }
+
+
+def select_dataset(concept, semantic_router, *, cmap=None, requested_dataset=None, min_score=0.05, ambiguity_ratio=0.90):
+    """Resolve curated Census concepts before considering record sources.
 
     Extractor hints are not evidence and never override a winning source.
     Multiple near-tied datasets require clarification, with no favored source.
@@ -25,6 +32,16 @@ def select_dataset(concept, semantic_router, *, requested_dataset=None, min_scor
     if requested_dataset is not None and requested_dataset not in {*definitions, "census"}:
         raise DatasetSelectionError(f"Requested dataset {requested_dataset!r} is not configured.")
     texts = [t for t in (concept.canonical_hint, concept.text) if t]
+    if cmap is not None:
+        for text in texts:
+            entry = cmap.lookup(text)
+            if entry is not None and is_census_dataset(entry.dataset):
+                if requested_dataset not in {None, "census"}:
+                    raise DatasetSelectionError(
+                        f"{concept.text!r} resolves to Census, but the requested "
+                        f"source is {requested_dataset!r}. Please clarify the measure or source."
+                    )
+                return DatasetSelection("census", "curated Census concept mapping")
     exact = {name for name, definition in definitions.items()
              if definition.recipes().lookup_any(texts) is not None}
     if requested_dataset is not None:
@@ -56,7 +73,7 @@ def select_dataset(concept, semantic_router, *, requested_dataset=None, min_scor
             continue
         # ACS vintages/products compete as one Census source, not ambiguity
         # between two Census tables. Unknown sources remain competitors.
-        if dataset == "census" or dataset == "acs" or dataset.startswith("acs/") or dataset.startswith("dec/"):
+        if is_census_dataset(dataset):
             dataset = "census"
         score = float(getattr(target, "aggregate_score", 0) or 0)
         if math.isfinite(score):

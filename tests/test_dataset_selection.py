@@ -27,6 +27,93 @@ def test_census_winner_is_not_hijacked_by_record_runner_up(pantry):
         router(("acs/acs5", .8), ("hmda", .4))).dataset == "census"
 
 
+@pytest.mark.parametrize("dataset", ["acs/acs5", "acs/acs1/profile", "dec/pl", "dec", "pep/population", "popest"])
+def test_census_families_keep_census_path(dataset):
+    assert select_dataset(ExtractedConcept(text="population statistic"),
+                          router((dataset, .8), ("hmda", .2))).dataset == "census"
+
+
+def census_map():
+    from pathlib import Path
+    from scripts.chatbot.concept_map import ConceptMap
+    return ConceptMap.from_yaml(Path(__file__).parents[1] / "config/concept_map.yaml")
+
+
+def test_homeownership_curated_mapping_bypasses_semantic_selection():
+    def fail(*args, **kwargs):
+        pytest.fail("A curated Census concept must not need semantic source selection")
+    intent = ExtractedIntent(concepts=[ExtractedConcept(text="homeownership rate")])
+    selected = _promote_record_concepts_to_analyses(
+        "What's the homeownership rate in Fulton County?", intent,
+        SimpleNamespace(route=fail), cmap=census_map())
+    assert selected.analyses == []
+    assert selected.concepts[0].dataset_hint == "census"
+
+
+def test_mixed_query_preserves_census_and_record_paths(pantry):
+    intent = ExtractedIntent(concepts=[ExtractedConcept(text="homeownership rate"),
+                                     ExtractedConcept(text="fulfillment rate")])
+    selected = _promote_record_concepts_to_analyses(
+        "homeownership rate and fulfillment rate", intent, None, cmap=census_map())
+    assert [c.text for c in selected.concepts] == ["homeownership rate"]
+    assert [a.measure.dataset_hint for a in selected.analyses] == ["pantry"]
+
+
+def test_explicit_record_source_cannot_reinterpret_census_metric():
+    with pytest.raises(DatasetSelectionError, match="resolves to Census"):
+        select_dataset(ExtractedConcept(text="homeownership rate"), None,
+                       cmap=census_map(), requested_dataset="hmda")
+
+
+def test_homeownership_builds_census_calls(metadata_db):
+    from scripts.chatbot.planner import plan_query
+    from tests.test_aggregator import _geo
+    cmap = census_map()
+    selected = _promote_record_concepts_to_analyses(
+        "homeownership rate", ExtractedIntent(concepts=[
+            ExtractedConcept(text="homeownership rate")]),
+        router(("hmda", .99), ("acs/acs5", .1)), cmap=cmap)
+    plan = plan_query(selected, [_geo()], cmap, metadata_db)
+    assert plan.calls
+    assert all(p.api_call.table_id == "B25003" for p in plan.calls)
+    assert all(p.api_call.dataset.startswith("acs/") for p in plan.calls)
+    assert all(p.variables.numerator == ["B25003_002E"] and
+               p.variables.denominator == "B25003_001E" for p in plan.calls)
+
+
+def test_direct_homeownership_does_not_inject_hmda_frame(monkeypatch, tmp_path, metadata_db):
+    import asyncio
+    from scripts.chatbot import orchestrator
+    from scripts.chatbot.api_cache import APICache
+    from scripts.chatbot.decomposition_cache import DecompositionCache
+    from scripts.chatbot.synthesizer import SynthesizedAnswer
+    from tests.test_aggregator import _geo, _fetch
+
+    intent = ExtractedIntent(concepts=[ExtractedConcept(text="homeownership rate")])
+    monkeypatch.setattr(orchestrator, "extract_intent", lambda *a, **kw: intent)
+    monkeypatch.setattr(orchestrator, "resolve_intent", lambda *a: [_geo()])
+    def forbidden(*args, **kwargs):
+        pytest.fail("Direct Census lookup reached narrative frame/record interpreter")
+    monkeypatch.setattr(orchestrator, "match_frame", forbidden)
+    monkeypatch.setattr(orchestrator, "interpret_record_metrics", forbidden)
+    calls = []
+    async def fetch_all(self, plans):
+        calls.extend(plans)
+        return [_fetch([{"B25003_002E": "54", "B25003_001E": "100"}], p) for p in plans]
+    monkeypatch.setattr(orchestrator.CensusCaller, "fetch_all", fetch_all)
+    monkeypatch.setattr(orchestrator, "synthesize", lambda *a, **kw: SynthesizedAnswer(prose="Homeownership result"))
+    response = asyncio.run(orchestrator.answer_query(
+        "What's the homeownership rate in Fulton County?", SimpleNamespace(),
+        None, metadata_db, census_map(),
+        decomp_cache=DecompositionCache(tmp_path / "decomp.db"),
+        api_cache=APICache(tmp_path / "api.db"), api_key=None,
+        config={"scope_gate": {"enabled": False}, "clarification": {"enabled": False}},
+        semantic_router=router(("hmda", .99)), max_comparators=0, trend_lookback_years=0))
+    assert response.error is None
+    assert calls and all(p.table_id == "B25003" for p in calls)
+    assert response.aggregated.values[0].ratio == .54
+
+
 @pytest.mark.parametrize("scores", [(("hmda", .8), ("pantry", .75)),
                                    (("pantry", .8), ("acs/acs5", .75))])
 def test_near_ties_require_clarification(pantry, scores):
